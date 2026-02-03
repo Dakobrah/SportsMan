@@ -123,7 +123,82 @@ To access from other devices on your network:
 ### Running Tests
 
 ```bash
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=apps --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_snap_models.py
+
+# Run with verbose output
+pytest -v
+
+# Run only integration tests
+pytest tests/integration/
+
+# Run only unit tests
+pytest tests/unit/
+```
+
+## Test Suite
+
+The project includes comprehensive tests organized into unit and integration tests.
+
+### Unit Tests
+
+- **[test_snap_models.py](tests/unit/test_snap_models.py)** - Tests for all play-by-play models
+  - Run plays (basic, touchdown, fumble, penalty)
+  - Pass plays (complete, incomplete, sack, interception, thrown away)
+  - Defense snaps (tackle, TFL, sack, INT return, fumble recovery, assists)
+  - Special teams (punt, kickoff, field goal, extra point, 2PT conversions)
+
+- **[test_serializers.py](tests/unit/test_serializers.py)** - Serializer validation tests
+  - Team/Player/Season creation and validation
+  - Game serializers with computed fields
+  - Play serializers with cross-field validation (e.g., fumble_lost requires fumbled)
+
+- **[test_report_services.py](tests/unit/test_report_services.py)** - Analytics service tests
+  - Offense reports (rushing totals, passing stats, passer rating calculation)
+  - Defense reports (tackles, sacks, turnovers by player)
+  - Special teams reports (punting averages, FG percentages)
+
+### Integration Tests
+
+- **[test_api.py](tests/integration/test_api.py)** - API endpoint tests
+  - Authentication requirements
+  - CRUD operations for teams, players, games
+  - Report endpoint filtering
+
+- **[test_game_simulation.py](tests/integration/test_game_simulation.py)** - Full game simulation
+  - Simulates a complete football game with 40+ plays across 4 quarters
+  - Q1: Opening kickoff, 8-play TD drive, opponent scores (7-7)
+  - Q2: Defensive stand, FG drive, halftime (10-7)
+  - Q3: Big play TD, defensive INT (17-7)
+  - Q4: Two-minute drill TD by opponent, victory formation (17-14 WIN)
+  - Validates all report services with real aggregated statistics
+
+### Test Factories
+
+Test data is generated using Factory Boy. Available factories in [tests/factories.py](tests/factories.py):
+
+```python
+from tests.factories import (
+    TeamFactory,
+    PlayerFactory,
+    SeasonFactory,
+    GameFactory,
+    RunPlayFactory,
+    PassPlayFactory,
+)
+
+# Create a player on a specific team
+team = TeamFactory(name="Test Team")
+qb = PlayerFactory(team=team, position="QB")
+
+# Create a game with default season/team
+game = GameFactory(team_score=21, opponent_score=14)
 ```
 
 ### Database Operations
@@ -141,18 +216,37 @@ pytest
 ```
 sportsman/
 ├── apps/
-│   ├── accounts/    # User authentication
-│   ├── core/        # Shared utilities
-│   ├── games/       # Game management
-│   ├── reports/     # Analytics services
-│   ├── snaps/       # Play-by-play models
-│   └── teams/       # Team/Player/Season
+│   ├── accounts/        # User authentication & JWT
+│   ├── core/            # Shared utilities, pagination, permissions
+│   ├── games/           # Game & QuarterScore models
+│   ├── reports/         # Analytics service layer
+│   │   └── services/    # Offense, Defense, Special Teams reports
+│   ├── snaps/           # Play-by-play tracking
+│   │   └── models/      # Polymorphic models (Run, Pass, Defense, etc.)
+│   └── teams/           # Team, Player, Season models
 ├── api/
-│   └── v1/          # API v1 endpoints
+│   └── v1/              # API v1 endpoints & URL routing
 ├── sportsman/
-│   └── settings/    # Environment configs
-├── tests/           # Test suite
-└── scripts/         # Deployment scripts
+│   └── settings/        # Environment-specific configs
+│       ├── base.py      # Shared settings
+│       ├── development.py
+│       ├── local_network.py  # LAN deployment
+│       ├── production.py
+│       └── test.py
+├── tests/
+│   ├── integration/     # API & full system tests
+│   │   ├── test_api.py
+│   │   └── test_game_simulation.py
+│   ├── unit/            # Model & service tests
+│   │   ├── test_report_services.py
+│   │   ├── test_serializers.py
+│   │   └── test_snap_models.py
+│   ├── conftest.py      # Pytest fixtures
+│   └── factories.py     # Factory Boy test data
+├── scripts/             # Backup & deployment scripts
+├── docker-compose.yml
+├── Dockerfile
+└── nginx.conf           # Reverse proxy config
 ```
 
 ## License
