@@ -99,6 +99,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Custom user model
+AUTH_USER_MODEL = "accounts.User"
+
 # REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
