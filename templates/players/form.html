@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if player %}Edit {{ player.full_name }}{% else %}Add Player{% endif %} - Sports-Man{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:home' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'frontend:player_list' %}">Players</a></li>
+                    <li class="breadcrumb-item active">{% if player %}Edit{% else %}Add{% endif %}</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{% if player %}pencil{% else %}person-plus{% endif %} me-2"></i>
+                        {% if player %}Edit Player{% else %}Add New Player{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_first_name" class="form-label">First Name *</label>
+                                <input type="text" class="form-control {% if form.first_name.errors %}is-invalid{% endif %}"
+                                       id="id_first_name" name="first_name" value="{{ form.first_name.value|default:'' }}" required>
+                                {% if form.first_name.errors %}
+                                <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_last_name" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control {% if form.last_name.errors %}is-invalid{% endif %}"
+                                       id="id_last_name" name="last_name" value="{{ form.last_name.value|default:'' }}" required>
+                                {% if form.last_name.errors %}
+                                <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="id_number" class="form-label">Jersey Number *</label>
+                                <input type="number" class="form-control {% if form.number.errors %}is-invalid{% endif %}"
+                                       id="id_number" name="number" value="{{ form.number.value|default:'' }}"
+                                       min="0" max="99" required>
+                                {% if form.number.errors %}
+                                <div class="invalid-feedback">{{ form.number.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="id_position" class="form-label">Position *</label>
+                                <select class="form-select {% if form.position.errors %}is-invalid{% endif %}"
+                                        id="id_position" name="position" required>
+                                    <option value="">Select...</option>
+                                    <optgroup label="Offense">
+                                        <option value="QB" {% if form.position.value == 'QB' %}selected{% endif %}>QB - Quarterback</option>
+                                        <option value="RB" {% if form.position.value == 'RB' %}selected{% endif %}>RB - Running Back</option>
+                                        <option value="FB" {% if form.position.value == 'FB' %}selected{% endif %}>FB - Fullback</option>
+                                        <option value="WR" {% if form.position.value == 'WR' %}selected{% endif %}>WR - Wide Receiver</option>
+                                        <option value="TE" {% if form.position.value == 'TE' %}selected{% endif %}>TE - Tight End</option>
+                                        <option value="OL" {% if form.position.value == 'OL' %}selected{% endif %}>OL - Offensive Line</option>
+                                        <option value="C" {% if form.position.value == 'C' %}selected{% endif %}>C - Center</option>
+                                        <option value="OG" {% if form.position.value == 'OG' %}selected{% endif %}>OG - Offensive Guard</option>
+                                        <option value="OT" {% if form.position.value == 'OT' %}selected{% endif %}>OT - Offensive Tackle</option>
+                                    </optgroup>
+                                    <optgroup label="Defense">
+                                        <option value="DL" {% if form.position.value == 'DL' %}selected{% endif %}>DL - Defensive Line</option>
+                                        <option value="DE" {% if form.position.value == 'DE' %}selected{% endif %}>DE - Defensive End</option>
+                                        <option value="DT" {% if form.position.value == 'DT' %}selected{% endif %}>DT - Defensive Tackle</option>
+                                        <option value="LB" {% if form.position.value == 'LB' %}selected{% endif %}>LB - Linebacker</option>
+                                        <option value="CB" {% if form.position.value == 'CB' %}selected{% endif %}>CB - Cornerback</option>
+                                        <option value="S" {% if form.position.value == 'S' %}selected{% endif %}>S - Safety</option>
+                                        <option value="DB" {% if form.position.value == 'DB' %}selected{% endif %}>DB - Defensive Back</option>
+                                    </optgroup>
+                                    <optgroup label="Special Teams">
+                                        <option value="K" {% if form.position.value == 'K' %}selected{% endif %}>K - Kicker</option>
+                                        <option value="P" {% if form.position.value == 'P' %}selected{% endif %}>P - Punter</option>
+                                        <option value="LS" {% if form.position.value == 'LS' %}selected{% endif %}>LS - Long Snapper</option>
+                                    </optgroup>
+                                </select>
+                                {% if form.position.errors %}
+                                <div class="invalid-feedback">{{ form.position.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="id_team" class="form-label">Team</label>
+                                <select class="form-select" id="id_team" name="team">
+                                    <option value="">No Team</option>
+                                    {% for team in teams %}
+                                    <option value="{{ team.id }}" {% if form.team.value == team.id|stringformat:"i" %}selected{% endif %}>
+                                        {{ team.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="id_class_year" class="form-label">Class Year</label>
+                                <select class="form-select" id="id_class_year" name="class_year">
+                                    <option value="">Select...</option>
+                                    <option value="FR" {% if form.class_year.value == 'FR' %}selected{% endif %}>Freshman</option>
+                                    <option value="SO" {% if form.class_year.value == 'SO' %}selected{% endif %}>Sophomore</option>
+                                    <option value="JR" {% if form.class_year.value == 'JR' %}selected{% endif %}>Junior</option>
+                                    <option value="SR" {% if form.class_year.value == 'SR' %}selected{% endif %}>Senior</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="id_height" class="form-label">Height</label>
+                                <input type="text" class="form-control" id="id_height" name="height"
+                                       value="{{ form.height.value|default:'' }}" placeholder="e.g., 6'2&quot;">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="id_weight" class="form-label">Weight (lbs)</label>
+                                <input type="number" class="form-control" id="id_weight" name="weight"
+                                       value="{{ form.weight.value|default:'' }}" min="0">
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>
+                                {% if player %}Save Changes{% else %}Add Player{% endif %}
+                            </button>
+                            <a href="{% url 'frontend:player_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,283 @@
+/* Sports-Man Football Analytics - Custom Styles */
+
+/* Root Variables */
+:root {
+    --sm-primary: #0d6efd;
+    --sm-success: #198754;
+    --sm-danger: #dc3545;
+    --sm-warning: #ffc107;
+    --sm-dark: #212529;
+}
+
+/* Body & Layout */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.navbar .nav-link {
+    transition: opacity 0.2s ease;
+}
+
+.navbar .nav-link:hover {
+    opacity: 0.8;
+}
+
+/* Cards */
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+}
+
+/* Tables */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Stats Display */
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+/* Game Score Display */
+.score-display {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Play-by-Play */
+.play-row {
+    transition: background-color 0.2s ease;
+}
+
+.play-row.play-touchdown {
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+.play-row.play-turnover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.play-row.play-first-down {
+    border-left: 3px solid var(--sm-primary);
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .score-display {
+        font-size: 2rem;
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+
+    /* Hide less important columns on mobile */
+    .hide-mobile {
+        display: none;
+    }
+
+    /* Stack buttons on mobile */
+    .btn-group-mobile {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .btn-group-mobile .btn {
+        width: 100%;
+    }
+}
+
+/* Touch-friendly targets for mobile */
+@media (pointer: coarse) {
+    .btn {
+        min-height: 44px;
+        padding: 0.625rem 1rem;
+    }
+
+    .form-control,
+    .form-select {
+        min-height: 44px;
+        font-size: 16px; /* Prevents iOS zoom */
+    }
+
+    .table td,
+    .table th {
+        padding: 0.75rem;
+    }
+
+    .dropdown-item {
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* Loading State */
+.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: -0.75rem 0 0 -0.75rem;
+    border: 2px solid #dee2e6;
+    border-top-color: var(--sm-primary);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Alert Improvements */
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+/* Form Improvements */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.form-text {
+    font-size: 0.8rem;
+}
+
+/* Footer */
+.footer {
+    font-size: 0.875rem;
+}
+
+/* Print Styles */
+@media print {
+    .navbar,
+    .footer,
+    .btn,
+    .no-print {
+        display: none !important;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+    }
+
+    body {
+        font-size: 12pt;
+    }
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Tooltip Custom Styles */
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+}
+
+/* Scrollbar (Webkit) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}

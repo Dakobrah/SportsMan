@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if game %}Edit Game{% else %}Add Game{% endif %} - Sports-Man{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:home' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'frontend:game_list' %}">Games</a></li>
+                    <li class="breadcrumb-item active">{% if game %}Edit{% else %}Add{% endif %}</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{% if game %}pencil{% else %}calendar-plus{% endif %} me-2"></i>
+                        {% if game %}Edit Game{% else %}Add New Game{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="id_season" class="form-label">Season *</label>
+                            <select class="form-select {% if form.season.errors %}is-invalid{% endif %}"
+                                    id="id_season" name="season" required>
+                                <option value="">Select Season...</option>
+                                {% for season in seasons %}
+                                <option value="{{ season.id }}" {% if form.season.value == season.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ season.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.season.errors %}
+                            <div class="invalid-feedback">{{ form.season.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_date" class="form-label">Date *</label>
+                                <input type="date" class="form-control {% if form.date.errors %}is-invalid{% endif %}"
+                                       id="id_date" name="date" value="{{ form.date.value|default:'' }}" required>
+                                {% if form.date.errors %}
+                                <div class="invalid-feedback">{{ form.date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_week_number" class="form-label">Week Number</label>
+                                <input type="number" class="form-control" id="id_week_number" name="week_number"
+                                       value="{{ form.week_number.value|default:'' }}" min="1" max="20">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_opponent" class="form-label">Opponent *</label>
+                            <input type="text" class="form-control {% if form.opponent.errors %}is-invalid{% endif %}"
+                                   id="id_opponent" name="opponent" value="{{ form.opponent.value|default:'' }}" required>
+                            {% if form.opponent.errors %}
+                            <div class="invalid-feedback">{{ form.opponent.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_location" class="form-label">Location *</label>
+                            <select class="form-select {% if form.location.errors %}is-invalid{% endif %}"
+                                    id="id_location" name="location" required>
+                                <option value="home" {% if form.location.value == 'home' %}selected{% endif %}>Home</option>
+                                <option value="away" {% if form.location.value == 'away' %}selected{% endif %}>Away</option>
+                                <option value="neutral" {% if form.location.value == 'neutral' %}selected{% endif %}>Neutral Site</option>
+                            </select>
+                            {% if form.location.errors %}
+                            <div class="invalid-feedback">{{ form.location.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_team_score" class="form-label">Team Score *</label>
+                                <input type="number" class="form-control {% if form.team_score.errors %}is-invalid{% endif %}"
+                                       id="id_team_score" name="team_score" value="{{ form.team_score.value|default:0 }}"
+                                       min="0" required>
+                                {% if form.team_score.errors %}
+                                <div class="invalid-feedback">{{ form.team_score.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_opponent_score" class="form-label">Opponent Score *</label>
+                                <input type="number" class="form-control {% if form.opponent_score.errors %}is-invalid{% endif %}"
+                                       id="id_opponent_score" name="opponent_score" value="{{ form.opponent_score.value|default:0 }}"
+                                       min="0" required>
+                                {% if form.opponent_score.errors %}
+                                <div class="invalid-feedback">{{ form.opponent_score.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="id_notes" name="notes" rows="3">{{ form.notes.value|default:'' }}</textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>
+                                {% if game %}Save Changes{% else %}Create Game{% endif %}
+                            </button>
+                            <a href="{% url 'frontend:game_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

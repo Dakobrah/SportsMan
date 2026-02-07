@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ game.opponent }} - {{ game.date|date:"M d, Y" }} - Sports-Man{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard:home' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'frontend:game_list' %}">Games</a></li>
+            <li class="breadcrumb-item active">vs {{ game.opponent }}</li>
+        </ol>
+    </nav>
+
+    <!-- Game Header -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4 text-center text-md-start">
+                    <h2 class="mb-1">{{ game.team.name }}</h2>
+                    <p class="text-muted mb-0">{{ game.location|title }}</p>
+                </div>
+                <div class="col-md-4 text-center my-3 my-md-0">
+                    <div class="d-flex justify-content-center align-items-center gap-3">
+                        <div class="text-center">
+                            <div class="display-4 fw-bold">{{ game.team_score }}</div>
+                        </div>
+                        <div class="text-muted">-</div>
+                        <div class="text-center">
+                            <div class="display-4 fw-bold">{{ game.opponent_score }}</div>
+                        </div>
+                    </div>
+                    {% if game.result == 'W' %}
+                    <span class="badge bg-success fs-6">WIN</span>
+                    {% elif game.result == 'L' %}
+                    <span class="badge bg-danger fs-6">LOSS</span>
+                    {% else %}
+                    <span class="badge bg-secondary fs-6">TIE</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 text-center text-md-end">
+                    <h2 class="mb-1">{{ game.opponent }}</h2>
+                    <p class="text-muted mb-0">{{ game.date|date:"F d, Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quarter Scores -->
+    {% if quarter_scores %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Scoring by Quarter</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-start">Team</th>
+                            <th>Q1</th>
+                            <th>Q2</th>
+                            <th>Q3</th>
+                            <th>Q4</th>
+                            {% if has_overtime %}<th>OT</th>{% endif %}
+                            <th class="fw-bold">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-start fw-bold">{{ game.team.abbreviation }}</td>
+                            {% for q in quarter_scores.team %}
+                            <td>{{ q }}</td>
+                            {% endfor %}
+                            <td class="fw-bold">{{ game.team_score }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-start">{{ game.opponent }}</td>
+                            {% for q in quarter_scores.opponent %}
+                            <td>{{ q }}</td>
+                            {% endfor %}
+                            <td class="fw-bold">{{ game.opponent_score }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Game Stats -->
+        <div class="col-12 col-lg-8">
+            <!-- Offensive Stats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-arrow-right-circle me-2"></i>Offensive Stats</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Category</th>
+                                <th class="text-end">{{ game.team.abbreviation }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Rushing Yards</td>
+                                <td class="text-end">{{ stats.rushing.yards|default:0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Rushing Attempts</td>
+                                <td class="text-end">{{ stats.rushing.attempts|default:0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Passing Yards</td>
+                                <td class="text-end">{{ stats.passing.yards|default:0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Completions/Attempts</td>
+                                <td class="text-end">{{ stats.passing.completions|default:0 }}/{{ stats.passing.attempts|default:0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Yards</td>
+                                <td class="text-end fw-bold">{{ stats.total_yards|default:0 }}</td>
+                            </tr>
+                            <tr>
+                                <td>Turnovers</td>
+                                <td class="text-end">{{ stats.turnovers|default:0 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Top Performers -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-star me-2"></i>Top Performers</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% if top_rusher %}
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 text-center">
+                                <small class="text-muted d-block">Rushing</small>
+                                <strong>{{ top_rusher.name }}</strong>
+                                <div class="text-primary">{{ top_rusher.yards }} yds</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if top_passer %}
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 text-center">
+                                <small class="text-muted d-block">Passing</small>
+                                <strong>{{ top_passer.name }}</strong>
+                                <div class="text-primary">{{ top_passer.yards }} yds</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if top_receiver %}
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 text-center">
+                                <small class="text-muted d-block">Receiving</small>
+                                <strong>{{ top_receiver.name }}</strong>
+                                <div class="text-primary">{{ top_receiver.yards }} yds</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Info & Actions -->
+        <div class="col-12 col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Game Info</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Date</span>
+                        <strong>{{ game.date|date:"M d, Y" }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Season</span>
+                        <strong>{{ game.season.name }}</strong>
+                    </li>
+                    {% if game.week_number %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Week</span>
+                        <strong>{{ game.week_number }}</strong>
+                    </li>
+                    {% endif %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Location</span>
+                        <strong>{{ game.location|title }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Total Plays</span>
+                        <strong>{{ game.snaps.count }}</strong>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'frontend:game_plays' game.id %}" class="btn btn-primary">
+                            <i class="bi bi-list-ol me-2"></i>View Play-by-Play
+                        </a>
+                        <a href="{% url 'frontend:game_add_play' game.id %}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Add Play
+                        </a>
+                        <a href="{% url 'frontend:game_edit' game.id %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-pencil me-2"></i>Edit Game
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

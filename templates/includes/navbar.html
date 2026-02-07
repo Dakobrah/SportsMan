@@ -1,0 +1,86 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard:home' %}">
+            <i class="bi bi-trophy-fill me-2"></i>
+            <span class="fw-bold">Sports-Man</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarMain">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
+                       href="{% url 'dashboard:home' %}">
+                        <i class="bi bi-house-door me-1"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-people me-1"></i>Teams
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'frontend:team_list' %}">All Teams</a></li>
+                        <li><a class="dropdown-item" href="{% url 'frontend:player_list' %}">All Players</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'frontend:season_list' %}">Seasons</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'game' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'frontend:game_list' %}">
+                        <i class="bi bi-calendar-event me-1"></i>Games
+                    </a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-graph-up me-1"></i>Reports
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'frontend:report_offense' %}">
+                            <i class="bi bi-arrow-right-circle me-2"></i>Offense
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'frontend:report_defense' %}">
+                            <i class="bi bi-shield me-2"></i>Defense
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'frontend:report_special_teams' %}">
+                            <i class="bi bi-bullseye me-2"></i>Special Teams
+                        </a></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'frontend:profile' %}">
+                            <i class="bi bi-person me-2"></i>Profile
+                        </a></li>
+                        {% if user.is_staff %}
+                        <li><a class="dropdown-item" href="{% url 'admin:index' %}">
+                            <i class="bi bi-gear me-2"></i>Admin
+                        </a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'frontend:logout' %}">
+                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'frontend:login' %}">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

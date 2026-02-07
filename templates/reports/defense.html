@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Defensive Report - Sports-Man{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1"><i class="bi bi-shield me-2"></i>Defensive Report</h1>
+            <p class="text-muted mb-0">
+                {% if season %}{{ season.name }}{% else %}All Seasons{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Season</label>
+                    <select name="season" class="form-select">
+                        <option value="">All Seasons</option>
+                        {% for s in seasons %}
+                        <option value="{{ s.id }}" {% if request.GET.season == s.id|stringformat:"i" %}selected{% endif %}>
+                            {{ s.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Game</label>
+                    <select name="game" class="form-select">
+                        <option value="">All Games</option>
+                        {% for g in games %}
+                        <option value="{{ g.id }}" {% if request.GET.game == g.id|stringformat:"i" %}selected{% endif %}>
+                            {{ g.date|date:"M d" }} - {{ g.opponent }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Team Totals -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Team Defensive Totals</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-2 col-4 mb-3">
+                    <div class="fs-3 fw-bold text-primary">{{ team_totals.total_tackles|default:0 }}</div>
+                    <small class="text-muted">Tackles</small>
+                </div>
+                <div class="col-md-2 col-4 mb-3">
+                    <div class="fs-3 fw-bold text-warning">{{ team_totals.total_tfl|default:0 }}</div>
+                    <small class="text-muted">TFL</small>
+                </div>
+                <div class="col-md-2 col-4 mb-3">
+                    <div class="fs-3 fw-bold text-danger">{{ team_totals.total_sacks|default:0 }}</div>
+                    <small class="text-muted">Sacks</small>
+                </div>
+                <div class="col-md-2 col-4 mb-3">
+                    <div class="fs-3 fw-bold text-success">{{ team_totals.total_interceptions|default:0 }}</div>
+                    <small class="text-muted">INTs</small>
+                </div>
+                <div class="col-md-2 col-4 mb-3">
+                    <div class="fs-3 fw-bold text-info">{{ team_totals.total_fumble_recoveries|default:0 }}</div>
+                    <small class="text-muted">Fum Rec</small>
+                </div>
+                <div class="col-md-2 col-4 mb-3">
+                    <div class="fs-3 fw-bold">{{ team_totals.total_pass_defended|default:0 }}</div>
+                    <small class="text-muted">PD</small>
+                </div>
+            </div>
+            <hr>
+            <div class="row text-center">
+                <div class="col-md-3 col-6">
+                    <div class="fs-5">{{ team_totals.total_pressures|default:0 }}</div>
+                    <small class="text-muted">Pressures</small>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="fs-5">{{ team_totals.total_forced_incompletions|default:0 }}</div>
+                    <small class="text-muted">Forced Inc.</small>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="fs-5 text-success">{{ team_totals.defensive_touchdowns|default:0 }}</div>
+                    <small class="text-muted">Def TDs</small>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="fs-5">{{ team_totals.int_return_yards|default:0 }}</div>
+                    <small class="text-muted">INT Ret Yds</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Stats -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-people me-2"></i>Defensive Leaders</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Player</th>
+                            <th>Pos</th>
+                            <th class="text-end">Tkl</th>
+                            <th class="text-end">TFL</th>
+                            <th class="text-end">Sacks</th>
+                            <th class="text-end">INT</th>
+                            <th class="text-end">FR</th>
+                            <th class="text-end">PD</th>
+                            <th class="text-end">Press</th>
+                            <th class="text-end">TD</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in player_stats %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'frontend:player_detail' player.primary_player__id %}">
+                                    {{ player.primary_player__first_name }} {{ player.primary_player__last_name }}
+                                </a>
+                                <span class="badge bg-secondary ms-1">#{{ player.primary_player__number }}</span>
+                            </td>
+                            <td><span class="badge bg-info">{{ player.primary_player__position }}</span></td>
+                            <td class="text-end fw-bold">{{ player.tackles }}</td>
+                            <td class="text-end">{{ player.tfl }}</td>
+                            <td class="text-end">{{ player.sacks }}</td>
+                            <td class="text-end">{{ player.interceptions }}</td>
+                            <td class="text-end">{{ player.fumble_recoveries }}</td>
+                            <td class="text-end">{{ player.pass_defended }}</td>
+                            <td class="text-end">{{ player.pressures }}</td>
+                            <td class="text-end">{{ player.def_tds }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-3">No defensive stats recorded</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

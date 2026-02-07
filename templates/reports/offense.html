@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+
+{% block title %}Offensive Report - Sports-Man{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1"><i class="bi bi-arrow-right-circle me-2"></i>Offensive Report</h1>
+            <p class="text-muted mb-0">
+                {% if season %}{{ season.name }}{% else %}All Seasons{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Season</label>
+                    <select name="season" class="form-select">
+                        <option value="">All Seasons</option>
+                        {% for s in seasons %}
+                        <option value="{{ s.id }}" {% if request.GET.season == s.id|stringformat:"i" %}selected{% endif %}>
+                            {{ s.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Game</label>
+                    <select name="game" class="form-select">
+                        <option value="">All Games</option>
+                        {% for g in games %}
+                        <option value="{{ g.id }}" {% if request.GET.game == g.id|stringformat:"i" %}selected{% endif %}>
+                            {{ g.date|date:"M d" }} - {{ g.opponent }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Team Totals -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-walking me-2"></i>Rushing Totals</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-primary">{{ rushing_totals.yards|default:0 }}</div>
+                            <small class="text-muted">Yards</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold">{{ rushing_totals.attempts|default:0 }}</div>
+                            <small class="text-muted">Attempts</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-success">{{ rushing_totals.touchdowns|default:0 }}</div>
+                            <small class="text-muted">TDs</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-5">{{ rushing_totals.avg_yards|floatformat:1|default:"0.0" }}</div>
+                            <small class="text-muted">Avg/Carry</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5">{{ rushing_totals.longest|default:0 }}</div>
+                            <small class="text-muted">Longest</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5">{{ rushing_totals.first_downs|default:0 }}</div>
+                            <small class="text-muted">1st Downs</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-send me-2"></i>Passing Totals</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-primary">{{ passing_totals.yards|default:0 }}</div>
+                            <small class="text-muted">Yards</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold">{{ passing_totals.completions|default:0 }}/{{ passing_totals.attempts|default:0 }}</div>
+                            <small class="text-muted">Comp/Att</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-success">{{ passing_totals.touchdowns|default:0 }}</div>
+                            <small class="text-muted">TDs</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-5 text-danger">{{ passing_totals.interceptions|default:0 }}</div>
+                            <small class="text-muted">INTs</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5">{{ passing_totals.sacks|default:0 }}</div>
+                            <small class="text-muted">Sacks</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5">{{ passing_totals.longest|default:0 }}</div>
+                            <small class="text-muted">Longest</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Stats Tables -->
+    <div class="row g-4">
+        <!-- Rushing Leaders -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person-walking me-2"></i>Rushing Leaders</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Player</th>
+                                    <th class="text-end">Att</th>
+                                    <th class="text-end">Yds</th>
+                                    <th class="text-end">Avg</th>
+                                    <th class="text-end">TD</th>
+                                    <th class="text-end">Long</th>
+                                    <th class="text-end">1st</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in rushing_by_player %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'frontend:player_detail' player.ball_carrier__id %}">
+                                            {{ player.ball_carrier__first_name }} {{ player.ball_carrier__last_name }}
+                                        </a>
+                                        <span class="badge bg-secondary ms-1">#{{ player.ball_carrier__number }}</span>
+                                    </td>
+                                    <td class="text-end">{{ player.attempts }}</td>
+                                    <td class="text-end fw-bold">{{ player.yards }}</td>
+                                    <td class="text-end">{{ player.avg_yards|floatformat:1 }}</td>
+                                    <td class="text-end">{{ player.touchdowns }}</td>
+                                    <td class="text-end">{{ player.longest }}</td>
+                                    <td class="text-end">{{ player.first_downs }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-3">No rushing stats recorded</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Passing Leaders -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-send me-2"></i>Passing Leaders</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Player</th>
+                                    <th class="text-end">Comp</th>
+                                    <th class="text-end">Att</th>
+                                    <th class="text-end">Pct</th>
+                                    <th class="text-end">Yds</th>
+                                    <th class="text-end">TD</th>
+                                    <th class="text-end">INT</th>
+                                    <th class="text-end">Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in passing_by_qb %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'frontend:player_detail' player.quarterback__id %}">
+                                            {{ player.quarterback__first_name }} {{ player.quarterback__last_name }}
+                                        </a>
+                                        <span class="badge bg-secondary ms-1">#{{ player.quarterback__number }}</span>
+                                    </td>
+                                    <td class="text-end">{{ player.completions }}</td>
+                                    <td class="text-end">{{ player.attempts }}</td>
+                                    <td class="text-end">{{ player.completion_pct|floatformat:1 }}%</td>
+                                    <td class="text-end fw-bold">{{ player.yards }}</td>
+                                    <td class="text-end">{{ player.touchdowns }}</td>
+                                    <td class="text-end">{{ player.interceptions }}</td>
+                                    <td class="text-end fw-bold text-primary">{{ player.passer_rating|floatformat:1 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-3">No passing stats recorded</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receiving Leaders -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-hand-index me-2"></i>Receiving Leaders</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Player</th>
+                                    <th class="text-end">Rec</th>
+                                    <th class="text-end">Yds</th>
+                                    <th class="text-end">Avg</th>
+                                    <th class="text-end">TD</th>
+                                    <th class="text-end">Long</th>
+                                    <th class="text-end">YAC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in receiving_by_player %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'frontend:player_detail' player.receiver__id %}">
+                                            {{ player.receiver__first_name }} {{ player.receiver__last_name }}
+                                        </a>
+                                        <span class="badge bg-secondary ms-1">#{{ player.receiver__number }}</span>
+                                        <span class="badge bg-info ms-1">{{ player.receiver__position }}</span>
+                                    </td>
+                                    <td class="text-end">{{ player.receptions }}</td>
+                                    <td class="text-end fw-bold">{{ player.yards }}</td>
+                                    <td class="text-end">{{ player.avg_yards|floatformat:1 }}</td>
+                                    <td class="text-end">{{ player.touchdowns }}</td>
+                                    <td class="text-end">{{ player.longest }}</td>
+                                    <td class="text-end">{{ player.yac }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-3">No receiving stats recorded</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

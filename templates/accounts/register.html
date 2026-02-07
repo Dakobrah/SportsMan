@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - Sports-Man{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-sm-8 col-md-6 col-lg-5">
+            <div class="text-center mb-4">
+                <i class="bi bi-trophy-fill text-primary display-3"></i>
+                <h1 class="h3 mt-3">Sports-Man</h1>
+                <p class="text-muted">Football Analytics</p>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-4">
+                    <h4 class="card-title text-center mb-4">Create Account</h4>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control {% if form.first_name.errors %}is-invalid{% endif %}"
+                                       id="id_first_name" name="first_name" value="{{ form.first_name.value|default:'' }}">
+                                {% if form.first_name.errors %}
+                                <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control {% if form.last_name.errors %}is-invalid{% endif %}"
+                                       id="id_last_name" name="last_name" value="{{ form.last_name.value|default:'' }}">
+                                {% if form.last_name.errors %}
+                                <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">Username *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+                                       id="id_username" name="username" value="{{ form.username.value|default:'' }}" required>
+                                {% if form.username.errors %}
+                                <div class="invalid-feedback">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control {% if form.email.errors %}is-invalid{% endif %}"
+                                       id="id_email" name="email" value="{{ form.email.value|default:'' }}" required>
+                                {% if form.email.errors %}
+                                <div class="invalid-feedback">{{ form.email.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_team" class="form-label">Team (Optional)</label>
+                            <select class="form-select" id="id_team" name="team">
+                                <option value="">Select a team...</option>
+                                {% for team in teams %}
+                                <option value="{{ team.id }}" {% if form.team.value == team.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ team.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_password1" class="form-label">Password *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control {% if form.password1.errors %}is-invalid{% endif %}"
+                                       id="id_password1" name="password1" required>
+                                {% if form.password1.errors %}
+                                <div class="invalid-feedback">{{ form.password1.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="form-text">Must be at least 8 characters</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="id_password2" class="form-label">Confirm Password *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                <input type="password" class="form-control {% if form.password2.errors %}is-invalid{% endif %}"
+                                       id="id_password2" name="password2" required>
+                                {% if form.password2.errors %}
+                                <div class="invalid-feedback">{{ form.password2.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-person-plus me-2"></i>Create Account
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    Already have an account?
+                    <a href="{% url 'frontend:login' %}">Sign In</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

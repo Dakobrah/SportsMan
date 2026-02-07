@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block title %}Special Teams Report - Sports-Man{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1"><i class="bi bi-bullseye me-2"></i>Special Teams Report</h1>
+            <p class="text-muted mb-0">
+                {% if season %}{{ season.name }}{% else %}All Seasons{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Season</label>
+                    <select name="season" class="form-select">
+                        <option value="">All Seasons</option>
+                        {% for s in seasons %}
+                        <option value="{{ s.id }}" {% if request.GET.season == s.id|stringformat:"i" %}selected{% endif %}>
+                            {{ s.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Game</label>
+                    <select name="game" class="form-select">
+                        <option value="">All Games</option>
+                        {% for g in games %}
+                        <option value="{{ g.id }}" {% if request.GET.game == g.id|stringformat:"i" %}selected{% endif %}>
+                            {{ g.date|date:"M d" }} - {{ g.opponent }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Kicking Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bullseye me-2"></i>Field Goals</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-success">{{ fg_totals.made|default:0 }}</div>
+                            <small class="text-muted">Made</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold">{{ fg_totals.attempts|default:0 }}</div>
+                            <small class="text-muted">Attempts</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-primary">{{ fg_totals.percentage|floatformat:1|default:"0.0" }}%</div>
+                            <small class="text-muted">Pct</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="fs-5">{{ fg_totals.longest|default:0 }}</div>
+                            <small class="text-muted">Longest</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="fs-5 text-danger">{{ fg_totals.blocked|default:0 }}</div>
+                            <small class="text-muted">Blocked</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Extra Points</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <h6 class="text-muted mb-2">PAT Kicks</h6>
+                            <div class="fs-3 fw-bold">{{ pat_totals.pat_made|default:0 }}/{{ pat_totals.pat_attempts|default:0 }}</div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-muted mb-2">2-Point Conv</h6>
+                            <div class="fs-3 fw-bold">{{ pat_totals.two_pt_made|default:0 }}/{{ pat_totals.two_pt_attempts|default:0 }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Punting & Kickoffs -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-arrow-up-right me-2"></i>Punting</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold">{{ punt_totals.punts|default:0 }}</div>
+                            <small class="text-muted">Punts</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-primary">{{ punt_totals.avg_yards|floatformat:1|default:"0.0" }}</div>
+                            <small class="text-muted">Avg Yards</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold">{{ punt_totals.longest|default:0 }}</div>
+                            <small class="text-muted">Longest</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-5">{{ punt_totals.total_yards|default:0 }}</div>
+                            <small class="text-muted">Total Yds</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5">{{ punt_totals.touchbacks|default:0 }}</div>
+                            <small class="text-muted">Touchbacks</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5 text-danger">{{ punt_totals.blocked|default:0 }}</div>
+                            <small class="text-muted">Blocked</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-arrow-up me-2"></i>Kickoffs</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold">{{ kickoff_totals.kickoffs|default:0 }}</div>
+                            <small class="text-muted">Kickoffs</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-primary">{{ kickoff_totals.avg_yards|floatformat:1|default:"0.0" }}</div>
+                            <small class="text-muted">Avg Yards</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-3 fw-bold text-success">{{ kickoff_totals.touchbacks|default:0 }}</div>
+                            <small class="text-muted">Touchbacks</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="fs-5">{{ kickoff_totals.onside_attempts|default:0 }}</div>
+                            <small class="text-muted">Onside Att</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="fs-5 text-success">{{ kickoff_totals.onside_recovered|default:0 }}</div>
+                            <small class="text-muted">Recovered</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kicker Stats -->
+    {% if kickers %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-person me-2"></i>Kicker Stats</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Kicker</th>
+                            <th class="text-end">FGM</th>
+                            <th class="text-end">FGA</th>
+                            <th class="text-end">FG%</th>
+                            <th class="text-end">Long</th>
+                            <th class="text-end">Blk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kicker in kickers %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'frontend:player_detail' kicker.kicker__id %}">
+                                    {{ kicker.kicker__first_name }} {{ kicker.kicker__last_name }}
+                                </a>
+                                <span class="badge bg-secondary ms-1">#{{ kicker.kicker__number }}</span>
+                            </td>
+                            <td class="text-end">{{ kicker.made }}</td>
+                            <td class="text-end">{{ kicker.attempts }}</td>
+                            <td class="text-end fw-bold text-primary">{{ kicker.percentage|floatformat:1 }}%</td>
+                            <td class="text-end">{{ kicker.longest|default:"-" }}</td>
+                            <td class="text-end">{{ kicker.blocked }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
