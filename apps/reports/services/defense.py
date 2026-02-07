@@ -1,7 +1,8 @@
 """
 Defensive statistics report service.
 """
-from django.db.models import Count, Sum, Coalesce, Q
+from django.db.models import Count, Sum, Q
+from django.db.models.functions import Coalesce
 from apps.snaps.models import DefenseSnap, DefenseSnapAssist
 from .base import BaseReportService
 

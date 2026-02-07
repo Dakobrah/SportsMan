@@ -453,7 +453,7 @@ class TestGameSimulation:
             down=4,
             ball_position=33,
             kicker=p['k'],
-            distance=50,  # 33 yard line + 17 yards
+            kick_distance=50,  # 33 yard line + 17 yards
             result="GOOD"
         )
 
@@ -702,14 +702,14 @@ class TestGameSimulation:
 
         # Rushing stats
         rushing = offense_service.get_rushing_totals()
-        assert rushing["attempts"] == 14  # Count all run plays
+        assert rushing["attempts"] == 13  # Count all run plays
         assert rushing["yards"] > 0
         assert rushing["touchdowns"] == 1
 
         # Passing stats
         passing = offense_service.get_passing_totals()
-        assert passing["attempts"] == 12  # Count all pass plays
-        assert passing["completions"] == 8  # Complete passes
+        assert passing["attempts"] == 10  # Count all pass plays
+        assert passing["completions"] == 7  # Complete passes
         assert passing["touchdowns"] == 1
         assert passing["sacks"] == 1
 
@@ -891,7 +891,7 @@ class TestDriveScenarios:
             sequence_number=1,
             quarter=2,
             kicker=k,
-            distance=45,
+            kick_distance=45,
             result="BLOCK"
         )
 

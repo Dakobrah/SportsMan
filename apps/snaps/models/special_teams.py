@@ -139,7 +139,7 @@ class FieldGoalSnap(SpecialTeamsSnap):
         blank=True,
         related_name="field_goal_holds",
     )
-    distance = models.PositiveSmallIntegerField(help_text="Attempt distance in yards")
+    kick_distance = models.PositiveSmallIntegerField(help_text="Attempt distance in yards")
     result = models.CharField(max_length=10, choices=Result.choices)
 
     class Meta:

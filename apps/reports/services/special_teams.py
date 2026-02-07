@@ -1,7 +1,8 @@
 """
 Special teams statistics report service.
 """
-from django.db.models import Count, Sum, Avg, Max, Coalesce, Q
+from django.db.models import Count, Sum, Avg, Max, Q
+from django.db.models.functions import Coalesce
 from apps.snaps.models import PuntSnap, KickoffSnap, FieldGoalSnap, ExtraPointSnap
 from .base import BaseReportService
 
@@ -61,7 +62,7 @@ class SpecialTeamsReportService(BaseReportService):
             made=Count("id", filter=Q(result=FieldGoalSnap.Result.GOOD)),
             missed=Count("id", filter=Q(result=FieldGoalSnap.Result.MISSED)),
             blocked=Count("id", filter=Q(result=FieldGoalSnap.Result.BLOCKED)),
-            longest=Max("distance", filter=Q(result=FieldGoalSnap.Result.GOOD)),
+            longest=Max("kick_distance", filter=Q(result=FieldGoalSnap.Result.GOOD)),
         )
 
         # Calculate percentage
@@ -88,7 +89,7 @@ class SpecialTeamsReportService(BaseReportService):
                 made=Count("id", filter=Q(result=FieldGoalSnap.Result.GOOD)),
                 missed=Count("id", filter=Q(result=FieldGoalSnap.Result.MISSED)),
                 blocked=Count("id", filter=Q(result=FieldGoalSnap.Result.BLOCKED)),
-                longest=Max("distance", filter=Q(result=FieldGoalSnap.Result.GOOD)),
+                longest=Max("kick_distance", filter=Q(result=FieldGoalSnap.Result.GOOD)),
             )
             .order_by("-made")
         )

@@ -520,12 +520,12 @@ class TestSpecialTeamsModels:
             quarter=2,
             kicker=k,
             holder=h,
-            distance=45,
+            kick_distance=45,
             result="GOOD"
         )
 
         assert fg.result == "GOOD"
-        assert fg.distance == 45
+        assert fg.kick_distance == 45
 
     def test_field_goal_missed(self):
         """Test a missed field goal."""
@@ -537,7 +537,7 @@ class TestSpecialTeamsModels:
             sequence_number=1,
             quarter=4,
             kicker=k,
-            distance=52,
+            kick_distance=52,
             result="MISS"
         )
 

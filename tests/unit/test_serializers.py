@@ -272,7 +272,7 @@ class TestFieldGoalSerializer:
             "sequence_number": 1,
             "quarter": 2,
             "kicker_id": k.id,
-            "distance": 45,
+            "kick_distance": 45,
             "result": "GOOD",
         }
         serializer = FieldGoalSnapWriteSerializer(data=data)
@@ -280,7 +280,7 @@ class TestFieldGoalSerializer:
         assert serializer.is_valid(), serializer.errors
         fg = serializer.save()
         assert fg.result == "GOOD"
-        assert fg.distance == 45
+        assert fg.kick_distance == 45
 
     def test_invalid_result(self):
         """Invalid result choice fails validation."""
@@ -292,7 +292,7 @@ class TestFieldGoalSerializer:
             "sequence_number": 1,
             "quarter": 2,
             "kicker_id": k.id,
-            "distance": 45,
+            "kick_distance": 45,
             "result": "INVALID",
         }
         serializer = FieldGoalSnapWriteSerializer(data=data)

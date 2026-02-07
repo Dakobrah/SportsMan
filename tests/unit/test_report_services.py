@@ -444,10 +444,10 @@ class TestSpecialTeamsReportService:
         game = GameFactory()
         k = PlayerFactory(position="K")
 
-        FieldGoalSnap.objects.create(game=game, sequence_number=1, quarter=1, kicker=k, distance=35, result="GOOD")
-        FieldGoalSnap.objects.create(game=game, sequence_number=2, quarter=2, kicker=k, distance=42, result="GOOD")
-        FieldGoalSnap.objects.create(game=game, sequence_number=3, quarter=3, kicker=k, distance=48, result="MISS")
-        FieldGoalSnap.objects.create(game=game, sequence_number=4, quarter=4, kicker=k, distance=52, result="BLOCK")
+        FieldGoalSnap.objects.create(game=game, sequence_number=1, quarter=1, kicker=k, kick_distance=35, result="GOOD")
+        FieldGoalSnap.objects.create(game=game, sequence_number=2, quarter=2, kicker=k, kick_distance=42, result="GOOD")
+        FieldGoalSnap.objects.create(game=game, sequence_number=3, quarter=3, kicker=k, kick_distance=48, result="MISS")
+        FieldGoalSnap.objects.create(game=game, sequence_number=4, quarter=4, kicker=k, kick_distance=52, result="BLOCK")
 
         service = SpecialTeamsReportService()
         totals = service.get_field_goal_totals()
@@ -466,14 +466,14 @@ class TestSpecialTeamsReportService:
         k2 = PlayerFactory(position="K", first_name="Justin", last_name="Tucker")
 
         # K1 - 2/3
-        FieldGoalSnap.objects.create(game=game, sequence_number=1, quarter=1, kicker=k1, distance=35, result="GOOD")
-        FieldGoalSnap.objects.create(game=game, sequence_number=2, quarter=2, kicker=k1, distance=45, result="GOOD")
-        FieldGoalSnap.objects.create(game=game, sequence_number=3, quarter=3, kicker=k1, distance=52, result="MISS")
+        FieldGoalSnap.objects.create(game=game, sequence_number=1, quarter=1, kicker=k1, kick_distance=35, result="GOOD")
+        FieldGoalSnap.objects.create(game=game, sequence_number=2, quarter=2, kicker=k1, kick_distance=45, result="GOOD")
+        FieldGoalSnap.objects.create(game=game, sequence_number=3, quarter=3, kicker=k1, kick_distance=52, result="MISS")
 
         # K2 - 3/3
-        FieldGoalSnap.objects.create(game=game, sequence_number=4, quarter=4, kicker=k2, distance=40, result="GOOD")
-        FieldGoalSnap.objects.create(game=game, sequence_number=5, quarter=4, kicker=k2, distance=55, result="GOOD")
-        FieldGoalSnap.objects.create(game=game, sequence_number=6, quarter=4, kicker=k2, distance=48, result="GOOD")
+        FieldGoalSnap.objects.create(game=game, sequence_number=4, quarter=4, kicker=k2, kick_distance=40, result="GOOD")
+        FieldGoalSnap.objects.create(game=game, sequence_number=5, quarter=4, kicker=k2, kick_distance=55, result="GOOD")
+        FieldGoalSnap.objects.create(game=game, sequence_number=6, quarter=4, kicker=k2, kick_distance=48, result="GOOD")
 
         service = SpecialTeamsReportService()
         by_kicker = service.get_field_goal_by_kicker()

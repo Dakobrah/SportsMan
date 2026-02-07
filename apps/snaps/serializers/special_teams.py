@@ -150,7 +150,7 @@ class FieldGoalSnapReadSerializer(serializers.ModelSerializer):
             "formation",
             "kicker",
             "holder",
-            "distance",
+            "kick_distance",
             "result",
             "notes",
             "created_at",
@@ -186,7 +186,7 @@ class FieldGoalSnapWriteSerializer(serializers.ModelSerializer):
             "formation",
             "kicker_id",
             "holder_id",
-            "distance",
+            "kick_distance",
             "result",
             "notes",
         ]
