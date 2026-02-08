@@ -33,7 +33,7 @@
                                 <option value="">Select Season...</option>
                                 {% for season in seasons %}
                                 <option value="{{ season.id }}" {% if form.season.value == season.id|stringformat:"i" %}selected{% endif %}>
-                                    {{ season.name }}
+                                    {{ season }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -52,9 +52,15 @@
                                 {% endif %}
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="id_week_number" class="form-label">Week Number</label>
-                                <input type="number" class="form-control" id="id_week_number" name="week_number"
-                                       value="{{ form.week_number.value|default:'' }}" min="1" max="20">
+                                <label for="id_weather" class="form-label">Weather</label>
+                                <select class="form-select" id="id_weather" name="weather">
+                                    <option value="clear" {% if form.weather == 'clear' %}selected{% endif %}>Clear</option>
+                                    <option value="rainy" {% if form.weather == 'rainy' %}selected{% endif %}>Rainy</option>
+                                    <option value="snowy" {% if form.weather == 'snowy' %}selected{% endif %}>Snowy</option>
+                                    <option value="windy" {% if form.weather == 'windy' %}selected{% endif %}>Windy</option>
+                                    <option value="hot" {% if form.weather == 'hot' %}selected{% endif %}>Hot</option>
+                                    <option value="cold" {% if form.weather == 'cold' %}selected{% endif %}>Cold</option>
+                                </select>
                             </div>
                         </div>
 

@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ team.abbreviation }} vs {{ game.opponent }} - Live Tracker{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/tracker.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{# Safe JSON embedding via script tags #}
+{{ game_state_data|json_script:"game-state-data" }}
+{{ players_data|json_script:"players-data" }}
+
+<div id="tracker-app"
+     data-game-id="{{ game.id }}"
+     data-team-abbr="{{ team.abbreviation }}"
+     data-opponent="{{ game.opponent }}"
+     data-game-url="{% url 'frontend:game_detail' game.id %}">
+
+    {% csrf_token %}
+
+    <!-- ===== SCOREBOARD ===== -->
+    <header id="scoreboard" class="scoreboard">
+        <div class="scoreboard-top-bar">
+            <a href="{% url 'frontend:game_detail' game.id %}" class="scoreboard-back" title="Back to game">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <span class="scoreboard-title">LIVE</span>
+            <span class="scoreboard-dot"></span>
+        </div>
+
+        <div class="scoreboard-main">
+            <div class="scoreboard-team" id="team-side">
+                <div class="team-label">{{ team.abbreviation }}</div>
+                <div class="team-score" id="team-score">{{ game.team_score }}</div>
+                <div class="poss-indicator" id="team-poss"></div>
+            </div>
+
+            <div class="scoreboard-divider">
+                <div class="quarter-badge" id="quarter-display" title="Tap to change quarter">Q1</div>
+                <div class="game-clock" id="down-distance-bar">
+                    <span id="down-display">1st</span> &amp; <span id="distance-display">10</span>
+                </div>
+            </div>
+
+            <div class="scoreboard-team" id="opp-side">
+                <div class="team-label">{{ game.opponent }}</div>
+                <div class="team-score" id="opp-score">{{ game.opponent_score }}</div>
+                <div class="poss-indicator" id="opp-poss"></div>
+            </div>
+        </div>
+
+        <!-- Field Position -->
+        <div class="field-viz">
+            <div class="field-endzone field-ez-home">{{ team.abbreviation }}</div>
+            <div class="field-track">
+                <div class="field-yard-marks">
+                    <span></span><span>20</span><span>40</span><span>50</span><span>40</span><span>20</span><span></span>
+                </div>
+                <div class="field-line" id="ball-marker" style="left:25%">
+                    <div class="field-ball"></div>
+                    <div class="field-ball-label" id="ball-position-display">OWN 25</div>
+                </div>
+            </div>
+            <div class="field-endzone field-ez-away">OPP</div>
+        </div>
+    </header>
+
+    <!-- ===== LIVE CONTENT ===== -->
+    <div class="view-inner">
+
+        <!-- Play Type Buttons -->
+        <div id="play-type-buttons" class="play-grid">
+                <button class="play-btn play-btn-run" data-type="run">
+                    <i class="bi bi-person-walking"></i>
+                    <span>Run</span>
+                </button>
+                <button class="play-btn play-btn-pass" data-type="pass">
+                    <i class="bi bi-send-fill"></i>
+                    <span>Pass</span>
+                </button>
+                <button class="play-btn play-btn-st" data-type="special_teams">
+                    <i class="bi bi-bullseye"></i>
+                    <span>Special Teams</span>
+                </button>
+                <button class="play-btn play-btn-penalty" data-type="penalty">
+                    <i class="bi bi-flag-fill"></i>
+                    <span>Penalty</span>
+                </button>
+            </div>
+
+            <!-- Special Teams Submenu -->
+            <div id="st-submenu" class="st-menu hidden">
+                <button class="st-btn" data-st="kickoff">
+                    <i class="bi bi-arrow-up-right-circle-fill"></i>
+                    <span>Kickoff</span>
+                </button>
+                <button class="st-btn" data-st="punt">
+                    <i class="bi bi-arrow-bar-up"></i>
+                    <span>Punt</span>
+                </button>
+                <button class="st-btn" data-st="field_goal">
+                    <i class="bi bi-bullseye"></i>
+                    <span>Field Goal</span>
+                </button>
+                <button class="st-btn" data-st="extra_point">
+                    <i class="bi bi-plus-circle-fill"></i>
+                    <span>PAT / 2pt</span>
+                </button>
+                <button class="st-btn st-btn-back" data-st="back">
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Back</span>
+                </button>
+            </div>
+
+            <!-- Dynamic Form Area -->
+            <div id="play-form-area" class="form-area hidden"></div>
+
+            <!-- Recent Plays -->
+            <section class="recent-section">
+                <div class="recent-header">
+                    <h6>Recent Plays</h6>
+                    <button id="undo-btn" class="undo-btn" title="Undo last play">
+                        <i class="bi bi-arrow-counterclockwise"></i> Undo
+                    </button>
+                </div>
+                <div id="plays-feed" class="plays-feed">
+                    {% for snap in recent_plays %}
+                    <div class="feed-item">
+                        <span class="feed-seq">#{{ snap.sequence_number }}</span>
+                        <span class="feed-qtr">Q{{ snap.quarter }}</span>
+                        <span class="feed-desc">{{ snap }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="feed-empty">
+                        <i class="bi bi-stopwatch"></i>
+                        <span>Waiting for first play...</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/tracker.js' %}"></script>
+{% endblock %}

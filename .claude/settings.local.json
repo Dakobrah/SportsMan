@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitialize repository with project specification\n\n- Add comprehensive .gitignore for Python/Django projects\n- Add requirements files \\(base, development, production\\)\n- Add detailed project specification document\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd Django project structure and settings\n\n- Create manage.py with development settings default\n- Add base settings with REST framework, JWT, polymorphic config\n- Add development settings with SQLite and debug mode\n- Add local_network settings for LAN deployment\n- Add production settings with full security hardening\n- Add test settings optimized for fast execution\n- Create wsgi.py and asgi.py entry points\n- Set up URL routing structure\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(python -m venv:*)",
+      "Bash(venvScriptspip install -r requirements/development.txt)",
+      "Bash(\"venv/Scripts/pip.exe\" install -r requirements/development.txt)",
+      "Bash(set:*)",
+      "Bash(\"venv/Scripts/python.exe\" manage.py migrate)",
+      "Bash(\"venv/Scripts/python.exe\" manage.py makemigrations accounts teams games snaps)",
+      "Bash(DJANGO_SETTINGS_MODULE=sportsman.settings.development \"venv/Scripts/python.exe\" manage.py:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=sportsman.settings.test \"venv/Scripts/python.exe\" -m pytest:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=sportsman.settings.test \"venv/Scripts/python.exe\" -m pytest tests/integration/test_game_simulation.py::TestGameSimulation::test_full_game_simulation -v --tb=long)",
+      "Bash(timeout 5 bash -c:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python manage.py:*)",
+      "Bash(pip install:*)"
+    ]
+  }
+}

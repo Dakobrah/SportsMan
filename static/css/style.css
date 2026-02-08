@@ -1,12 +1,17 @@
-/* Sports-Man Football Analytics - Custom Styles */
+/* Sports-Man Football Analytics — Dark Theme */
 
 /* Root Variables */
 :root {
-    --sm-primary: #0d6efd;
-    --sm-success: #198754;
-    --sm-danger: #dc3545;
-    --sm-warning: #ffc107;
-    --sm-dark: #212529;
+    --sm-bg: #121218;
+    --sm-surface: #1c1c26;
+    --sm-surface-hover: #25253a;
+    --sm-border: #2a2a3d;
+    --sm-text: #e4e4ef;
+    --sm-text-muted: #8888a0;
+    --sm-primary: #4a7cff;
+    --sm-success: #22c55e;
+    --sm-danger: #ef4444;
+    --sm-warning: #f59e0b;
 }
 
 /* Body & Layout */
@@ -14,6 +19,8 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background-color: var(--sm-bg) !important;
+    color: var(--sm-text);
 }
 
 main {
@@ -31,29 +38,31 @@ main {
 }
 
 .navbar .nav-link:hover {
-    opacity: 0.8;
+    opacity: 0.85;
 }
 
 /* Cards */
 .card {
-    border: none;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    background-color: var(--sm-surface) !important;
+    border: 1px solid var(--sm-border) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     transition: box-shadow 0.2s ease;
 }
 
 .card:hover {
-    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .card-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-bottom: 1px solid var(--sm-border) !important;
     font-weight: 600;
 }
 
 /* Tables */
 .table {
     margin-bottom: 0;
+    color: var(--sm-text);
 }
 
 .table th {
@@ -61,11 +70,23 @@ main {
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #6c757d;
+    color: var(--sm-text-muted);
 }
 
 .table-hover tbody tr:hover {
-    background-color: rgba(13, 110, 253, 0.05);
+    background-color: var(--sm-surface-hover);
+}
+
+.table-light {
+    --bs-table-bg: rgba(255, 255, 255, 0.04);
+    --bs-table-color: var(--sm-text);
+}
+
+/* List groups */
+.list-group-item {
+    background-color: var(--sm-surface) !important;
+    border-color: var(--sm-border) !important;
+    color: var(--sm-text);
 }
 
 /* Badges */
@@ -85,7 +106,7 @@ main {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #6c757d;
+    color: var(--sm-text-muted);
 }
 
 /* Game Score Display */
@@ -101,15 +122,57 @@ main {
 }
 
 .play-row.play-touchdown {
-    background-color: rgba(25, 135, 84, 0.1);
+    background-color: rgba(34, 197, 94, 0.12);
 }
 
 .play-row.play-turnover {
-    background-color: rgba(220, 53, 69, 0.1);
+    background-color: rgba(239, 68, 68, 0.12);
 }
 
 .play-row.play-first-down {
     border-left: 3px solid var(--sm-primary);
+}
+
+/* Breadcrumbs */
+.breadcrumb {
+    background-color: transparent;
+}
+
+/* Forms */
+.form-control,
+.form-select {
+    background-color: var(--sm-surface) !important;
+    border-color: var(--sm-border) !important;
+    color: var(--sm-text) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--sm-primary) !important;
+    box-shadow: 0 0 0 3px rgba(74, 124, 255, 0.15) !important;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: var(--sm-text-muted);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--sm-text-muted);
+}
+
+/* Buttons */
+.btn-outline-secondary {
+    border-color: var(--sm-border);
+    color: var(--sm-text-muted);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--sm-surface-hover);
+    border-color: var(--sm-text-muted);
+    color: var(--sm-text);
 }
 
 /* Mobile Optimizations */
@@ -135,12 +198,10 @@ main {
         font-size: 0.875rem;
     }
 
-    /* Hide less important columns on mobile */
     .hide-mobile {
         display: none;
     }
 
-    /* Stack buttons on mobile */
     .btn-group-mobile {
         flex-direction: column;
         gap: 0.5rem;
@@ -151,7 +212,7 @@ main {
     }
 }
 
-/* Touch-friendly targets for mobile */
+/* Touch-friendly targets */
 @media (pointer: coarse) {
     .btn {
         min-height: 44px;
@@ -161,7 +222,7 @@ main {
     .form-control,
     .form-select {
         min-height: 44px;
-        font-size: 16px; /* Prevents iOS zoom */
+        font-size: 16px;
     }
 
     .table td,
@@ -189,7 +250,7 @@ main {
     width: 1.5rem;
     height: 1.5rem;
     margin: -0.75rem 0 0 -0.75rem;
-    border: 2px solid #dee2e6;
+    border: 2px solid var(--sm-border);
     border-top-color: var(--sm-primary);
     border-radius: 50%;
     animation: spin 0.75s linear infinite;
@@ -201,25 +262,38 @@ main {
     }
 }
 
-/* Alert Improvements */
+/* Alerts */
 .alert {
     border: none;
     border-radius: 0.5rem;
 }
 
-/* Form Improvements */
-.form-label {
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-}
-
-.form-text {
-    font-size: 0.8rem;
-}
-
 /* Footer */
 .footer {
     font-size: 0.875rem;
+    color: var(--sm-text-muted);
+}
+
+.footer a {
+    color: var(--sm-text-muted) !important;
+}
+
+.footer a:hover {
+    color: var(--sm-text) !important;
+}
+
+/* Text helpers */
+.text-muted {
+    color: var(--sm-text-muted) !important;
+}
+
+/* Border helper */
+.border {
+    border-color: var(--sm-border) !important;
+}
+
+.border-top {
+    border-top-color: var(--sm-border) !important;
 }
 
 /* Print Styles */
@@ -238,6 +312,8 @@ main {
 
     body {
         font-size: 12pt;
+        background: #fff;
+        color: #000;
     }
 }
 
@@ -257,12 +333,6 @@ main {
     }
 }
 
-/* Tooltip Custom Styles */
-.tooltip-inner {
-    max-width: 300px;
-    text-align: left;
-}
-
 /* Scrollbar (Webkit) */
 ::-webkit-scrollbar {
     width: 8px;
@@ -270,14 +340,14 @@ main {
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--sm-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: var(--sm-border);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #a1a1a1;
+    background: var(--sm-text-muted);
 }

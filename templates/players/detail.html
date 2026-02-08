@@ -32,9 +32,6 @@
                             {{ player.team.name }}
                         </a>
                         {% endif %}
-                        {% if player.class_year %}
-                        <span class="ms-2">| {{ player.class_year }}</span>
-                        {% endif %}
                     </p>
                 </div>
                 <div class="col-auto">
@@ -217,24 +214,10 @@
                         <strong>{{ player.team.name }}</strong>
                     </li>
                     {% endif %}
-                    {% if player.class_year %}
                     <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Class</span>
-                        <strong>{{ player.class_year }}</strong>
+                        <span class="text-muted">Status</span>
+                        <strong>{% if player.is_active %}Active{% else %}Inactive{% endif %}</strong>
                     </li>
-                    {% endif %}
-                    {% if player.height %}
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Height</span>
-                        <strong>{{ player.height }}</strong>
-                    </li>
-                    {% endif %}
-                    {% if player.weight %}
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Weight</span>
-                        <strong>{{ player.weight }} lbs</strong>
-                    </li>
-                    {% endif %}
                 </ul>
             </div>
         </div>

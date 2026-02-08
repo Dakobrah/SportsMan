@@ -86,7 +86,7 @@
                                 {% endif %}
                             </td>
                             <td><span class="badge bg-secondary">{{ player.position }}</span></td>
-                            <td>{{ player.class_year|default:"-" }}</td>
+                            <td>{% if player.is_active %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-muted"></i>{% endif %}</td>
                             <td class="text-end">
                                 <a href="{% url 'frontend:player_detail' player.id %}" class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-eye"></i>

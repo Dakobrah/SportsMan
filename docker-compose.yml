@@ -36,10 +36,6 @@ services:
     volumes:
       - static_files:/app/staticfiles
       - media_files:/app/media
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             python manage.py collectstatic --noinput &&
-             gunicorn --bind 0.0.0.0:8000 --workers 3 --access-logfile - sportsman.wsgi:application"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
       interval: 30s

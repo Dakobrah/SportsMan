@@ -67,18 +67,12 @@
                                         <option value="WR" {% if form.position.value == 'WR' %}selected{% endif %}>WR - Wide Receiver</option>
                                         <option value="TE" {% if form.position.value == 'TE' %}selected{% endif %}>TE - Tight End</option>
                                         <option value="OL" {% if form.position.value == 'OL' %}selected{% endif %}>OL - Offensive Line</option>
-                                        <option value="C" {% if form.position.value == 'C' %}selected{% endif %}>C - Center</option>
-                                        <option value="OG" {% if form.position.value == 'OG' %}selected{% endif %}>OG - Offensive Guard</option>
-                                        <option value="OT" {% if form.position.value == 'OT' %}selected{% endif %}>OT - Offensive Tackle</option>
                                     </optgroup>
                                     <optgroup label="Defense">
                                         <option value="DL" {% if form.position.value == 'DL' %}selected{% endif %}>DL - Defensive Line</option>
-                                        <option value="DE" {% if form.position.value == 'DE' %}selected{% endif %}>DE - Defensive End</option>
-                                        <option value="DT" {% if form.position.value == 'DT' %}selected{% endif %}>DT - Defensive Tackle</option>
                                         <option value="LB" {% if form.position.value == 'LB' %}selected{% endif %}>LB - Linebacker</option>
                                         <option value="CB" {% if form.position.value == 'CB' %}selected{% endif %}>CB - Cornerback</option>
                                         <option value="S" {% if form.position.value == 'S' %}selected{% endif %}>S - Safety</option>
-                                        <option value="DB" {% if form.position.value == 'DB' %}selected{% endif %}>DB - Defensive Back</option>
                                     </optgroup>
                                     <optgroup label="Special Teams">
                                         <option value="K" {% if form.position.value == 'K' %}selected{% endif %}>K - Kicker</option>
@@ -100,29 +94,6 @@
                                     </option>
                                     {% endfor %}
                                 </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="id_class_year" class="form-label">Class Year</label>
-                                <select class="form-select" id="id_class_year" name="class_year">
-                                    <option value="">Select...</option>
-                                    <option value="FR" {% if form.class_year.value == 'FR' %}selected{% endif %}>Freshman</option>
-                                    <option value="SO" {% if form.class_year.value == 'SO' %}selected{% endif %}>Sophomore</option>
-                                    <option value="JR" {% if form.class_year.value == 'JR' %}selected{% endif %}>Junior</option>
-                                    <option value="SR" {% if form.class_year.value == 'SR' %}selected{% endif %}>Senior</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="id_height" class="form-label">Height</label>
-                                <input type="text" class="form-control" id="id_height" name="height"
-                                       value="{{ form.height.value|default:'' }}" placeholder="e.g., 6'2&quot;">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="id_weight" class="form-label">Weight (lbs)</label>
-                                <input type="number" class="form-control" id="id_weight" name="weight"
-                                       value="{{ form.weight.value|default:'' }}" min="0">
                             </div>
                         </div>
 

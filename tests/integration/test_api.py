@@ -3,6 +3,7 @@ Integration tests for API endpoints.
 """
 import pytest
 from rest_framework import status
+from apps.teams.models import Team
 from tests.factories import TeamFactory, PlayerFactory, GameFactory, RunPlayFactory
 
 
@@ -30,12 +31,13 @@ class TestTeamEndpoints:
 
     def test_list_teams_success(self, authenticated_client):
         """Authenticated request returns teams."""
+        existing = Team.objects.count()
         TeamFactory.create_batch(3)
 
         response = authenticated_client.get("/api/v1/teams/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["count"] == 3
+        assert response.data["count"] == existing + 3
 
     def test_create_team_success(self, authenticated_client):
         """Create team with valid data."""

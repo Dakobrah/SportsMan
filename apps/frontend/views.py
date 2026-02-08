@@ -167,8 +167,6 @@ def team_create(request):
         team = Team.objects.create(
             name=request.POST['name'],
             abbreviation=request.POST['abbreviation'],
-            city=request.POST.get('city', ''),
-            state=request.POST.get('state', ''),
         )
         messages.success(request, f'Team "{team.name}" created!')
         return redirect('frontend:team_detail', pk=team.pk)
@@ -184,8 +182,6 @@ def team_edit(request, pk):
     if request.method == 'POST':
         team.name = request.POST['name']
         team.abbreviation = request.POST['abbreviation']
-        team.city = request.POST.get('city', '')
-        team.state = request.POST.get('state', '')
         team.save()
         messages.success(request, f'Team "{team.name}" updated!')
         return redirect('frontend:team_detail', pk=team.pk)
@@ -306,9 +302,6 @@ def player_create(request):
             number=request.POST['number'],
             position=request.POST['position'],
             team_id=request.POST.get('team') or None,
-            class_year=request.POST.get('class_year', ''),
-            height=request.POST.get('height', ''),
-            weight=request.POST.get('weight') or None,
         )
         messages.success(request, f'Player "{player.full_name}" added!')
         return redirect('frontend:player_detail', pk=player.pk)
@@ -330,9 +323,6 @@ def player_edit(request, pk):
         player.number = request.POST['number']
         player.position = request.POST['position']
         player.team_id = request.POST.get('team') or None
-        player.class_year = request.POST.get('class_year', '')
-        player.height = request.POST.get('height', '')
-        player.weight = request.POST.get('weight') or None
         player.save()
         messages.success(request, f'Player "{player.full_name}" updated!')
         return redirect('frontend:player_detail', pk=player.pk)
@@ -351,7 +341,7 @@ def player_edit(request, pk):
 @login_required
 def season_list(request):
     """List all seasons."""
-    seasons = Season.objects.annotate(game_count=Count('games')).order_by('-start_date')
+    seasons = Season.objects.annotate(game_count=Count('games')).order_by('-year')
     return render(request, 'teams/seasons.html', {'seasons': seasons})
 
 
@@ -362,7 +352,7 @@ def season_list(request):
 @login_required
 def game_list(request):
     """List all games with filtering."""
-    games = Game.objects.select_related('season', 'team').order_by('-date')
+    games = Game.objects.select_related('season', 'season__team').order_by('-date')
 
     # Apply filters
     season_id = request.GET.get('season')
@@ -387,14 +377,14 @@ def game_list(request):
         'games': games,
         'page_obj': games,
         'seasons': Season.objects.all(),
-        'current_season': Season.objects.filter(is_current=True).first(),
+        'current_season': Season.objects.order_by('-year').first(),
     })
 
 
 @login_required
 def game_detail(request, pk):
     """Game detail with stats summary."""
-    game = get_object_or_404(Game.objects.select_related('season', 'team'), pk=pk)
+    game = get_object_or_404(Game.objects.select_related('season', 'season__team'), pk=pk)
 
     # Get quarter scores
     quarter_scores_qs = QuarterScore.objects.filter(game=game).order_by('quarter')
@@ -471,13 +461,13 @@ def game_create(request):
     if request.method == 'POST':
         game = Game.objects.create(
             season_id=request.POST['season'],
-            team_id=request.user.team_id or Team.objects.first().id,
             date=request.POST['date'],
             opponent=request.POST['opponent'],
             location=request.POST['location'],
+            weather=request.POST.get('weather', 'clear'),
+            field_condition=request.POST.get('field_condition', 'turf'),
             team_score=request.POST['team_score'],
             opponent_score=request.POST['opponent_score'],
-            week_number=request.POST.get('week_number') or None,
             notes=request.POST.get('notes', ''),
         )
         messages.success(request, f'Game vs {game.opponent} created!')
@@ -499,9 +489,10 @@ def game_edit(request, pk):
         game.date = request.POST['date']
         game.opponent = request.POST['opponent']
         game.location = request.POST['location']
+        game.weather = request.POST.get('weather', game.weather)
+        game.field_condition = request.POST.get('field_condition', game.field_condition)
         game.team_score = request.POST['team_score']
         game.opponent_score = request.POST['opponent_score']
-        game.week_number = request.POST.get('week_number') or None
         game.notes = request.POST.get('notes', '')
         game.save()
         messages.success(request, f'Game vs {game.opponent} updated!')
@@ -516,10 +507,8 @@ def game_edit(request, pk):
 
 @login_required
 def game_add_play(request, pk):
-    """Add a play to a game (placeholder - would have more complex form)."""
-    game = get_object_or_404(Game, pk=pk)
-    messages.info(request, 'Play addition form coming soon!')
-    return redirect('frontend:game_plays', pk=game.pk)
+    """Redirect to the live tracker for adding plays."""
+    return redirect('tracker:game_tracker', pk=pk)
 
 
 @login_required

@@ -78,8 +78,7 @@
                                 {% if game.location == 'neutral' %}<small class="text-muted">(Neutral)</small>{% endif %}
                             </h5>
                             <p class="text-muted mb-0">
-                                {{ game.season.name }}
-                                {% if game.week_number %} &bull; Week {{ game.week_number }}{% endif %}
+                                {{ game.season }}
                             </p>
                         </div>
                         <div class="col-auto text-center">

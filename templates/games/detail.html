@@ -18,7 +18,7 @@
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-md-4 text-center text-md-start">
-                    <h2 class="mb-1">{{ game.team.name }}</h2>
+                    <h2 class="mb-1">{{ game.season.team.name }}</h2>
                     <p class="text-muted mb-0">{{ game.location|title }}</p>
                 </div>
                 <div class="col-md-4 text-center my-3 my-md-0">
@@ -69,7 +69,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="text-start fw-bold">{{ game.team.abbreviation }}</td>
+                            <td class="text-start fw-bold">{{ game.season.team.abbreviation }}</td>
                             {% for q in quarter_scores.team %}
                             <td>{{ q }}</td>
                             {% endfor %}
@@ -102,7 +102,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Category</th>
-                                <th class="text-end">{{ game.team.abbreviation }}</th>
+                                <th class="text-end">{{ game.season.team.abbreviation }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -187,14 +187,8 @@
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <span class="text-muted">Season</span>
-                        <strong>{{ game.season.name }}</strong>
+                        <strong>{{ game.season }}</strong>
                     </li>
-                    {% if game.week_number %}
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span class="text-muted">Week</span>
-                        <strong>{{ game.week_number }}</strong>
-                    </li>
-                    {% endif %}
                     <li class="list-group-item d-flex justify-content-between">
                         <span class="text-muted">Location</span>
                         <strong>{{ game.location|title }}</strong>
@@ -212,11 +206,11 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
+                        <a href="{% url 'tracker:game_tracker' game.id %}" class="btn btn-success">
+                            <i class="bi bi-broadcast me-2"></i>Live Tracker
+                        </a>
                         <a href="{% url 'frontend:game_plays' game.id %}" class="btn btn-primary">
                             <i class="bi bi-list-ol me-2"></i>View Play-by-Play
-                        </a>
-                        <a href="{% url 'frontend:game_add_play' game.id %}" class="btn btn-outline-primary">
-                            <i class="bi bi-plus-circle me-2"></i>Add Play
                         </a>
                         <a href="{% url 'frontend:game_edit' game.id %}" class="btn btn-outline-secondary">
                             <i class="bi bi-pencil me-2"></i>Edit Game

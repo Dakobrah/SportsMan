@@ -14,10 +14,10 @@ from apps.snaps.models import BaseSnap
 def home(request):
     """Main dashboard view."""
     # Get current season
-    current_season = Season.objects.filter(is_current=True).first()
+    current_season = Season.objects.order_by('-year').first()
 
     # Get games queryset
-    games_qs = Game.objects.select_related('season', 'team').order_by('-date')
+    games_qs = Game.objects.select_related('season', 'season__team').order_by('-date')
     if current_season:
         games_qs = games_qs.filter(season=current_season)
 
