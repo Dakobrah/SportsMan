@@ -35,6 +35,22 @@ class OffenseSnap(BaseSnap):
     class Meta:
         db_table = "snaps_offense"
 
+    def save(self, *args, **kwargs):
+        """Centralize `play_result` assignment for offense plays.
+
+        - Run plays always set `play_result` to RUN.
+        - Pass plays set to SACK when `was_sacked` is true, otherwise PASS.
+        """
+        name = type(self).__name__
+        if name == 'RunPlay':
+            self.play_result = OffenseSnap.PlayResult.RUN
+        elif name == 'PassPlay':
+            self.play_result = (
+                OffenseSnap.PlayResult.SACK if getattr(self, 'was_sacked', False)
+                else OffenseSnap.PlayResult.PASS
+            )
+        super().save(*args, **kwargs)
+
 
 class RunPlay(OffenseSnap):
     """
@@ -67,9 +83,6 @@ class RunPlay(OffenseSnap):
     class Meta:
         db_table = "snaps_offense_run"
 
-    def save(self, *args, **kwargs):
-        self.play_result = OffenseSnap.PlayResult.RUN
-        super().save(*args, **kwargs)
 
 
 class PassPlay(OffenseSnap):
@@ -130,9 +143,3 @@ class PassPlay(OffenseSnap):
     class Meta:
         db_table = "snaps_offense_pass"
 
-    def save(self, *args, **kwargs):
-        if self.was_sacked:
-            self.play_result = OffenseSnap.PlayResult.SACK
-        else:
-            self.play_result = OffenseSnap.PlayResult.PASS
-        super().save(*args, **kwargs)

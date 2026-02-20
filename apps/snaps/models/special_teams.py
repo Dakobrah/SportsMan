@@ -1,6 +1,7 @@
 """
 Special teams snap models.
 """
+import warnings
 from django.db import models
 from .base import BaseSnap
 
@@ -141,6 +142,23 @@ class FieldGoalSnap(SpecialTeamsSnap):
     )
     kick_distance = models.PositiveSmallIntegerField(help_text="Attempt distance in yards")
     result = models.CharField(max_length=10, choices=Result.choices)
+
+    def __init__(self, *args, **kwargs):
+        """Compatibility: accept `distance=` kwarg and map it to `kick_distance`.
+
+        Historically some callers passed `distance` for field goals which shadowed
+        the `BaseSnap.distance` meaning. Map `distance` to `kick_distance` so that
+        code doing `FieldGoalSnap.objects.create(distance=42, ...)` keeps working
+        and does not silently write to the wrong field.
+        """
+        if "distance" in kwargs and "kick_distance" not in kwargs:
+            warnings.warn(
+                "FieldGoalSnap: received `distance=` kwarg — mapping to `kick_distance`.",
+                UserWarning,
+            )
+            kwargs["kick_distance"] = kwargs.pop("distance")
+
+        super().__init__(*args, **kwargs)
 
     class Meta:
         db_table = "snaps_st_field_goal"
