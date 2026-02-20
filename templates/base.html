@@ -16,9 +16,10 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     {% include 'includes/navbar.html' %}
 
-    <main class="container-fluid py-4">
+    <main id="main-content" class="container-fluid py-4">
         {% if messages %}
         <div class="container">
             {% for message in messages %}

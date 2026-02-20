@@ -182,7 +182,7 @@ body:has(#tracker-app) .footer {
     display: flex;
     align-items: stretch;
     padding: 6px 12px 10px;
-    height: 32px;
+    height: 56px;
 }
 
 .field-endzone {
@@ -207,52 +207,138 @@ body:has(#tracker-app) .footer {
     background: linear-gradient(180deg, #15803d, #166534);
     position: relative;
     overflow: visible;
+    display: flex;
+    align-items: center;
+}
+
+/* Hash marks at various intervals across field */
+.field-hash-marks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.field-hash-mark {
+    position: absolute;
+    background: rgba(255,255,255,0.3);
+    transform: translateX(-50%);
+}
+
+/* 10-yard marks (largest) */
+.field-hash-mark.mark-10yd {
+    width: 2px;
+    height: 90%;
+    top: 5%;
+    background: rgba(255,255,255,0.5);
+}
+
+/* 5-yard marks (medium) */
+.field-hash-mark.mark-5yd {
+    width: 1px;
+    height: 65%;
+    top: 17.5%;
+    background: rgba(255,255,255,0.25);
+}
+
+/* 1-yard marks (smallest) */
+.field-hash-mark.mark-1yd {
+    width: 1.5px;
+    height: 50%;
+    top: 25%;
+    background: rgba(255,255,255,0.25);
+}
+
+/* First down indicator line (yellow) */
+.field-first-down-line {
+    position: absolute;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(to right, rgba(255,193,7,0.7), rgba(255,193,7,0.3));
+    box-shadow: 0 0 4px rgba(255,193,7,0.5);
+    transform: translateX(-50%);
+    transition: left 0.3s ease;
+    z-index: 1;
 }
 
 .field-yard-marks {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 100%;
-    padding: 0 2px;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
 }
 
 .field-yard-marks span {
+    position: absolute;
+    transform: translateX(-50%);
     font-size: 0.5rem;
     color: rgba(255, 255, 255, 0.3);
     font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    bottom: -12px;
+    top: auto;
+}
+
+.field-yard-marks span:nth-child(1) { left: 0%; }
+.field-yard-marks span:nth-child(2) { left: 10%; }
+.field-yard-marks span:nth-child(3) { left: 20%; }
+.field-yard-marks span:nth-child(4) { left: 30%; }
+.field-yard-marks span:nth-child(5) { left: 40%; }
+.field-yard-marks span:nth-child(6) { left: 50%; }
+.field-yard-marks span:nth-child(7) { left: 60%; }
+.field-yard-marks span:nth-child(8) { left: 70%; }
+.field-yard-marks span:nth-child(9) { left: 80%; }
+.field-yard-marks span:nth-child(10) { left: 90%; }
+.field-yard-marks span:nth-child(11) { left: 100%; }
 }
 
 .field-line {
     position: absolute;
-    top: -3px; bottom: -3px;
-    width: 2px;
-    transform: translateX(-50%);
-    transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    transition: left 0.3s ease-out;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    z-index: 3;
+    pointer-events: none;
 }
 
 .field-ball {
-    width: 12px; height: 12px;
-    background: var(--t-amber);
-    border: 2px solid #fff;
-    border-radius: 50%;
-    box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
+    width: 28px;
+    height: 28px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.field-ball::before {
+    content: '🏈';
+    display: block;
+    transform: rotate(135deg);
 }
 
 .field-ball-label {
     position: absolute;
-    bottom: -14px;
+    top: -22px;
     font-size: 0.55rem;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.6);
     white-space: nowrap;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    text-align: center;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 4px;
+    border-radius: 3px;
 }
 
 .view-inner {
@@ -277,16 +363,16 @@ body:has(#tracker-app) .footer {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 20px 12px;
+    padding: 24px 16px;
     border: none;
     border-radius: 16px;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #fff;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
     -webkit-tap-highlight-color: transparent;
-    min-height: 90px;
+    min-height: 100px;
     position: relative;
     overflow: hidden;
 }
@@ -472,17 +558,21 @@ body:has(#tracker-app) .footer {
 }
 
 .quick-yard-btn {
-    min-width: 42px;
-    min-height: 36px;
-    padding: 4px 8px;
-    border-radius: 8px;
+    /* Ensure comfortable touch target (56x56) per mobile accessibility guidelines */
+    min-width: 56px;
+    min-height: 56px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
     border: 1.5px solid var(--t-border);
     background: var(--t-surface-2);
     font-weight: 700;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: var(--t-text);
     cursor: pointer;
-    transition: all 0.1s;
+    transition: transform 0.08s, box-shadow 0.08s;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -490,7 +580,7 @@ body:has(#tracker-app) .footer {
     background: var(--t-blue);
     color: #fff;
     border-color: var(--t-blue);
-    transform: scale(0.95);
+    transform: translateY(1px) scale(0.985);
 }
 
 .quick-yard-btn.negative { color: var(--t-red); border-color: rgba(239, 68, 68, 0.3); }
@@ -507,7 +597,7 @@ body:has(#tracker-app) .footer {
 .toggle-btn {
     flex: 1;
     min-width: 64px;
-    min-height: 48px;
+    min-height: 56px;
     padding: 8px 4px;
     border-radius: 10px;
     font-weight: 700;
@@ -561,7 +651,7 @@ body:has(#tracker-app) .footer {
 
 /* Submit / Cancel */
 .submit-play-btn {
-    min-height: 52px;
+    min-height: 56px;
     font-size: 1rem;
     font-weight: 700;
     border-radius: 12px;
@@ -609,6 +699,16 @@ body:has(#tracker-app) .footer {
 .penalty-item.selected {
     background: var(--t-blue);
     color: #fff;
+}
+
+/* Ensure interactive elements show clear focus state inside tracker scope */
+.play-btn:focus-visible,
+.toggle-btn:focus-visible,
+.quick-yard-btn:focus-visible,
+.submit-play-btn:focus-visible,
+.penalty-item:focus-visible {
+    outline: 3px solid rgba(59,130,246,0.95);
+    outline-offset: 3px;
 }
 
 .penalty-yards {
@@ -824,4 +924,157 @@ body:has(#tracker-app) .footer {
     .play-btn { min-height: 110px; border-radius: 20px; }
     .play-btn i { font-size: 2rem; }
     .tracker-form { padding: 20px; }
+}
+/* =============================================================================
+   MODALS (Coin Toss, Defer Decision)
+   ============================================================================= */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 12px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #1a1e2e, #242a3d);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    animation: slideUp 0.3s ease-out;
+    text-align: center;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-content h2 {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: #fff;
+}
+
+.modal-subtitle {
+    font-size: 16px;
+    color: var(--t-amber);
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.modal-text {
+    font-size: 14px;
+    color: var(--t-text-muted);
+    margin-bottom: 24px;
+}
+
+/* Touchdown modal colour variants */
+.td-modal--team { border-top: 3px solid var(--t-green); }
+.td-modal--team .modal-subtitle { color: var(--t-green); }
+.td-modal--opp  { border-top: 3px solid var(--t-red); }
+.td-modal--opp  .modal-subtitle { color: var(--t-red); }
+
+.coin-toss-buttons,
+.defer-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.team-choice-buttons,
+.call-choice-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.team-choice-buttons.hidden,
+.call-choice-buttons.hidden {
+    display: none;
+}
+
+.btn.btn-lg {
+    padding: 16px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    justify-content: center;
+}
+
+.btn.btn-lg:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.btn.btn-lg:active {
+    transform: translateY(0);
+}
+
+#coin-heads,
+#coin-tails {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: #fff;
+    flex: 1;
+}
+
+#btn-defer {
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    color: #fff;
+    flex: 1;
+}
+
+#btn-play {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff;
+    flex: 1;
+}
+
+.coin-result-display {
+    text-align: center;
+    animation: slideUp 0.3s ease-out;
+}
+
+.coin-result-display.hidden {
+    display: none;
+}
+
+.coin-result-value {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--t-amber);
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+
+.btn-choice {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    color: #fff;
+    flex: 1;
 }

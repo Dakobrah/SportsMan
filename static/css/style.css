@@ -198,6 +198,45 @@ main {
         font-size: 0.875rem;
     }
 
+/* Accessibility: Skip link */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+.skip-link:focus,
+.skip-link:active {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    width: auto;
+    height: auto;
+    padding: 8px 12px;
+    background: var(--sm-primary);
+    color: #fff;
+    z-index: 2000;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* Focus styles for keyboard users */
+:focus-visible {
+    outline: 3px solid var(--sm-primary);
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+.play-btn:focus-visible,
+.toggle-btn:focus-visible,
+.quick-yard-btn:focus-visible,
+.submit-play-btn:focus-visible,
+.penalty-item:focus-visible {
+    outline: 3px solid var(--sm-primary);
+    outline-offset: 3px;
+}
     .hide-mobile {
         display: none;
     }

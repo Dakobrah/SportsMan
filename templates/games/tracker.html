@@ -56,10 +56,19 @@
         <div class="field-viz">
             <div class="field-endzone field-ez-home">{{ team.abbreviation }}</div>
             <div class="field-track">
+                <!-- Hash marks (10-yard and 1-yard intervals) -->
+                <div class="field-hash-marks" id="field-hash-marks"></div>
+                
+                <!-- First down indicator line (yellow) -->
+                <div class="field-first-down-line" id="first-down-line" style="left:35%"></div>
+                
+                <!-- Yard line numbers -->
                 <div class="field-yard-marks">
-                    <span></span><span>20</span><span>40</span><span>50</span><span>40</span><span>20</span><span></span>
+                    <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>40</span><span>30</span><span>20</span><span>10</span><span>0</span>
                 </div>
-                <div class="field-line" id="ball-marker" style="left:25%">
+                
+                <!-- Ball position marker -->
+                <div class="field-line" id="ball-marker" style="left: 25%">
                     <div class="field-ball"></div>
                     <div class="field-ball-label" id="ball-position-display">OWN 25</div>
                 </div>
@@ -68,11 +77,100 @@
         </div>
     </header>
 
+    <!-- ===== COIN TOSS MODAL ===== -->
+    <div id="coin-toss-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Coin Toss</h2>
+            <p class="modal-subtitle">Who calls it?</p>
+            
+            <!-- Team Selection -->
+            <div class="team-choice-buttons" id="team-choice-buttons">
+                <button class="btn btn-lg btn-choice" data-team="home">
+                    <i class="bi bi-person"></i> {{ team.abbreviation }}
+                </button>
+                <button class="btn btn-lg btn-choice" data-team="away">
+                    <i class="bi bi-person"></i> {{ game.opponent }}
+                </button>
+            </div>
+            
+            <!-- Call Selection (Heads/Tails) -->
+            <div id="call-selection" class="call-choice-buttons hidden">
+                <p class="modal-text">What did <span id="calling-team-name"></span> call?</p>
+                <div class="coin-toss-buttons">
+                    <button class="btn btn-lg" id="coin-heads" data-result="heads">
+                        <i class="bi bi-coin"></i> Heads
+                    </button>
+                    <button class="btn btn-lg" id="coin-tails" data-result="tails">
+                        <i class="bi bi-coin"></i> Tails
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Result Display -->
+            <div id="coin-result" class="coin-result-display hidden">
+                <p class="modal-text">Coin came up:</p>
+                <p class="coin-result-value" id="coin-result-value">HEADS</p>
+                <p class="modal-text" id="coin-winner"></p>
+                <button class="btn btn-lg btn-primary" id="coin-continue">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== DEFER DECISION MODAL ===== -->
+    <div id="defer-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Coin Toss Winner</h2>
+            <p class="modal-subtitle" id="defer-team-msg">{{ team.abbreviation }} won the coin toss</p>
+            <p class="modal-text">Defer to second half or play first?</p>
+            <div class="defer-buttons">
+                <button class="btn btn-lg btn-primary" id="btn-defer" data-choice="defer">
+                    <i class="bi bi-skip-forward"></i> Defer
+                </button>
+                <button class="btn btn-lg btn-success" id="btn-play" data-choice="play">
+                    <i class="bi bi-play-fill"></i> Play First
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== OUR TOUCHDOWN MODAL ===== -->
+    <div id="team-td-modal" class="modal hidden">
+        <div class="modal-content td-modal td-modal--team">
+            <h2>Touchdown!</h2>
+            <p class="modal-subtitle">{{ team.abbreviation }} scored &mdash; +6</p>
+            <p class="modal-text">Proceed to extra point attempt.</p>
+            <div class="defer-buttons">
+                <button class="btn btn-lg btn-success" id="team-td-continue">
+                    <i class="bi bi-plus-circle-fill"></i> PAT / 2-Point
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== OPPONENT TOUCHDOWN MODAL ===== -->
+    <div id="opponent-td-modal" class="modal hidden">
+        <div class="modal-content td-modal td-modal--opp">
+            <h2>Opponent Touchdown!</h2>
+            <p class="modal-subtitle">{{ game.opponent }} scored &mdash; +6</p>
+            <p class="modal-text">Did their extra point attempt succeed?</p>
+            <div class="defer-buttons">
+                <button class="btn btn-lg btn-success" id="opp-ep-good">
+                    <i class="bi bi-check-lg"></i> Good (+1)
+                </button>
+                <button class="btn btn-lg btn-outline-secondary" id="opp-ep-miss">
+                    <i class="bi bi-x-lg"></i> No Good
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== LIVE CONTENT ===== -->
     <div class="view-inner">
 
-        <!-- Play Type Buttons -->
-        <div id="play-type-buttons" class="play-grid">
+        <!-- Play Type Buttons - Offense -->
+        <div id="play-type-buttons-offense" class="play-grid">
                 <button class="play-btn play-btn-run" data-type="run">
                     <i class="bi bi-person-walking"></i>
                     <span>Run</span>
@@ -88,6 +186,14 @@
                 <button class="play-btn play-btn-penalty" data-type="penalty">
                     <i class="bi bi-flag-fill"></i>
                     <span>Penalty</span>
+                </button>
+            </div>
+        
+        <!-- Play Type Buttons - Defense -->
+        <div id="play-type-buttons-defense" class="play-grid hidden">
+                <button class="play-btn play-btn-defense" data-type="defense">
+                    <i class="bi bi-shield-fill"></i>
+                    <span>Defense Snap</span>
                 </button>
             </div>
 
