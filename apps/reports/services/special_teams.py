@@ -1,10 +1,10 @@
 """
 Special teams statistics report service.
 """
-from django.db.models import Count, Sum, Avg, Max, Q
-from django.db.models.functions import Coalesce
+from django.db.models import Q
 from apps.snaps.models import PuntSnap, KickoffSnap, FieldGoalSnap, ExtraPointSnap
 from .base import BaseReportService
+from .helpers import Cnt, SumCoalesce, AvgCoalesce, MaxCoalesce, fg_percentage
 
 
 class SpecialTeamsReportService(BaseReportService):
@@ -13,32 +13,27 @@ class SpecialTeamsReportService(BaseReportService):
     def get_punt_totals(self) -> dict:
         """Team punting totals."""
         return PuntSnap.objects.filter(self.filters).aggregate(
-            punts=Count("id"),
-            total_yards=Coalesce(Sum("punt_yards"), 0),
-            avg_yards=Coalesce(Avg("punt_yards"), 0.0),
-            longest=Coalesce(Max("punt_yards"), 0),
-            touchbacks=Count("id", filter=Q(is_touchback=True)),
-            blocked=Count("id", filter=Q(is_blocked=True)),
-            out_of_bounds=Count("id", filter=Q(out_of_bounds=True)),
+            punts=Cnt(),
+            total_yards=SumCoalesce("punt_yards", 0),
+            avg_yards=AvgCoalesce("punt_yards", 0.0),
+            longest=MaxCoalesce("punt_yards", 0),
+            touchbacks=Cnt(Q(is_touchback=True)),
+            blocked=Cnt(Q(is_blocked=True)),
+            out_of_bounds=Cnt(Q(out_of_bounds=True)),
         )
 
     def get_punt_by_punter(self) -> list[dict]:
         """Per-punter statistics."""
         return list(
             PuntSnap.objects.filter(self.filters, punter__isnull=False)
-            .values(
-                "punter__id",
-                "punter__first_name",
-                "punter__last_name",
-                "punter__number",
-            )
+            .values(*self.player_values("punter"))
             .annotate(
-                punts=Count("id"),
-                total_yards=Coalesce(Sum("punt_yards"), 0),
-                avg_yards=Coalesce(Avg("punt_yards"), 0.0),
-                longest=Coalesce(Max("punt_yards"), 0),
-                touchbacks=Count("id", filter=Q(is_touchback=True)),
-                blocked=Count("id", filter=Q(is_blocked=True)),
+                punts=Cnt(),
+                total_yards=SumCoalesce("punt_yards", 0),
+                avg_yards=AvgCoalesce("punt_yards", 0.0),
+                longest=MaxCoalesce("punt_yards", 0),
+                touchbacks=Cnt(Q(is_touchback=True)),
+                blocked=Cnt(Q(is_blocked=True)),
             )
             .order_by("-total_yards")
         )
@@ -46,89 +41,56 @@ class SpecialTeamsReportService(BaseReportService):
     def get_kickoff_totals(self) -> dict:
         """Team kickoff totals."""
         return KickoffSnap.objects.filter(self.filters).aggregate(
-            kickoffs=Count("id"),
-            total_yards=Coalesce(Sum("kick_yards"), 0),
-            avg_yards=Coalesce(Avg("kick_yards"), 0.0),
-            touchbacks=Count("id", filter=Q(is_touchback=True)),
-            onside_attempts=Count("id", filter=Q(is_onside_kick=True)),
-            onside_recovered=Count("id", filter=Q(onside_recovered=True)),
-            out_of_bounds=Count("id", filter=Q(out_of_bounds=True)),
+            kickoffs=Cnt(),
+            total_yards=SumCoalesce("kick_yards", 0),
+            avg_yards=AvgCoalesce("kick_yards", 0.0),
+            touchbacks=Cnt(Q(is_touchback=True)),
+            onside_attempts=Cnt(Q(is_onside_kick=True)),
+            onside_recovered=Cnt(Q(onside_recovered=True)),
+            out_of_bounds=Cnt(Q(out_of_bounds=True)),
         )
 
     def get_field_goal_totals(self) -> dict:
         """Team field goal totals."""
         totals = FieldGoalSnap.objects.filter(self.filters).aggregate(
-            attempts=Count("id"),
-            made=Count("id", filter=Q(result=FieldGoalSnap.Result.GOOD)),
-            missed=Count("id", filter=Q(result=FieldGoalSnap.Result.MISSED)),
-            blocked=Count("id", filter=Q(result=FieldGoalSnap.Result.BLOCKED)),
-            longest=Max("kick_distance", filter=Q(result=FieldGoalSnap.Result.GOOD)),
+            attempts=Cnt(),
+            made=Cnt(Q(result=FieldGoalSnap.Result.GOOD)),
+            missed=Cnt(Q(result=FieldGoalSnap.Result.MISSED)),
+            blocked=Cnt(Q(result=FieldGoalSnap.Result.BLOCKED)),
+            longest=MaxCoalesce("kick_distance", 0, filter=Q(result=FieldGoalSnap.Result.GOOD)),
         )
 
-        # Calculate percentage
-        totals["percentage"] = (
-            round(totals["made"] / totals["attempts"] * 100, 1)
-            if totals["attempts"] > 0
-            else 0.0
-        )
-
+        totals["percentage"] = fg_percentage(totals["made"], totals["attempts"])
         return totals
 
     def get_field_goal_by_kicker(self) -> list[dict]:
         """Per-kicker field goal statistics."""
         stats = list(
             FieldGoalSnap.objects.filter(self.filters, kicker__isnull=False)
-            .values(
-                "kicker__id",
-                "kicker__first_name",
-                "kicker__last_name",
-                "kicker__number",
-            )
+            .values(*self.player_values("kicker"))
             .annotate(
-                attempts=Count("id"),
-                made=Count("id", filter=Q(result=FieldGoalSnap.Result.GOOD)),
-                missed=Count("id", filter=Q(result=FieldGoalSnap.Result.MISSED)),
-                blocked=Count("id", filter=Q(result=FieldGoalSnap.Result.BLOCKED)),
-                longest=Max("kick_distance", filter=Q(result=FieldGoalSnap.Result.GOOD)),
+                attempts=Cnt(),
+                made=Cnt(Q(result=FieldGoalSnap.Result.GOOD)),
+                missed=Cnt(Q(result=FieldGoalSnap.Result.MISSED)),
+                blocked=Cnt(Q(result=FieldGoalSnap.Result.BLOCKED)),
+                longest=MaxCoalesce("kick_distance", 0, filter=Q(result=FieldGoalSnap.Result.GOOD)),
             )
             .order_by("-made")
         )
 
         for stat in stats:
-            stat["percentage"] = (
-                round(stat["made"] / stat["attempts"] * 100, 1)
-                if stat["attempts"] > 0
-                else 0.0
-            )
-
+            stat["percentage"] = fg_percentage(stat["made"], stat["attempts"])
         return stats
 
     def get_extra_point_totals(self) -> dict:
         """Team extra point totals."""
         totals = ExtraPointSnap.objects.filter(self.filters).aggregate(
             # PAT kicks
-            pat_attempts=Count(
-                "id", filter=Q(attempt_type=ExtraPointSnap.AttemptType.KICK)
-            ),
-            pat_made=Count(
-                "id",
-                filter=Q(
-                    attempt_type=ExtraPointSnap.AttemptType.KICK,
-                    result=ExtraPointSnap.Result.GOOD,
-                ),
-            ),
+            pat_attempts=Cnt(Q(attempt_type=ExtraPointSnap.AttemptType.KICK)),
+            pat_made=Cnt(Q(attempt_type=ExtraPointSnap.AttemptType.KICK, result=ExtraPointSnap.Result.GOOD)),
             # 2-point conversions
-            two_pt_attempts=Count(
-                "id",
-                filter=Q(attempt_type__in=["2PT_RUN", "2PT_PASS"]),
-            ),
-            two_pt_made=Count(
-                "id",
-                filter=Q(
-                    attempt_type__in=["2PT_RUN", "2PT_PASS"],
-                    result=ExtraPointSnap.Result.GOOD,
-                ),
-            ),
+            two_pt_attempts=Cnt(Q(attempt_type__in=["2PT_RUN", "2PT_PASS"])),
+            two_pt_made=Cnt(Q(attempt_type__in=["2PT_RUN", "2PT_PASS"], result=ExtraPointSnap.Result.GOOD)),
         )
 
         return totals

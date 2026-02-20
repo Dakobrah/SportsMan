@@ -1,10 +1,10 @@
 """
 Offensive statistics report service.
 """
-from django.db.models import Count, Sum, Avg, Max, Q
-from django.db.models.functions import Coalesce
+from django.db.models import Q
 from apps.snaps.models import RunPlay, PassPlay
 from .base import BaseReportService
+from .helpers import Cnt, SumCoalesce, AvgCoalesce, MaxCoalesce
 
 
 class OffenseReportService(BaseReportService):
@@ -20,38 +20,33 @@ class OffenseReportService(BaseReportService):
     def get_rushing_totals(self) -> dict:
         """Team rushing totals."""
         return RunPlay.objects.filter(self.filters).aggregate(
-            attempts=Count("id"),
-            yards=Coalesce(Sum("yards_gained"), 0),
-            touchdowns=Count("id", filter=Q(is_touchdown=True)),
-            first_downs=Count("id", filter=Q(is_first_down=True)),
-            fumbles=Count("id", filter=Q(fumbled=True)),
-            fumbles_lost=Count("id", filter=Q(fumble_lost=True)),
-            longest=Coalesce(Max("yards_gained"), 0),
-            avg_yards=Coalesce(Avg("yards_gained"), 0.0),
+            attempts=Cnt(),
+            yards=SumCoalesce("yards_gained", 0),
+            touchdowns=Cnt(Q(is_touchdown=True)),
+            first_downs=Cnt(Q(is_first_down=True)),
+            fumbles=Cnt(Q(fumbled=True)),
+            fumbles_lost=Cnt(Q(fumble_lost=True)),
+            longest=MaxCoalesce("yards_gained", 0),
+            avg_yards=AvgCoalesce("yards_gained", 0.0),
         )
 
     def get_rushing_by_player(self) -> list[dict]:
         """Per-player rushing statistics."""
         return list(
             RunPlay.objects.filter(self.filters, ball_carrier__isnull=False)
-            .values(
-                "ball_carrier__id",
-                "ball_carrier__first_name",
-                "ball_carrier__last_name",
-                "ball_carrier__number",
-            )
+            .values(*self.player_values("ball_carrier"))
             .annotate(
-                attempts=Count("id"),
-                yards=Coalesce(Sum("yards_gained"), 0),
-                touchdowns=Count("id", filter=Q(is_touchdown=True)),
-                first_downs=Count("id", filter=Q(is_first_down=True)),
-                fumbles=Count("id", filter=Q(fumbled=True)),
-                fumbles_lost=Count("id", filter=Q(fumble_lost=True)),
-                longest=Coalesce(Max("yards_gained"), 0),
-                avg_yards=Coalesce(Avg("yards_gained"), 0.0),
-                short_runs=Count("id", filter=Q(yards_gained__lte=5)),
-                long_runs=Count("id", filter=Q(yards_gained__gt=5)),
-                explosive_runs=Count("id", filter=Q(yards_gained__gte=10)),
+                attempts=Cnt(),
+                yards=SumCoalesce("yards_gained", 0),
+                touchdowns=Cnt(Q(is_touchdown=True)),
+                first_downs=Cnt(Q(is_first_down=True)),
+                fumbles=Cnt(Q(fumbled=True)),
+                fumbles_lost=Cnt(Q(fumble_lost=True)),
+                longest=MaxCoalesce("yards_gained", 0),
+                avg_yards=AvgCoalesce("yards_gained", 0.0),
+                short_runs=Cnt(Q(yards_gained__lte=5)),
+                long_runs=Cnt(Q(yards_gained__gt=5)),
+                explosive_runs=Cnt(Q(yards_gained__gte=10)),
             )
             .order_by("-yards")
         )
@@ -59,40 +54,35 @@ class OffenseReportService(BaseReportService):
     def get_passing_totals(self) -> dict:
         """Team passing totals."""
         return PassPlay.objects.filter(self.filters).aggregate(
-            attempts=Count("id"),
-            completions=Count("id", filter=Q(is_complete=True)),
-            yards=Coalesce(Sum("yards_gained", filter=Q(is_complete=True)), 0),
-            touchdowns=Count("id", filter=Q(is_touchdown=True)),
-            interceptions=Count("id", filter=Q(is_interception=True)),
-            sacks=Count("id", filter=Q(was_sacked=True)),
-            sack_yards=Coalesce(Sum("sack_yards", filter=Q(was_sacked=True)), 0),
-            air_yards=Coalesce(Sum("air_yards"), 0),
-            yac=Coalesce(Sum("yards_after_catch", filter=Q(is_complete=True)), 0),
-            longest=Coalesce(Max("yards_gained", filter=Q(is_complete=True)), 0),
+            attempts=Cnt(),
+            completions=Cnt(Q(is_complete=True)),
+            yards=SumCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
+            touchdowns=Cnt(Q(is_touchdown=True)),
+            interceptions=Cnt(Q(is_interception=True)),
+            sacks=Cnt(Q(was_sacked=True)),
+            sack_yards=SumCoalesce("sack_yards", 0, filter=Q(was_sacked=True)),
+            air_yards=SumCoalesce("air_yards", 0),
+            yac=SumCoalesce("yards_after_catch", 0, filter=Q(is_complete=True)),
+            longest=MaxCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
         )
 
     def get_passing_by_quarterback(self) -> list[dict]:
         """Per-QB passing statistics with passer rating."""
         qb_stats = list(
             PassPlay.objects.filter(self.filters, quarterback__isnull=False)
-            .values(
-                "quarterback__id",
-                "quarterback__first_name",
-                "quarterback__last_name",
-                "quarterback__number",
-            )
+            .values(*self.player_values("quarterback"))
             .annotate(
-                attempts=Count("id"),
-                completions=Count("id", filter=Q(is_complete=True)),
-                yards=Coalesce(Sum("yards_gained", filter=Q(is_complete=True)), 0),
-                touchdowns=Count("id", filter=Q(is_touchdown=True)),
-                interceptions=Count("id", filter=Q(is_interception=True)),
-                sacks=Count("id", filter=Q(was_sacked=True)),
-                air_yards=Coalesce(Sum("air_yards"), 0),
-                yac=Coalesce(Sum("yards_after_catch", filter=Q(is_complete=True)), 0),
-                longest=Coalesce(Max("yards_gained", filter=Q(is_complete=True)), 0),
-                thrown_away=Count("id", filter=Q(is_thrown_away=True)),
-                under_pressure=Count("id", filter=Q(was_under_pressure=True)),
+                attempts=Cnt(),
+                completions=Cnt(Q(is_complete=True)),
+                yards=SumCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
+                touchdowns=Cnt(Q(is_touchdown=True)),
+                interceptions=Cnt(Q(is_interception=True)),
+                sacks=Cnt(Q(was_sacked=True)),
+                air_yards=SumCoalesce("air_yards", 0),
+                yac=SumCoalesce("yards_after_catch", 0, filter=Q(is_complete=True)),
+                longest=MaxCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
+                thrown_away=Cnt(Q(is_thrown_away=True)),
+                under_pressure=Cnt(Q(was_under_pressure=True)),
             )
             .order_by("-yards")
         )
@@ -134,22 +124,16 @@ class OffenseReportService(BaseReportService):
             PassPlay.objects.filter(
                 self.filters, receiver__isnull=False, is_complete=True
             )
-            .values(
-                "receiver__id",
-                "receiver__first_name",
-                "receiver__last_name",
-                "receiver__number",
-                "receiver__position",
-            )
+            .values(*self.player_values("receiver", include_position=True))
             .annotate(
-                receptions=Count("id"),
-                yards=Coalesce(Sum("yards_gained"), 0),
-                touchdowns=Count("id", filter=Q(is_touchdown=True)),
-                first_downs=Count("id", filter=Q(is_first_down=True)),
-                longest=Coalesce(Max("yards_gained"), 0),
-                yac=Coalesce(Sum("yards_after_catch"), 0),
-                fumbles=Count("id", filter=Q(fumbled=True)),
-                avg_yards=Coalesce(Avg("yards_gained"), 0.0),
+                receptions=Cnt(),
+                yards=SumCoalesce("yards_gained", 0),
+                touchdowns=Cnt(Q(is_touchdown=True)),
+                first_downs=Cnt(Q(is_first_down=True)),
+                longest=MaxCoalesce("yards_gained", 0),
+                yac=SumCoalesce("yards_after_catch", 0),
+                fumbles=Cnt(Q(fumbled=True)),
+                avg_yards=AvgCoalesce("yards_gained", 0.0),
             )
             .order_by("-yards")
         )

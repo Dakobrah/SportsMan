@@ -28,3 +28,16 @@ class BaseReportService:
             self.filters &= Q(game__season_id=season_id)
         if team_id:
             self.filters &= Q(game__season__team_id=team_id)
+
+    @staticmethod
+    def player_values(relation: str, include_position: bool = False) -> tuple:
+        """Return the standard .values() field tuple for a player FK relation."""
+        fields = (
+            f"{relation}__id",
+            f"{relation}__first_name",
+            f"{relation}__last_name",
+            f"{relation}__number",
+        )
+        if include_position:
+            fields += (f"{relation}__position",)
+        return fields
