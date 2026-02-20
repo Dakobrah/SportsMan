@@ -19,6 +19,13 @@ class DefenseSnap(BaseSnap):
         PASS_DEFENDED = "PD", "Pass Defended"
         PENALTY = "PENALTY", "Penalty"
 
+    class OpponentPlayType(models.TextChoices):
+        RUN = "RUN", "Run"
+        PASS = "PASS", "Pass"
+        PUNT = "PUNT", "Punt"
+        FIELD_GOAL = "FG", "Field Goal"
+        KICKOFF = "KICKOFF", "Kickoff"
+
     play_result = models.CharField(max_length=10, choices=PlayResult.choices)
     secondary_formation = models.CharField(
         max_length=50, blank=True, help_text="Defensive backfield alignment"
@@ -38,6 +45,13 @@ class DefenseSnap(BaseSnap):
         null=True, blank=True, help_text="Yards gained by offense on this play"
     )
     tackle_for_loss = models.BooleanField(default=False)
+    opponent_play_type = models.CharField(
+        max_length=10,
+        choices=OpponentPlayType.choices,
+        blank=True,
+        default='',
+        help_text="Type of play the opponent ran on this snap",
+    )
 
     # Pressure and coverage
     applied_pressure = models.BooleanField(default=False)
