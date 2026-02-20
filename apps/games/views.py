@@ -4,6 +4,7 @@ ViewSets for Game and QuarterScore models.
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from apps.core.mixins import ReadWriteSerializerMixin
 from .models import Game, QuarterScore
 from .serializers import (
     GameReadSerializer,
@@ -13,7 +14,7 @@ from .serializers import (
 from .filters import GameFilter
 
 
-class GameViewSet(viewsets.ModelViewSet):
+class GameViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """
     ViewSet for Game CRUD operations.
     """
@@ -21,14 +22,11 @@ class GameViewSet(viewsets.ModelViewSet):
     queryset = Game.objects.select_related("season", "season__team").prefetch_related(
         "quarter_scores"
     )
+    read_serializer_class = GameReadSerializer
+    write_serializer_class = GameWriteSerializer
     filterset_class = GameFilter
     search_fields = ["opponent", "notes"]
     ordering_fields = ["date", "team_score", "opponent_score", "created_at"]
-
-    def get_serializer_class(self):
-        if self.action in ["list", "retrieve"]:
-            return GameReadSerializer
-        return GameWriteSerializer
 
     @action(detail=True, methods=["get", "post"])
     def quarter_scores(self, request, pk=None):
