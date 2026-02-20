@@ -6,10 +6,8 @@
 
     // Toggle verbose logging for debugging. Set to `true` temporarily when troubleshooting.
     const DEBUG = false;
-    if (!DEBUG) {
-        console.log = function () {};
-        console.debug = function () {};
-    }
+    const log = DEBUG ? console.log.bind(console) : function () {};
+    const logDebug = DEBUG ? console.debug.bind(console) : function () {};
 
     // =========================================================================
     // INITIALIZATION
@@ -27,7 +25,7 @@
         currentForm: null,
         submitting: false,
     };
-    console.log('Initial game state:', state);
+    log('Initial game state:', state);
 
     // Penalties reference
     const PENALTIES = [
@@ -85,7 +83,7 @@
             ...data,
         };
 
-        console.log('📤 postPlay:', endpoint, payload);
+        log('📤 postPlay:', endpoint, payload);
 
         try {
             const resp = await fetch(`/games/${GAME_ID}/tracker/${endpoint}/`, {
@@ -98,7 +96,7 @@
             });
             const result = await resp.json();
 
-            console.log('📥 Response:', result);
+            log('📥 Response:', result);
 
             if (result.success) {
                 if (result.next_state) {
@@ -182,13 +180,13 @@
         // Clamp to 2–98% so the football emoji stays fully inside the green track
         // (at exactly 0% or 100% the element overflows into the endzones due to translate(-50%))
         const clampedPct = Math.max(2, Math.min(98, pct));
-        console.log('🏈 BALL MARKER:', { ball_position: pos, pct: pct + '%', clamped: clampedPct + '%' });
+        log('🏈 BALL MARKER:', { ball_position: pos, pct: pct + '%', clamped: clampedPct + '%' });
 
         marker.style.left = clampedPct + '%';
         
         if (label) {
             label.textContent = ballPosDisplay(pos);
-            console.log('✓ Updated label to:', label.textContent);
+            log('✓ Updated label to:', label.textContent);
         }
         
         // Update hash marks (render on first call or if DOM is empty)
@@ -248,7 +246,7 @@
             : pos + distance;
         const pct = ((firstDownPos + 50) / 100) * 100;
         
-        console.log('🟨 First Down Line:', {
+        log('🟨 First Down Line:', {
             ball_position: pos,
             distance: distance,
             firstDownPos: firstDownPos,
@@ -259,7 +257,7 @@
         // Clamp to field bounds (0% to 100%)
         const clampedPct = Math.max(0, Math.min(100, pct));
         line.style.left = clampedPct + '%';
-        console.log('Set first-down-line.style.left =', clampedPct + '%');
+        log('Set first-down-line.style.left =', clampedPct + '%');
         
         // Make invisible if beyond field bounds
         if (pct < 0 || pct > 100) {
@@ -296,7 +294,7 @@
         const selectedTeam = e.target.dataset.team;
         const teamName = selectedTeam === 'home' ? TEAM_ABBR : OPPONENT;
         
-        console.log(`👥 Team selected: ${selectedTeam} (${teamName})`);
+        log(`👥 Team selected: ${selectedTeam} (${teamName})`);
         
         // Hide team buttons, show call selection
         teamChoiceButtons.classList.add('hidden');
@@ -319,8 +317,8 @@
             headsBtn.removeEventListener('click', handleCoinToss);
             tailsBtn.removeEventListener('click', handleCoinToss);
             
-            headsBtn.addEventListener('click', (e) => handleCoinCall(e, callSelection));
-            tailsBtn.addEventListener('click', (e) => handleCoinCall(e, callSelection));
+            headsBtn.addEventListener('click', (e) => handleCoinCall(e, callSelection), { once: true });
+            tailsBtn.addEventListener('click', (e) => handleCoinCall(e, callSelection), { once: true });
         }
     }
     
@@ -329,7 +327,7 @@
         const { selectedTeam } = window.coinTossState;
         const teamName = selectedTeam === 'home' ? TEAM_ABBR : OPPONENT;
         
-        console.log(`🪙 Call: ${call.toUpperCase()} by ${teamName}`);
+        log(`🪙 Call: ${call.toUpperCase()} by ${teamName}`);
         
         // Randomly determine actual coin result
         const actualResult = Math.random() > 0.5 ? 'heads' : 'tails';
@@ -337,7 +335,7 @@
         const winningTeam = callWins ? selectedTeam : (selectedTeam === 'home' ? 'away' : 'home');
         const winnerName = winningTeam === 'home' ? TEAM_ABBR : OPPONENT;
         
-        console.log(`🎲 Actual result: ${actualResult.toUpperCase()} → ${winnerName} wins`);
+        log(`🎲 Actual result: ${actualResult.toUpperCase()} → ${winnerName} wins`);
         
         // Hide call selection, show result
         callSelection.classList.add('hidden');
@@ -381,8 +379,8 @@
         msg.textContent = `${winning_team === 'home' ? TEAM_ABBR : OPPONENT} won the coin toss`;
         modal.classList.remove('hidden');
         
-        document.getElementById('btn-defer').addEventListener('click', () => handleDeferDecision('defer', winning_team));
-        document.getElementById('btn-play').addEventListener('click', () => handleDeferDecision('play', winning_team));
+        document.getElementById('btn-defer').addEventListener('click', () => handleDeferDecision('defer', winning_team), { once: true });
+        document.getElementById('btn-play').addEventListener('click', () => handleDeferDecision('play', winning_team), { once: true });
     }
     
     function handleDeferDecision(choice, winning_team) {
@@ -398,7 +396,7 @@
         state.coin_toss_complete = true;
         state.possession_team = receiving_team === 'home' ? 'home' : 'away';
         
-        console.log('📍 Initial possession set to:', state.possession_team);
+        log('📍 Initial possession set to:', state.possession_team);
         
         showToast(`${receiving_team === 'home' ? TEAM_ABBR : OPPONENT} receives kickoff`, 'success');
         
@@ -461,11 +459,11 @@
         if (state.pendingPossession) {
             state.possession_team = state.pendingPossession;
             state.pendingPossession = null;
-            console.log('📍 Possession resolved to:', state.possession_team);
+            log('📍 Possession resolved to:', state.possession_team);
         }
         if (sit === 'turnover' || sit === 'turnover_on_downs') {
             state.possession_team = state.possession_team === 'home' ? 'away' : 'home';
-            console.log('🔄 Possession flipped to:', state.possession_team, '(' + sit + ')');
+            log('🔄 Possession flipped to:', state.possession_team, '(' + sit + ')');
         } else if (sit === 'opponent_ball') {
             state.possession_team = 'away';
         } else if (sit === 'kickoff') {
@@ -515,7 +513,7 @@
             }
         }
         
-        console.log('📍 Possession:', isOnOffense ? 'HOME (Offense)' : 'AWAY (Defense)');
+        log('📍 Possession:', isOnOffense ? 'HOME (Offense)' : 'AWAY (Defense)');
     }
     
     function showPlayForm(type) {
@@ -1229,7 +1227,7 @@
         
         // Set yards to minimum distance to reach endzone
         yardsInput.value = Math.max(1, yardsNeeded);
-        console.log(`📍 Auto-calculated TD yardage: ${yardsInput.value} yards (from ${ballPosDisplay(currentPos)} to endzone)`);
+        log(`📍 Auto-calculated TD yardage: ${yardsInput.value} yards (from ${ballPosDisplay(currentPos)} to endzone)`);
     }
 
     function handleFormInteraction(e) {
@@ -1299,7 +1297,7 @@
                     const currentPos = state.ball_position || 0;
                     const yardsReturned = 50 - currentPos; // Distance to opposite endzone
                     defTdInput.value = Math.max(1, yardsReturned);
-                    console.log(`🏈 Auto-calculated Defensive TD return: ${defTdInput.value} yards`);
+                    log(`🏈 Auto-calculated Defensive TD return: ${defTdInput.value} yards`);
                 }
             }
             
@@ -1310,7 +1308,7 @@
                     // Touchback = returned to 20-yard line (ball_position = -25 from owner's perspective)
                     // Calculate kick distance as the full field (100 yards to get to far endzone)
                     kickYardsInput.value = 100;
-                    console.log('📍 Auto-calculated Touchback: 100-yard field touchback (returned to 20-yard line)');
+                    log('📍 Auto-calculated Touchback: 100-yard field touchback (returned to 20-yard line)');
                 }
             }
 

@@ -5,9 +5,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.password_validation import validate_password
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Sum, Count, F, Q
+from django.db.models import Sum, Count, F, Q, Max
+from django.forms.models import model_to_dict
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from apps.teams.models import Team, Player, Season
 from apps.games.models import Game, QuarterScore
@@ -50,7 +54,9 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, f'Welcome back, {user.username}!')
-            next_url = request.GET.get('next', 'dashboard:home')
+            next_url = request.GET.get('next') or ''
+            if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+                next_url = 'dashboard:home'
             return redirect(next_url)
     else:
         form = AuthenticationForm()
@@ -83,8 +89,11 @@ def register_view(request):
             errors['username'] = 'Username already exists'
         if password1 != password2:
             errors['password2'] = 'Passwords do not match'
-        if len(password1) < 8:
-            errors['password1'] = 'Password must be at least 8 characters'
+        else:
+            try:
+                validate_password(password1)
+            except ValidationError as e:
+                errors['password1'] = ' '.join(e.messages)
 
         if not errors:
             user = User.objects.create_user(
@@ -263,7 +272,7 @@ def player_detail(request, pk):
         attempts=Count('id'),
         yards=Sum('yards_gained'),
         touchdowns=Count('id', filter=Q(is_touchdown=True)),
-        longest=Sum('yards_gained'),
+        longest=Max('yards_gained'),
     )
     if rushing['attempts']:
         rushing['avg'] = rushing['yards'] / rushing['attempts'] if rushing['yards'] else 0
@@ -285,7 +294,7 @@ def player_detail(request, pk):
         receptions=Count('id'),
         yards=Sum('yards_gained'),
         touchdowns=Count('id', filter=Q(is_touchdown=True)),
-        longest=Sum('yards_gained'),
+        longest=Max('yards_gained'),
     )
     if receiving['receptions']:
         receiving['avg'] = receiving['yards'] / receiving['receptions'] if receiving['yards'] else 0
@@ -351,7 +360,7 @@ def player_edit(request, pk):
     return render(request, 'players/form.html', {
         'player': player,
         'teams': Team.objects.all(),
-        'form': player.__dict__,
+        'form': model_to_dict(player),
     })
 
 

@@ -10,6 +10,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST, require_GET
+import logging
+
+logger = logging.getLogger(__name__)
 
 from apps.games.models import Game
 from apps.teams.models import Player
@@ -52,9 +55,25 @@ def _ball_pos_display(pos):
 
 
 def _parse_request(request, pk):
-    """Fetch game by pk and decode the JSON request body. Used by every tracker endpoint."""
+    """Fetch game by pk and decode the JSON request body. Used by every tracker endpoint.
+
+    Returns (None, error_response) on authorization failure or malformed JSON so callers
+    can do: ``game, data = _parse_request(request, pk); if game is None: return data``.
+    """
     game = get_object_or_404(Game, pk=pk)
-    return game, json.loads(request.body)
+
+    # Authorization: only members of the game's team may record plays.
+    user_team_id = getattr(request.user, 'team_id', None)
+    if user_team_id and game.season.team_id != user_team_id:
+        return None, JsonResponse({'error': 'Forbidden'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        logger.warning('tracker: malformed JSON body from user %s on game %s', request.user, pk)
+        return None, JsonResponse({'error': 'Invalid request body'}, status=400)
+
+    return game, data
 
 
 def _player_name(player, fallback=''):
@@ -350,6 +369,8 @@ def tracker_defer_decision(request, pk):
 def tracker_add_run(request, pk):
     """Add a run play."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     ball_pos = data.get('ball_position', 0)
     yards_gained = max(-50 - ball_pos, min(50 - ball_pos, data.get('yards_gained', 0)))
@@ -402,6 +423,8 @@ def tracker_add_run(request, pk):
 def tracker_add_pass(request, pk):
     """Add a pass play."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     ball_pos = data.get('ball_position', 0)
     is_interception = data.get('is_interception', False)
@@ -475,6 +498,8 @@ def tracker_add_pass(request, pk):
 def tracker_add_penalty(request, pk):
     """Add a penalty play."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     on_offense = data.get('on_offense', True)
     accepted = data.get('accepted', True)
@@ -524,6 +549,8 @@ def tracker_add_penalty(request, pk):
 def tracker_add_kickoff(request, pk):
     """Add a kickoff play."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     play = KickoffSnap.objects.create(
         game=game,
@@ -567,6 +594,8 @@ def tracker_add_kickoff(request, pk):
 def tracker_add_punt(request, pk):
     """Add a punt play."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     play = PuntSnap.objects.create(
         game=game,
@@ -599,6 +628,8 @@ def tracker_add_punt(request, pk):
 def tracker_add_field_goal(request, pk):
     """Add a field goal attempt."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     play = FieldGoalSnap.objects.create(
         game=game,
@@ -629,6 +660,8 @@ def tracker_add_field_goal(request, pk):
 def tracker_add_extra_point(request, pk):
     """Add an extra point / 2-point conversion attempt."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     attempt_type = data.get('attempt_type', 'KICK')
     result = data.get('result', 'MISS')
@@ -666,6 +699,8 @@ def tracker_add_extra_point(request, pk):
 def tracker_add_defense(request, pk):
     """Add a defensive snap (tackle, sack, interception, fumble recovery)."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     play = DefenseSnap.objects.create(
         game=game,
@@ -730,6 +765,8 @@ def tracker_add_defense(request, pk):
 def tracker_update_score(request, pk):
     """Manually update the game score."""
     game, data = _parse_request(request, pk)
+    if game is None:
+        return data
 
     if 'team_score' in data:
         game.team_score = int(data['team_score'])
@@ -763,6 +800,13 @@ def tracker_undo_play(request, pk):
     elif isinstance(actual, DefenseSnap) and actual.is_defensive_touchdown:
         game.team_score = max(0, game.team_score - 6)
         game.save(update_fields=['team_score'])
+    elif isinstance(actual, DefenseSnap) and not actual.is_defensive_touchdown:
+        # Reverse an opponent TD if one was scored on this snap (mirrors _defense_next_state logic)
+        tackle_yds = actual.tackle_yards or 0
+        ball_pos = actual.ball_position or 0
+        if ball_pos > -50 and ball_pos - tackle_yds <= -50 and tackle_yds > 0:
+            game.opponent_score = max(0, game.opponent_score - 6)
+            game.save(update_fields=['opponent_score'])
     elif isinstance(actual, FieldGoalSnap) and actual.result == 'GOOD':
         game.team_score = max(0, game.team_score - 3)
         game.save(update_fields=['team_score'])
@@ -789,7 +833,7 @@ def tracker_undo_play(request, pk):
 def tracker_recent_plays(request, pk):
     """Get recent plays for the feed."""
     game = get_object_or_404(Game, pk=pk)
-    limit = int(request.GET.get('limit', 10))
+    limit = min(int(request.GET.get('limit', 10)), 50)
     snaps = game.snaps.order_by('-sequence_number')[:limit]
 
     plays = []

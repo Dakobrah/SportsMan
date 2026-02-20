@@ -56,14 +56,14 @@ class OffenseReportService(BaseReportService):
         return PassPlay.objects.filter(self.filters).aggregate(
             attempts=Cnt(),
             completions=Cnt(Q(is_complete=True)),
-            yards=SumCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
+            yards=SumCoalesce("yards_gained", 0, q=Q(is_complete=True)),
             touchdowns=Cnt(Q(is_touchdown=True)),
             interceptions=Cnt(Q(is_interception=True)),
             sacks=Cnt(Q(was_sacked=True)),
-            sack_yards=SumCoalesce("sack_yards", 0, filter=Q(was_sacked=True)),
+            sack_yards=SumCoalesce("sack_yards", 0, q=Q(was_sacked=True)),
             air_yards=SumCoalesce("air_yards", 0),
-            yac=SumCoalesce("yards_after_catch", 0, filter=Q(is_complete=True)),
-            longest=MaxCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
+            yac=SumCoalesce("yards_after_catch", 0, q=Q(is_complete=True)),
+            longest=MaxCoalesce("yards_gained", 0, q=Q(is_complete=True)),
         )
 
     def get_passing_by_quarterback(self) -> list[dict]:
@@ -74,13 +74,13 @@ class OffenseReportService(BaseReportService):
             .annotate(
                 attempts=Cnt(),
                 completions=Cnt(Q(is_complete=True)),
-                yards=SumCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
+                yards=SumCoalesce("yards_gained", 0, q=Q(is_complete=True)),
                 touchdowns=Cnt(Q(is_touchdown=True)),
                 interceptions=Cnt(Q(is_interception=True)),
                 sacks=Cnt(Q(was_sacked=True)),
                 air_yards=SumCoalesce("air_yards", 0),
-                yac=SumCoalesce("yards_after_catch", 0, filter=Q(is_complete=True)),
-                longest=MaxCoalesce("yards_gained", 0, filter=Q(is_complete=True)),
+                yac=SumCoalesce("yards_after_catch", 0, q=Q(is_complete=True)),
+                longest=MaxCoalesce("yards_gained", 0, q=Q(is_complete=True)),
                 thrown_away=Cnt(Q(is_thrown_away=True)),
                 under_pressure=Cnt(Q(was_under_pressure=True)),
             )

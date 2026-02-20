@@ -40,8 +40,11 @@ def home(request):
         points_against=Sum('opponent_score'),
     )
 
-    # Total plays
-    total_plays = BaseSnap.objects.count()
+    # Total plays scoped to current season
+    total_plays = (
+        BaseSnap.objects.filter(game__season=current_season).count()
+        if current_season else 0
+    )
 
     stats = {
         'wins': wins,

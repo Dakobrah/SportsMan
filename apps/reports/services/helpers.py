@@ -8,31 +8,31 @@ from django.db.models import Count, Sum, Avg, Max, Q
 from django.db.models.functions import Coalesce
 
 
-def Cnt(filter: Q | None = None):
+def Cnt(q: Q | None = None):
     """Count of rows (shorthand for Count('id', filter=...))."""
-    if filter is not None:
-        return Count("id", filter=filter)
+    if q is not None:
+        return Count("id", filter=q)
     return Count("id")
 
 
-def SumCoalesce(field: str, default=0, filter: Q | None = None):
+def SumCoalesce(field: str, default=0, q: Q | None = None):
     """Coalesced SUM expression for `field` with optional filter."""
-    if filter is not None:
-        return Coalesce(Sum(field, filter=filter), default)
+    if q is not None:
+        return Coalesce(Sum(field, filter=q), default)
     return Coalesce(Sum(field), default)
 
 
-def AvgCoalesce(field: str, default=0.0, filter: Q | None = None):
+def AvgCoalesce(field: str, default=0.0, q: Q | None = None):
     """Coalesced AVG expression for `field` with optional filter."""
-    if filter is not None:
-        return Coalesce(Avg(field, filter=filter), default)
+    if q is not None:
+        return Coalesce(Avg(field, filter=q), default)
     return Coalesce(Avg(field), default)
 
 
-def MaxCoalesce(field: str, default=0, filter: Q | None = None):
+def MaxCoalesce(field: str, default=0, q: Q | None = None):
     """Coalesced MAX expression for `field` with optional filter."""
-    if filter is not None:
-        return Coalesce(Max(field, filter=filter), default)
+    if q is not None:
+        return Coalesce(Max(field, filter=q), default)
     return Coalesce(Max(field), default)
 
 

@@ -57,7 +57,7 @@ class SpecialTeamsReportService(BaseReportService):
             made=Cnt(Q(result=FieldGoalSnap.Result.GOOD)),
             missed=Cnt(Q(result=FieldGoalSnap.Result.MISSED)),
             blocked=Cnt(Q(result=FieldGoalSnap.Result.BLOCKED)),
-            longest=MaxCoalesce("kick_distance", 0, filter=Q(result=FieldGoalSnap.Result.GOOD)),
+            longest=MaxCoalesce("kick_distance", 0, q=Q(result=FieldGoalSnap.Result.GOOD)),
         )
 
         totals["percentage"] = fg_percentage(totals["made"], totals["attempts"])
@@ -73,7 +73,7 @@ class SpecialTeamsReportService(BaseReportService):
                 made=Cnt(Q(result=FieldGoalSnap.Result.GOOD)),
                 missed=Cnt(Q(result=FieldGoalSnap.Result.MISSED)),
                 blocked=Cnt(Q(result=FieldGoalSnap.Result.BLOCKED)),
-                longest=MaxCoalesce("kick_distance", 0, filter=Q(result=FieldGoalSnap.Result.GOOD)),
+                longest=MaxCoalesce("kick_distance", 0, q=Q(result=FieldGoalSnap.Result.GOOD)),
             )
             .order_by("-made")
         )

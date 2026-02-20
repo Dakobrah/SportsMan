@@ -22,4 +22,4 @@ class GameFilter(django_filters.FilterSet):
         """Filter by win/loss."""
         if value:
             return queryset.filter(team_score__gt=F("opponent_score"))
-        return queryset.filter(team_score__lte=F("opponent_score"))
+        return queryset.filter(team_score__lt=F("opponent_score"))

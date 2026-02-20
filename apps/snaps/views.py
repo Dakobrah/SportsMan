@@ -136,7 +136,7 @@ class FieldGoalSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
     read_serializer_class = FieldGoalSnapReadSerializer
     write_serializer_class = FieldGoalSnapWriteSerializer
     filterset_class = FieldGoalSnapFilter
-    ordering_fields = ["sequence_number", "distance", "created_at"]
+    ordering_fields = ["sequence_number", "kick_distance", "created_at"]
 
 
 class ExtraPointSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):

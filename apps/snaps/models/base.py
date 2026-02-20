@@ -69,6 +69,7 @@ class BaseSnap(PolymorphicModel, TimeStampedModel):
     class Meta:
         db_table = "snaps"
         ordering = ["game", "sequence_number"]
+        unique_together = [("game", "sequence_number")]
         indexes = [
             models.Index(fields=["game", "quarter"]),
             models.Index(fields=["game", "sequence_number"]),
