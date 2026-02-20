@@ -15,6 +15,26 @@ from apps.snaps.models import BaseSnap, RunPlay, PassPlay, DefenseSnap
 from apps.reports.services import OffenseReportService, DefenseReportService, SpecialTeamsReportService
 
 
+def _report_service_kwargs(request):
+    """Build filter kwargs for report service constructors from GET params."""
+    kwargs = {}
+    if season_id := request.GET.get('season'):
+        kwargs['season_id'] = int(season_id)
+    if game_id := request.GET.get('game'):
+        kwargs['game_ids'] = [int(game_id)]
+    return kwargs
+
+
+def _report_filter_context(request):
+    """Return the filter-dropdown context shared by all three report views."""
+    season_id = request.GET.get('season')
+    return {
+        'seasons': Season.objects.all(),
+        'games': Game.objects.order_by('-date')[:50],
+        'season': Season.objects.filter(pk=season_id).first() if season_id else None,
+    }
+
+
 # =============================================================================
 # Authentication Views
 # =============================================================================
@@ -272,13 +292,14 @@ def player_detail(request, pk):
         offensive_stats['receiving'] = receiving
 
     # Get defensive stats
+    PR = DefenseSnap.PlayResult
     defensive_stats = DefenseSnap.objects.filter(primary_player=player).aggregate(
-        tackles=Count('id', filter=Q(play_result='TACKLE')),
-        tfl=Count('id', filter=Q(play_result='TFL')),
-        sacks=Count('id', filter=Q(play_result='SACK')),
-        interceptions=Count('id', filter=Q(play_result='INT')),
-        fumble_recoveries=Count('id', filter=Q(play_result='FR')),
-        pass_defended=Count('id', filter=Q(play_result='PD')),
+        tackles=Count('id', filter=Q(play_result=PR.TACKLE)),
+        tfl=Count('id', filter=Q(play_result=PR.TACKLE_FOR_LOSS)),
+        sacks=Count('id', filter=Q(play_result=PR.SACK)),
+        interceptions=Count('id', filter=Q(play_result=PR.INTERCEPTION)),
+        fumble_recoveries=Count('id', filter=Q(play_result=PR.FUMBLE_RECOVERY)),
+        pass_defended=Count('id', filter=Q(play_result=PR.PASS_DEFENDED)),
     )
 
     # Only include if has stats
@@ -437,14 +458,14 @@ def game_plays(request, pk):
     if quarter:
         plays = plays.filter(quarter=quarter)
 
-    # Calculate summary
+    # Calculate summary using the shared report service
+    offense_service = OffenseReportService(game_ids=[game.id])
+    rushing = offense_service.get_rushing_totals()
+    passing = offense_service.get_passing_totals()
     summary = {
-        'rushing_yards': RunPlay.objects.filter(game=game).aggregate(total=Sum('yards_gained'))['total'] or 0,
-        'passing_yards': PassPlay.objects.filter(game=game, is_complete=True).aggregate(total=Sum('yards_gained'))['total'] or 0,
-        'touchdowns': (
-            RunPlay.objects.filter(game=game, is_touchdown=True).count() +
-            PassPlay.objects.filter(game=game, is_touchdown=True).count()
-        ),
+        'rushing_yards': rushing.get('yards') or 0,
+        'passing_yards': passing.get('yards') or 0,
+        'touchdowns': (rushing.get('touchdowns') or 0) + (passing.get('touchdowns') or 0),
     }
 
     return render(request, 'games/plays.html', {
@@ -525,74 +546,37 @@ def play_edit(request, pk):
 @login_required
 def report_offense(request):
     """Offensive statistics report."""
-    # Build filters
-    season_id = request.GET.get('season')
-    game_id = request.GET.get('game')
-
-    kwargs = {}
-    if season_id:
-        kwargs['season_ids'] = [int(season_id)]
-    if game_id:
-        kwargs['game_ids'] = [int(game_id)]
-
-    service = OffenseReportService(**kwargs)
-
+    service = OffenseReportService(**_report_service_kwargs(request))
     return render(request, 'reports/offense.html', {
+        **_report_filter_context(request),
         'rushing_totals': service.get_rushing_totals(),
         'passing_totals': service.get_passing_totals(),
         'rushing_by_player': service.get_rushing_by_player(),
         'passing_by_qb': service.get_passing_by_quarterback(),
         'receiving_by_player': service.get_receiving_by_player(),
-        'seasons': Season.objects.all(),
-        'games': Game.objects.order_by('-date')[:50],
-        'season': Season.objects.filter(pk=season_id).first() if season_id else None,
     })
 
 
 @login_required
 def report_defense(request):
     """Defensive statistics report."""
-    season_id = request.GET.get('season')
-    game_id = request.GET.get('game')
-
-    kwargs = {}
-    if season_id:
-        kwargs['season_ids'] = [int(season_id)]
-    if game_id:
-        kwargs['game_ids'] = [int(game_id)]
-
-    service = DefenseReportService(**kwargs)
-
+    service = DefenseReportService(**_report_service_kwargs(request))
     return render(request, 'reports/defense.html', {
+        **_report_filter_context(request),
         'team_totals': service.get_team_totals(),
         'player_stats': service.get_player_summary(),
-        'seasons': Season.objects.all(),
-        'games': Game.objects.order_by('-date')[:50],
-        'season': Season.objects.filter(pk=season_id).first() if season_id else None,
     })
 
 
 @login_required
 def report_special_teams(request):
     """Special teams statistics report."""
-    season_id = request.GET.get('season')
-    game_id = request.GET.get('game')
-
-    kwargs = {}
-    if season_id:
-        kwargs['season_ids'] = [int(season_id)]
-    if game_id:
-        kwargs['game_ids'] = [int(game_id)]
-
-    service = SpecialTeamsReportService(**kwargs)
-
+    service = SpecialTeamsReportService(**_report_service_kwargs(request))
     return render(request, 'reports/special_teams.html', {
+        **_report_filter_context(request),
         'fg_totals': service.get_field_goal_totals(),
         'pat_totals': service.get_extra_point_totals(),
         'punt_totals': service.get_punt_totals(),
         'kickoff_totals': service.get_kickoff_totals(),
         'kickers': service.get_field_goal_by_kicker(),
-        'seasons': Season.objects.all(),
-        'games': Game.objects.order_by('-date')[:50],
-        'season': Season.objects.filter(pk=season_id).first() if season_id else None,
     })
