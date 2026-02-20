@@ -4,6 +4,13 @@
 (function () {
     'use strict';
 
+    // Toggle verbose logging for debugging. Set to `true` temporarily when troubleshooting.
+    const DEBUG = false;
+    if (!DEBUG) {
+        console.log = function () {};
+        console.debug = function () {};
+    }
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -20,6 +27,7 @@
         currentForm: null,
         submitting: false,
     };
+    console.log('Initial game state:', state);
 
     // Penalties reference
     const PENALTIES = [
@@ -77,6 +85,8 @@
             ...data,
         };
 
+        console.log('📤 postPlay:', endpoint, payload);
+
         try {
             const resp = await fetch(`/games/${GAME_ID}/tracker/${endpoint}/`, {
                 method: 'POST',
@@ -88,6 +98,8 @@
             });
             const result = await resp.json();
 
+            console.log('📥 Response:', result);
+
             if (result.success) {
                 if (result.next_state) {
                     state.down = result.next_state.down;
@@ -98,17 +110,14 @@
                 state.opponent_score = result.opponent_score;
                 state.next_sequence++;
 
+                // Resolve possession before drawing so first-down line direction is correct
+                const sit = result.next_state && result.next_state.situation;
+                resolvePossession(sit);
+
                 updateScoreboard();
                 addPlayToFeed(result.play_summary, result.play_detail);
                 showToast('Play saved', 'success');
-
-                if (result.next_state && result.next_state.situation === 'extra_point') {
-                    setTimeout(() => showPlayForm('extra_point'), 300);
-                } else if (result.next_state && result.next_state.situation === 'kickoff') {
-                    setTimeout(() => showPlayForm('kickoff'), 300);
-                } else {
-                    resetToPlayTypeSelection();
-                }
+                triggerNextPhase(sit);
 
                 return result;
             } else {
@@ -157,23 +166,367 @@
     function updateFieldViz() {
         const marker = document.getElementById('ball-marker');
         const label = document.getElementById('ball-position-display');
-        if (!marker) return;
-        const pos = state.ball_position || 0;
+        if (!marker) {
+            console.error('ball-marker element not found in DOM');
+            return;
+        }
+        
+        const pos = state.ball_position;
+        if (pos === null || pos === undefined) {
+            console.warn('ball_position is null/undefined, state:', state);
+            return;
+        }
+        
+        // Calculate percentage: -50 to +50 maps to 0% to 100%
         const pct = ((pos + 50) / 100) * 100;
-        marker.style.left = pct + '%';
-        if (label) label.textContent = ballPosDisplay(pos);
+        // Clamp to 2–98% so the football emoji stays fully inside the green track
+        // (at exactly 0% or 100% the element overflows into the endzones due to translate(-50%))
+        const clampedPct = Math.max(2, Math.min(98, pct));
+        console.log('🏈 BALL MARKER:', { ball_position: pos, pct: pct + '%', clamped: clampedPct + '%' });
+
+        marker.style.left = clampedPct + '%';
+        
+        if (label) {
+            label.textContent = ballPosDisplay(pos);
+            console.log('✓ Updated label to:', label.textContent);
+        }
+        
+        // Update hash marks (render on first call or if DOM is empty)
+        renderFieldHashMarks();
+        
+        // Update first-down line position
+        updateFirstDownLine();
+    }
+    
+    function renderFieldHashMarks() {
+        const hashContainer = document.getElementById('field-hash-marks');
+        if (!hashContainer || hashContainer.children.length > 0) return; // Already rendered
+        
+        // Field spans from -50 to +50 (100-yard range)
+        // Create marks at every yard line (1-100 yards)
+        for (let y = 0; y <= 100; y++) {
+            // Determine mark type based on yard line
+            let markClass = 'mark-1yd'; // Default: 1-yard mark
+            if (y % 10 === 0) {
+                markClass = 'mark-10yd'; // 10-yard mark
+            } else if (y % 5 === 0) {
+                markClass = 'mark-5yd'; // 5-yard mark
+            }
+            
+            // Convert yard position to percentage
+            const pct = y;
+            
+            // Create mark element
+            const mark = document.createElement('div');
+            mark.className = `field-hash-mark ${markClass}`;
+            mark.style.left = pct + '%';
+            hashContainer.appendChild(mark);
+        }
+    }
+    
+    function updateFirstDownLine() {
+        const line = document.getElementById('first-down-line');
+        if (!line) {
+            console.error('first-down-line element not found');
+            return;
+        }
+
+        // Hide during kickoffs and extra points — no meaningful down/distance
+        if (!state.down) {
+            line.style.opacity = '0';
+            return;
+        }
+        line.style.opacity = '1';
+
+        const pos = state.ball_position || 0;
+        const distance = state.distance || 10;
+
+        // First-down line direction depends on who's on offense.
+        // Home (us) advance toward +50; away (opponent) advance toward -50.
+        const firstDownPos = state.possession_team === 'away'
+            ? pos - distance
+            : pos + distance;
+        const pct = ((firstDownPos + 50) / 100) * 100;
+        
+        console.log('🟨 First Down Line:', {
+            ball_position: pos,
+            distance: distance,
+            firstDownPos: firstDownPos,
+            calculatedPct: pct + '%',
+            clampedPct: Math.max(0, Math.min(100, pct)) + '%'
+        });
+        
+        // Clamp to field bounds (0% to 100%)
+        const clampedPct = Math.max(0, Math.min(100, pct));
+        line.style.left = clampedPct + '%';
+        console.log('Set first-down-line.style.left =', clampedPct + '%');
+        
+        // Make invisible if beyond field bounds
+        if (pct < 0 || pct > 100) {
+            line.style.opacity = '0.3';
+        } else {
+            line.style.opacity = '1';
+        }
+    }
+
+    // =========================================================================
+    // COIN TOSS & GAME SETUP
+    // =========================================================================
+    function showCoinTossModal() {
+        const modal = document.getElementById('coin-toss-modal');
+        modal.classList.remove('hidden');
+        
+        const teamChoiceButtons = document.getElementById('team-choice-buttons');
+        const callSelection = document.getElementById('call-selection');
+        const coinResult = document.getElementById('coin-result');
+        
+        // Reset to team selection step
+        if (teamChoiceButtons) teamChoiceButtons.classList.remove('hidden');
+        if (callSelection) callSelection.classList.add('hidden');
+        if (coinResult) coinResult.classList.add('hidden');
+        
+        // Team selection handlers
+        const teamButtons = teamChoiceButtons.querySelectorAll('button');
+        teamButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => handleTeamSelection(e, callSelection, teamChoiceButtons));
+        });
+    }
+    
+    function handleTeamSelection(e, callSelection, teamChoiceButtons) {
+        const selectedTeam = e.target.dataset.team;
+        const teamName = selectedTeam === 'home' ? TEAM_ABBR : OPPONENT;
+        
+        console.log(`👥 Team selected: ${selectedTeam} (${teamName})`);
+        
+        // Hide team buttons, show call selection
+        teamChoiceButtons.classList.add('hidden');
+        callSelection.classList.remove('hidden');
+        
+        // Update the team name display in call selection
+        const callingTeamName = document.getElementById('calling-team-name');
+        if (callingTeamName) {
+            callingTeamName.textContent = teamName;
+        }
+        
+        // Store selected team in state
+        window.coinTossState = { selectedTeam };
+        
+        // Add call selection handlers
+        const headsBtn = document.getElementById('coin-heads');
+        const tailsBtn = document.getElementById('coin-tails');
+        
+        if (headsBtn && tailsBtn) {
+            headsBtn.removeEventListener('click', handleCoinToss);
+            tailsBtn.removeEventListener('click', handleCoinToss);
+            
+            headsBtn.addEventListener('click', (e) => handleCoinCall(e, callSelection));
+            tailsBtn.addEventListener('click', (e) => handleCoinCall(e, callSelection));
+        }
+    }
+    
+    function handleCoinCall(e, callSelection) {
+        const call = e.target.dataset.result;
+        const { selectedTeam } = window.coinTossState;
+        const teamName = selectedTeam === 'home' ? TEAM_ABBR : OPPONENT;
+        
+        console.log(`🪙 Call: ${call.toUpperCase()} by ${teamName}`);
+        
+        // Randomly determine actual coin result
+        const actualResult = Math.random() > 0.5 ? 'heads' : 'tails';
+        const callWins = (call === actualResult);
+        const winningTeam = callWins ? selectedTeam : (selectedTeam === 'home' ? 'away' : 'home');
+        const winnerName = winningTeam === 'home' ? TEAM_ABBR : OPPONENT;
+        
+        console.log(`🎲 Actual result: ${actualResult.toUpperCase()} → ${winnerName} wins`);
+        
+        // Hide call selection, show result
+        callSelection.classList.add('hidden');
+        const coinResult = document.getElementById('coin-result');
+        if (coinResult) {
+            coinResult.classList.remove('hidden');
+            
+            const resultValue = document.getElementById('coin-result-value');
+            const resultWinner = document.getElementById('coin-winner');
+            const continueBtn = document.getElementById('coin-continue');
+            
+            if (resultValue) resultValue.textContent = actualResult.toUpperCase();
+            if (resultWinner) resultWinner.textContent = `${winnerName} won the coin toss`;
+            
+            if (continueBtn) {
+                continueBtn.addEventListener('click', () => {
+                    const modal = document.getElementById('coin-toss-modal');
+                    modal.classList.add('hidden');
+                    setTimeout(() => showDeferModal(winningTeam), 300);
+                });
+            }
+        }
+    }
+    
+    function handleCoinToss(e) {
+        // Legacy handler for direct heads/tails (not used in new flow)
+        const result = e.target.closest('button').dataset.result;
+        const modal = document.getElementById('coin-toss-modal');
+        modal.classList.add('hidden');
+        
+        const actualResult = Math.random() > 0.5 ? 'heads' : 'tails';
+        const home_wins = (result === actualResult);
+        
+        showToast(`Coin came up ${actualResult}. ${home_wins ? TEAM_ABBR : OPPONENT} wins!`, 'info');
+        setTimeout(() => showDeferModal(home_wins ? 'home' : 'away'), 500);
+    }
+    
+    function showDeferModal(winning_team) {
+        const modal = document.getElementById('defer-modal');
+        const msg = document.getElementById('defer-team-msg');
+        msg.textContent = `${winning_team === 'home' ? TEAM_ABBR : OPPONENT} won the coin toss`;
+        modal.classList.remove('hidden');
+        
+        document.getElementById('btn-defer').addEventListener('click', () => handleDeferDecision('defer', winning_team));
+        document.getElementById('btn-play').addEventListener('click', () => handleDeferDecision('play', winning_team));
+    }
+    
+    function handleDeferDecision(choice, winning_team) {
+        const modal = document.getElementById('defer-modal');
+        modal.classList.add('hidden');
+        
+        // Determine receiving team
+        const receiving_team = winning_team === 'home' 
+            ? (choice === 'defer' ? 'away' : 'home')
+            : (choice === 'defer' ? 'home' : 'away');
+        
+        // Set possession: home team is offense, away team is defense
+        state.coin_toss_complete = true;
+        state.possession_team = receiving_team === 'home' ? 'home' : 'away';
+        
+        console.log('📍 Initial possession set to:', state.possession_team);
+        
+        showToast(`${receiving_team === 'home' ? TEAM_ABBR : OPPONENT} receives kickoff`, 'success');
+        
+        // Show play type buttons and kickoff form
+        setTimeout(() => {
+            updatePossessionDisplay();
+            showPlayForm('kickoff');
+        }, 300);
+    }
+
+    // =========================================================================
+    // TOUCHDOWN FLOWS
+    // =========================================================================
+    function showTeamTdModal() {
+        const modal = document.getElementById('team-td-modal');
+        modal.classList.remove('hidden');
+
+        document.getElementById('team-td-continue').onclick = () => {
+            modal.classList.add('hidden');
+            showPlayForm('extra_point');
+        };
+    }
+
+    function showOpponentTdModal() {
+        const modal = document.getElementById('opponent-td-modal');
+        modal.classList.remove('hidden');
+
+        document.getElementById('opp-ep-good').onclick = () => {
+            modal.classList.add('hidden');
+            state.opponent_score += 1;
+            updateScoreboard();
+            // Sync to server
+            fetch(`/games/${GAME_ID}/tracker/update-score/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                body: JSON.stringify({ opponent_score: state.opponent_score }),
+            });
+            proceedToOpponentKickoff();
+        };
+
+        document.getElementById('opp-ep-miss').onclick = () => {
+            modal.classList.add('hidden');
+            proceedToOpponentKickoff();
+        };
+    }
+
+    function proceedToOpponentKickoff() {
+        // Opponent kicks off to us; after kickoff is recorded, flip possession to home
+        state.pendingPossession = 'home';
+        state.possession_team = 'away'; // opponent is kicking
+        showPlayForm('kickoff');
+    }
+
+    // =========================================================================
+    // PHASE HELPERS — called by postPlay after every successful snap
+    // =========================================================================
+
+    /** Apply any pending possession change and handle situation-based possession flips. */
+    function resolvePossession(sit) {
+        if (state.pendingPossession) {
+            state.possession_team = state.pendingPossession;
+            state.pendingPossession = null;
+            console.log('📍 Possession resolved to:', state.possession_team);
+        }
+        if (sit === 'turnover' || sit === 'turnover_on_downs') {
+            state.possession_team = state.possession_team === 'home' ? 'away' : 'home';
+            console.log('🔄 Possession flipped to:', state.possession_team, '(' + sit + ')');
+        } else if (sit === 'opponent_ball') {
+            state.possession_team = 'away';
+        } else if (sit === 'kickoff') {
+            // Our team just scored and will kick off — receiver gets ball after kickoff
+            state.pendingPossession = 'away';
+        }
+    }
+
+    /** Trigger the appropriate UI transition based on the play situation. */
+    function triggerNextPhase(sit) {
+        if (sit === 'turnover' || sit === 'turnover_on_downs' || sit === 'opponent_ball') {
+            setTimeout(() => resetToPlayTypeSelection(), 300);
+        } else if (sit === 'extra_point') {
+            setTimeout(() => showTeamTdModal(), 300);
+        } else if (sit === 'kickoff') {
+            setTimeout(() => showPlayForm('kickoff'), 300);
+        } else if (sit === 'opponent_td') {
+            showToast('Opponent TOUCHDOWN! +6', 'error');
+            setTimeout(() => showOpponentTdModal(), 600);
+        } else {
+            resetToPlayTypeSelection();
+        }
     }
 
     // =========================================================================
     // PLAY FORM MANAGEMENT
     // =========================================================================
+    
+    function updatePossessionDisplay() {
+        const isOnOffense = state.possession_team === 'home';
+        const offenseButtons = document.getElementById('play-type-buttons-offense');
+        const defenseButtons = document.getElementById('play-type-buttons-defense');
+        
+        if (offenseButtons) {
+            if (isOnOffense) {
+                offenseButtons.classList.remove('hidden');
+            } else {
+                offenseButtons.classList.add('hidden');
+            }
+        }
+        
+        if (defenseButtons) {
+            if (!isOnOffense) {
+                defenseButtons.classList.remove('hidden');
+            } else {
+                defenseButtons.classList.add('hidden');
+            }
+        }
+        
+        console.log('📍 Possession:', isOnOffense ? 'HOME (Offense)' : 'AWAY (Defense)');
+    }
+    
     function showPlayForm(type) {
         state.currentForm = type;
         const formArea = document.getElementById('play-form-area');
-        const buttons = document.getElementById('play-type-buttons');
+        const offenseButtons = document.getElementById('play-type-buttons-offense');
+        const defenseButtons = document.getElementById('play-type-buttons-defense');
         const stMenu = document.getElementById('st-submenu');
 
-        buttons.classList.add('hidden');
+        offenseButtons.classList.add('hidden');
+        defenseButtons.classList.add('hidden');
         stMenu.classList.add('hidden');
         formArea.classList.remove('hidden');
 
@@ -185,9 +538,22 @@
             case 'punt': formArea.innerHTML = buildPuntForm(); break;
             case 'field_goal': formArea.innerHTML = buildFieldGoalForm(); break;
             case 'extra_point': formArea.innerHTML = buildExtraPointForm(); break;
+            case 'defense':
+                formArea.innerHTML = buildDefenseForm();
+                {
+                    const tyInput = document.getElementById('tackle_yards');
+                    const oppSection = document.getElementById('opponent-play-type-section');
+                    if (tyInput && oppSection) {
+                        tyInput.addEventListener('input', () => {
+                            oppSection.style.display = parseInt(tyInput.value) !== 0 ? '' : 'none';
+                        });
+                    }
+                }
+                break;
             case 'special_teams':
                 formArea.classList.add('hidden');
-                buttons.classList.add('hidden');
+                offenseButtons.classList.add('hidden');
+                defenseButtons.classList.add('hidden');
                 stMenu.classList.remove('hidden');
                 return;
         }
@@ -201,7 +567,8 @@
         formArea.classList.add('hidden');
         formArea.innerHTML = '';
         document.getElementById('st-submenu').classList.add('hidden');
-        document.getElementById('play-type-buttons').classList.remove('hidden');
+        updatePossessionDisplay();
+        updateFieldViz(); // Redraw first-down line with updated possession_team
     }
 
     // =========================================================================
@@ -244,6 +611,20 @@
         </div>`;
     }
 
+    /** Returns true if `yards` is enough to earn a first down given the current distance. */
+    function autoFirstDown(yards) {
+        return yards >= (state.distance || 10);
+    }
+
+    /** Renders the standard submit + cancel button pair used by every form. */
+    function buildFormFooter(action, label, btnClass = 'btn-primary') {
+        return `
+            <button type="button" class="btn ${btnClass} w-100 submit-play-btn" data-action="${action}">
+                <i class="bi bi-check-lg me-1"></i>${label}
+            </button>
+            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>`;
+    }
+
     // =========================================================================
     // FORM BUILDERS
     // =========================================================================
@@ -266,10 +647,7 @@
                 <label class="form-label">Notes</label>
                 <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
             </div>
-            <button type="button" class="btn btn-success w-100 submit-play-btn" data-action="submit-run">
-                <i class="bi bi-check-lg me-1"></i>Save Run Play
-            </button>
-            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>
+            ${buildFormFooter('submit-run', 'Save Run Play', 'btn-success')}
         </div>`;
     }
 
@@ -298,10 +676,7 @@
                 <label class="form-label">Notes</label>
                 <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
             </div>
-            <button type="button" class="btn btn-primary w-100 submit-play-btn" data-action="submit-pass">
-                <i class="bi bi-check-lg me-1"></i>Save Pass Play
-            </button>
-            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>
+            ${buildFormFooter('submit-pass', 'Save Pass Play')}
         </div>`;
     }
 
@@ -339,10 +714,7 @@
                 <label class="form-label">Notes</label>
                 <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
             </div>
-            <button type="button" class="btn btn-warning w-100 submit-play-btn" data-action="submit-penalty">
-                <i class="bi bi-check-lg me-1"></i>Save Penalty
-            </button>
-            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>
+            ${buildFormFooter('submit-penalty', 'Save Penalty', 'btn-warning')}
         </div>`;
     }
 
@@ -364,10 +736,7 @@
                 <label class="form-label">Notes</label>
                 <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
             </div>
-            <button type="button" class="btn btn-primary w-100 submit-play-btn" data-action="submit-kickoff">
-                <i class="bi bi-check-lg me-1"></i>Save Kickoff
-            </button>
-            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>
+            ${buildFormFooter('submit-kickoff', 'Save Kickoff')}
         </div>`;
     }
 
@@ -389,21 +758,24 @@
                 <label class="form-label">Notes</label>
                 <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
             </div>
-            <button type="button" class="btn btn-primary w-100 submit-play-btn" data-action="submit-punt">
-                <i class="bi bi-check-lg me-1"></i>Save Punt
-            </button>
-            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>
+            ${buildFormFooter('submit-punt', 'Save Punt')}
         </div>`;
     }
 
     function buildFieldGoalForm() {
+        // Calculate distance from current ball position to opponent's endzone (50)
+        const currentPos = state.ball_position || 0;
+        const distanceToEndzone = 50 - currentPos;
+        const defaultDistance = Math.max(17, distanceToEndzone + 10); // Add 10 yards for the end zone depth plus long snapper distance
+        
         return `
         <div class="tracker-form">
             ${formHeader('bullseye', '#7c3aed', 'Field Goal')}
             ${buildPlayerSelect('kicker', ['K'], 'Kicker')}
             <div class="mb-3 yards-group">
                 <label class="form-label">Kick Distance (yards)</label>
-                <input type="number" id="kick_distance" class="form-control yards-input" value="30" inputmode="numeric">
+                <input type="number" id="kick_distance" class="form-control yards-input" value="${defaultDistance}" inputmode="numeric">
+                <small class="text-muted">From ball position at ${ballPosDisplay(currentPos)} (${distanceToEndzone} yards to goal line)</small>
             </div>
             <div class="mb-3">
                 <label class="form-label">Result</label>
@@ -417,10 +789,7 @@
                 <label class="form-label">Notes</label>
                 <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
             </div>
-            <button type="button" class="btn btn-primary w-100 submit-play-btn" data-action="submit-field-goal">
-                <i class="bi bi-check-lg me-1"></i>Save Field Goal
-            </button>
-            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>
+            ${buildFormFooter('submit-field-goal', 'Save Field Goal')}
         </div>`;
     }
 
@@ -448,10 +817,44 @@
                 <label class="form-label">Notes</label>
                 <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
             </div>
-            <button type="button" class="btn btn-primary w-100 submit-play-btn" data-action="submit-extra-point">
-                <i class="bi bi-check-lg me-1"></i>Save
-            </button>
-            <button type="button" class="btn btn-outline-secondary w-100 mt-2 cancel-play-btn" data-action="cancel">Cancel</button>
+            ${buildFormFooter('submit-extra-point', 'Save')}
+        </div>`;
+    }
+
+    function buildDefenseForm() {
+        return `
+        <div class="tracker-form">
+            ${formHeader('shield-fill', '#991b1b', 'Defense Snap')}
+            ${buildPlayerSelect('primary_player', null, 'Primary Defender')}
+            <div class="mb-3">
+                <label class="form-label">Result</label>
+                <div class="toggle-row">
+                    ${buildToggle('def_tackle', 'Tackle', 'toggle-td')}
+                    ${buildToggle('def_sack', 'Sack', 'toggle-sack')}
+                    ${buildToggle('def_int', 'Interception', 'toggle-int')}
+                    ${buildToggle('def_frec', 'Fumble Rec', 'toggle-fumble')}
+                </div>
+            </div>
+            <div class="mb-3 yards-group">
+                <label class="form-label">Yards Gained (by opponent)</label>
+                <input type="number" id="tackle_yards" class="form-control yards-input" value="0" inputmode="numeric">
+                ${buildQuickYards()}
+            </div>
+            <div class="mb-3" id="opponent-play-type-section" style="display:none">
+                <label class="form-label">Opponent's Play Type</label>
+                <div class="toggle-row">
+                    ${buildToggle('opp_run',     'Run',        'toggle-td')}
+                    ${buildToggle('opp_pass',    'Pass',       'toggle-complete')}
+                    ${buildToggle('opp_punt',    'Punt',       'toggle-1st')}
+                    ${buildToggle('opp_fg',      'Field Goal', 'toggle-miss')}
+                    ${buildToggle('opp_kickoff', 'Kickoff',    'toggle-fumble')}
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Notes</label>
+                <input type="text" id="play_notes" class="form-control" placeholder="Optional notes...">
+            </div>
+            ${buildFormFooter('submit-defense', 'Save Defense Snap', 'btn-danger')}
         </div>`;
     }
 
@@ -474,11 +877,14 @@
     }
 
     async function submitRun() {
+        const yards = parseInt(getInputVal('yards_gained', '0')) || 0;
+        const autoFirst = autoFirstDown(yards);
+
         await postPlay('run', {
             ball_carrier: getSelectVal('ball_carrier'),
-            yards_gained: parseInt(getInputVal('yards_gained', '0')),
+            yards_gained: yards,
             is_touchdown: getToggleState('is_touchdown'),
-            is_first_down: getToggleState('is_first_down'),
+            is_first_down: getToggleState('is_first_down') || autoFirst,
             fumbled: getToggleState('fumbled'),
             fumble_lost: getToggleState('fumbled'),
             notes: getInputVal('play_notes', ''),
@@ -488,13 +894,16 @@
     async function submitPass() {
         const wasSacked = getToggleState('was_sacked');
         const yards = parseInt(getInputVal('yards_gained', '0'));
+        const effectiveYards = wasSacked ? 0 : yards;
+        const autoFirst = !wasSacked && autoFirstDown(effectiveYards);
+
         await postPlay('pass', {
             quarterback: getSelectVal('quarterback'),
             receiver: getSelectVal('receiver'),
             is_complete: getToggleState('is_complete'),
-            yards_gained: wasSacked ? 0 : yards,
+            yards_gained: effectiveYards,
             is_touchdown: getToggleState('is_touchdown'),
-            is_first_down: getToggleState('is_first_down'),
+            is_first_down: getToggleState('is_first_down') || autoFirst,
             is_interception: getToggleState('is_interception'),
             was_sacked: wasSacked,
             sack_yards: wasSacked ? -Math.abs(yards) : 0,
@@ -518,6 +927,30 @@
         });
     }
 
+    async function submitDefense() {
+        // Determine selected play_result
+        let playResult = 'TACKLE';
+        if (getToggleState('def_sack')) playResult = 'SACK';
+        else if (getToggleState('def_int')) playResult = 'INT';
+        else if (getToggleState('def_frec')) playResult = 'FREC';
+
+        let oppPlayType = '';
+        if (getToggleState('opp_run'))          oppPlayType = 'RUN';
+        else if (getToggleState('opp_pass'))     oppPlayType = 'PASS';
+        else if (getToggleState('opp_punt'))     oppPlayType = 'PUNT';
+        else if (getToggleState('opp_fg'))       oppPlayType = 'FG';
+        else if (getToggleState('opp_kickoff'))  oppPlayType = 'KICKOFF';
+
+        await postPlay('defense', {
+            primary_player: getSelectVal('primary_player'),
+            play_result: playResult,
+            tackle_yards: parseInt(getInputVal('tackle_yards', '0')) || 0,
+            opponent_play_type: oppPlayType,
+            is_defensive_touchdown: getToggleState('def_td') || false,
+            notes: getInputVal('play_notes', ''),
+        });
+    }
+
     async function submitKickoff() {
         await postPlay('kickoff', {
             kicker: getSelectVal('kicker'),
@@ -526,6 +959,9 @@
             is_onside_kick: getToggleState('is_onside_kick'),
             out_of_bounds: getToggleState('out_of_bounds'),
             notes: getInputVal('play_notes', ''),
+            // Tell backend WHO RECEIVES (not who kicks) for correct ball_pos_after calculation.
+            // pendingPossession is set to the receiver before showPlayForm('kickoff') in all flows.
+            receiving_team: state.pendingPossession || (state.possession_team === 'home' ? 'away' : 'home'),
         });
     }
 
@@ -627,6 +1063,7 @@
 
         let badges = '';
         if (detail && detail.is_touchdown) badges += ' <span class="feed-badge-td">TD</span>';
+        if (detail && detail.is_defensive_touchdown) badges += ' <span class="feed-badge-td">DEF TD</span>';
         if (detail && detail.is_interception) badges += ' <span class="feed-badge-int">INT</span>';
 
         item.innerHTML = `
@@ -705,10 +1142,42 @@
     // =========================================================================
     // EVENT LISTENERS
     // =========================================================================
+    // Accessibility helpers: enlarge hit-area support and keyboard handlers
+    function _isNativeInteractive(el) {
+        return ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName);
+    }
+
+    function makeInteractive(el) {
+        if (!el) return;
+        if (!_isNativeInteractive(el)) {
+            el.setAttribute('role', 'button');
+            el.setAttribute('tabindex', '0');
+        }
+
+        // Toggle aria-pressed when relevant
+        if (el.classList.contains('toggle-btn')) {
+            el.setAttribute('aria-pressed', el.dataset.active === 'true' ? 'true' : 'false');
+        }
+
+        // Keyboard activation (Enter / Space)
+        el.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                el.click();
+            }
+        });
+
+        // Touch: map touchstart to click to increase hit responsiveness
+        el.addEventListener('touchstart', function () {
+            // allow native scrolling if this is within a scrollable area and user is swiping
+            el.click();
+        }, { passive: true });
+    }
 
     // Play type buttons
     document.querySelectorAll('.play-btn').forEach(btn => {
         btn.addEventListener('click', () => showPlayForm(btn.dataset.type));
+        makeInteractive(btn);
     });
 
     // Special teams submenu
@@ -717,20 +1186,55 @@
             if (btn.dataset.st === 'back') { resetToPlayTypeSelection(); return; }
             showPlayForm(btn.dataset.st);
         });
+        makeInteractive(btn);
     });
 
     // Undo button
-    document.getElementById('undo-btn').addEventListener('click', undoLastPlay);
+    const undoBtn = document.getElementById('undo-btn');
+    if (undoBtn) {
+        undoBtn.addEventListener('click', undoLastPlay);
+        makeInteractive(undoBtn);
+    }
 
     // Score taps
-    document.getElementById('team-score').addEventListener('click', () => promptScoreEdit('team'));
-    document.getElementById('opp-score').addEventListener('click', () => promptScoreEdit('opponent'));
-    document.getElementById('quarter-display').addEventListener('click', promptQuarterChange);
+    const teamScoreEl = document.getElementById('team-score');
+    const oppScoreEl = document.getElementById('opp-score');
+    const quarterEl = document.getElementById('quarter-display');
 
-    // Delegated events on form area
-    document.getElementById('play-form-area').addEventListener('click', function (e) {
-        const target = e.target.closest('[data-action]') || e.target.closest('.quick-yard-btn') || e.target.closest('.toggle-btn') || e.target.closest('.penalty-item');
+    if (teamScoreEl) {
+        teamScoreEl.addEventListener('click', () => promptScoreEdit('team'));
+        makeInteractive(teamScoreEl);
+    }
+    if (oppScoreEl) {
+        oppScoreEl.addEventListener('click', () => promptScoreEdit('opponent'));
+        makeInteractive(oppScoreEl);
+    }
+    if (quarterEl) {
+        quarterEl.addEventListener('click', promptQuarterChange);
+        makeInteractive(quarterEl);
+    }
 
+    // Delegated events on form area (support click + touchstart)
+    const playFormArea = document.getElementById('play-form-area');
+
+    function autoCalculateTouchdownYardage(isTouchdown) {
+        if (!isTouchdown) return;
+        
+        const yardsInput = document.getElementById('yards_gained');
+        if (!yardsInput) return;
+        
+        // Calculate distance to endzone from current ball position
+        const currentPos = state.ball_position || 0;
+        const yardsNeeded = 50 - currentPos;
+        
+        // Set yards to minimum distance to reach endzone
+        yardsInput.value = Math.max(1, yardsNeeded);
+        console.log(`📍 Auto-calculated TD yardage: ${yardsInput.value} yards (from ${ballPosDisplay(currentPos)} to endzone)`);
+    }
+
+    function handleFormInteraction(e) {
+        const evTarget = e.target;
+        const target = evTarget.closest('[data-action]') || evTarget.closest('.quick-yard-btn') || evTarget.closest('.toggle-btn') || evTarget.closest('.penalty-item');
         if (!target) return;
 
         // Quick yard buttons
@@ -738,8 +1242,15 @@
             const input = document.getElementById('yards_gained')
                 || document.getElementById('kick_yards')
                 || document.getElementById('punt_yards')
-                || document.getElementById('kick_distance');
-            if (input) input.value = target.dataset.yards;
+                || document.getElementById('kick_distance')
+                || document.getElementById('tackle_yards');
+            if (input) {
+                input.value = target.dataset.yards;
+                if (input.id === 'tackle_yards') {
+                    const oppSection = document.getElementById('opponent-play-type-section');
+                    if (oppSection) oppSection.style.display = parseInt(input.value) !== 0 ? '' : 'none';
+                }
+            }
             return;
         }
 
@@ -752,6 +1263,7 @@
                 ['ep_good', 'ep_miss'],
                 ['pat_kick', 'two_pt_run', 'two_pt_pass'],
                 ['accepted', 'declined'],
+                ['opp_run', 'opp_pass', 'opp_punt', 'opp_fg', 'opp_kickoff'],
             ];
 
             let isRadio = false;
@@ -769,6 +1281,39 @@
             if (!isRadio) {
                 target.dataset.active = target.dataset.active === 'true' ? 'false' : 'true';
             }
+
+            // Reflect aria-pressed
+            if (target.classList.contains('toggle-btn')) {
+                target.setAttribute('aria-pressed', target.dataset.active === 'true' ? 'true' : 'false');
+            }
+
+            // Auto-calculate yardage for offensive touchdowns (run or pass)
+            if (field === 'is_touchdown' && target.dataset.active === 'true') {
+                autoCalculateTouchdownYardage(true);
+            }
+            
+            // Auto-calculate yardage for defensive touchdowns
+            if (field === 'def_td' && target.dataset.active === 'true') {
+                const defTdInput = document.getElementById('tackle_yards');
+                if (defTdInput) {
+                    const currentPos = state.ball_position || 0;
+                    const yardsReturned = 50 - currentPos; // Distance to opposite endzone
+                    defTdInput.value = Math.max(1, yardsReturned);
+                    console.log(`🏈 Auto-calculated Defensive TD return: ${defTdInput.value} yards`);
+                }
+            }
+            
+            // Auto-calculate yardage for kickoff touchbacks (ball goes to 20-yard line)
+            if (field === 'is_touchback' && target.dataset.active === 'true') {
+                const kickYardsInput = document.getElementById('kick_yards');
+                if (kickYardsInput) {
+                    // Touchback = returned to 20-yard line (ball_position = -25 from owner's perspective)
+                    // Calculate kick distance as the full field (100 yards to get to far endzone)
+                    kickYardsInput.value = 100;
+                    console.log('📍 Auto-calculated Touchback: 100-yard field touchback (returned to 20-yard line)');
+                }
+            }
+
             return;
         }
 
@@ -806,12 +1351,25 @@
             case 'submit-punt': submitPunt(); break;
             case 'submit-field-goal': submitFieldGoal(); break;
             case 'submit-extra-point': submitExtraPoint(); break;
+            case 'submit-defense': submitDefense(); break;
         }
-    });
+    }
+
+    if (playFormArea) {
+        playFormArea.addEventListener('click', handleFormInteraction);
+        playFormArea.addEventListener('touchstart', handleFormInteraction, { passive: true });
+    }
 
     // =========================================================================
     // INITIAL RENDER
     // =========================================================================
     updateScoreboard();
+    updateFieldViz();
+    updatePossessionDisplay();
+    
+    // If game hasn't had coin toss yet, show coin toss modal
+    if (!state.coin_toss_complete) {
+        showCoinTossModal();
+    }
 
 })();
