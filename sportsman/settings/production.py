@@ -5,6 +5,8 @@ For deployments exposed to the public internet.
 Full security hardening enabled.
 """
 import os
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
@@ -35,10 +37,22 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+X_FRAME_OPTIONS = "DENY"
 
 # CORS - Explicit origins only
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
 CORS_ALLOW_CREDENTIALS = True
+
+# Sentry error tracking and performance monitoring
+if os.environ.get("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=os.environ["SENTRY_DSN"],
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+        send_default_pii=False,
+    )
 
 # Logging
 LOGGING = {

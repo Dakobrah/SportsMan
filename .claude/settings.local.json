@@ -18,7 +18,8 @@
       "Bash(timeout 5 bash -c:*)",
       "Bash(python -m pytest:*)",
       "Bash(python manage.py:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(wc -l:*)"
     ]
   }
 }

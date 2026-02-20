@@ -40,3 +40,10 @@ LOGGING = {
         "level": "CRITICAL",
     },
 }
+
+# Use simple staticfiles storage in tests to avoid manifest lookup
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    }
+}

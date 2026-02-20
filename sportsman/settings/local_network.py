@@ -68,6 +68,8 @@ SIMPLE_JWT = {
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
+X_FRAME_OPTIONS = "SAMEORIGIN"
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Trust the nginx proxy
 USE_X_FORWARDED_HOST = True
