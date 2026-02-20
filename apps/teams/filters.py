@@ -2,6 +2,7 @@
 Filters for Team, Season, and Player models.
 """
 import django_filters
+from django.db.models import Q
 from .models import Team, Season, Player
 
 
@@ -39,5 +40,5 @@ class PlayerFilter(django_filters.FilterSet):
     def filter_by_name(self, queryset, name, value):
         """Filter by first name or last name."""
         return queryset.filter(
-            models.Q(first_name__icontains=value) | models.Q(last_name__icontains=value)
+            Q(first_name__icontains=value) | Q(last_name__icontains=value)
         )

@@ -2,6 +2,7 @@
 Filters for Game model.
 """
 import django_filters
+from django.db.models import F
 from .models import Game
 
 
@@ -20,5 +21,5 @@ class GameFilter(django_filters.FilterSet):
     def filter_is_win(self, queryset, name, value):
         """Filter by win/loss."""
         if value:
-            return queryset.filter(team_score__gt=models.F("opponent_score"))
-        return queryset.filter(team_score__lte=models.F("opponent_score"))
+            return queryset.filter(team_score__gt=F("opponent_score"))
+        return queryset.filter(team_score__lte=F("opponent_score"))
