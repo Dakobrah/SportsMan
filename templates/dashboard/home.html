@@ -87,6 +87,103 @@
     </div>
 
     <div class="row g-4">
+        <!-- Coaching Metrics -->
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Coaching Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Third-Down %</small>
+                                    <h3 class="mt-2">{% if metrics.third_down_pct is not None %}{{ metrics.third_down_pct }}%{% else %}—{% endif %}</h3>
+                                    <small class="text-muted">{{ metrics.third_down_conversions }} / {{ metrics.third_down_attempts }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Red Zone %</small>
+                                    <h3 class="mt-2">{% if metrics.red_zone_pct is not None %}{{ metrics.red_zone_pct }}%{% else %}—{% endif %}</h3>
+                                    <small class="text-muted">{{ metrics.red_zone_tds }} TDs / {{ metrics.red_zone_plays }} plays</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Current Streak</small>
+                                    <h3 class="mt-2">{% if metrics.current_streak.type %}{{ metrics.current_streak.length }} {{ metrics.current_streak.type }}{% else %}—{% endif %}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Alerts</small>
+                                    <h6 class="mt-2">{{ metrics.alerts|length }} active</h6>
+                                    <small class="text-muted">See list</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12 col-md-7">
+                            <h6 class="mb-2">Quarter Scoring (avg)</h6>
+                            <div style="position: relative; height: 300px; max-height: 300px; overflow: hidden;">
+                                <canvas id="quarterChart"></canvas>
+                            </div>
+                            {{ metrics.quarter_trends|json_script:"quarter-trends" }}
+                            <table class="table table-sm mt-3" style="max-height: 300px; overflow-y: auto;">
+                                <thead>
+                                    <tr>
+                                        <th>Q</th>
+                                        <th>Avg For</th>
+                                        <th>Avg Against</th>
+                                        <th class="text-end">Games</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for q in metrics.quarter_trends %}
+                                    <tr>
+                                        <td>{{ q.quarter }}</td>
+                                        <td>{{ q.avg_for }}</td>
+                                        <td>{{ q.avg_against }}</td>
+                                        <td class="text-end">{{ q.games }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">No quarter data</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <h6 class="mb-2">Player Alerts</h6>
+                            <ul class="list-group">
+                                {% for a in metrics.alerts %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-muted d-block">{{ a.type|capfirst }}</small>
+                                        <strong>{{ a.player_name }}</strong>
+                                    </div>
+                                    <span class="badge bg-danger rounded-pill">{{ a.count }}</span>
+                                </li>
+                                {% empty %}
+                                <li class="list-group-item text-center text-muted">No alerts</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- Recent Games -->
         <div class="col-12 col-lg-8">
             <div class="card">
@@ -217,6 +314,41 @@
                 </div>
             </div>
         </div>
-    </div>
+                    </div>
+                    <!-- Chart.js CDN + renderer -->
+                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                    <script>
+                        (function(){
+                            try {
+                                const raw = document.getElementById('quarter-trends');
+                                if (!raw) return;
+                                const data = JSON.parse(raw.textContent || '[]');
+                                const labels = data.map(d => 'Q' + d.quarter);
+                                const forData = data.map(d => d.avg_for);
+                                const againstData = data.map(d => d.avg_against);
+
+                                const ctx = document.getElementById('quarterChart').getContext('2d');
+                                new Chart(ctx, {
+                                    type: 'bar',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [
+                                            { label: 'Avg For', data: forData, backgroundColor: 'rgba(13,110,253,0.7)' },
+                                            { label: 'Avg Against', data: againstData, backgroundColor: 'rgba(220,53,69,0.7)' }
+                                        ]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        scales: { y: { beginAtZero: true } },
+                                        plugins: { legend: { position: 'top' } }
+                                    }
+                                });
+                            } catch (e) {
+                                // fail silently in older browsers
+                                console.error(e);
+                            }
+                        })();
+                    </script>
 </div>
 {% endblock %}
