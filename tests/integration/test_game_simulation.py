@@ -13,8 +13,7 @@ This test walks through a realistic game scenario including:
 """
 import pytest
 from datetime import timedelta
-from apps.teams.models import Team, Season, Player
-from apps.games.models import Game, QuarterScore
+from apps.games.models import QuarterScore
 from apps.snaps.models import (
     RunPlay,
     PassPlay,
@@ -26,6 +25,7 @@ from apps.snaps.models import (
     ExtraPointSnap,
 )
 from apps.reports.services import OffenseReportService, DefenseReportService, SpecialTeamsReportService
+from tests.factories import TeamFactory, SeasonFactory, PlayerFactory, GameFactory
 
 
 @pytest.mark.django_db
@@ -48,92 +48,36 @@ class TestGameSimulation:
 
     @pytest.fixture
     def game_setup(self, db):
-        """Set up team, players, season, and game."""
-        # Create team
-        team = Team.objects.create(name="Test Eagles", abbreviation="TST")
-
-        # Create season
-        season = Season.objects.create(year=2024, team=team)
-
-        # Create roster
-        players = {}
-
-        # Offense
-        players['qb'] = Player.objects.create(
-            team=team, first_name="Joe", last_name="Quarterback",
-            position="QB", number=12
-        )
-        players['rb1'] = Player.objects.create(
-            team=team, first_name="Marcus", last_name="Runner",
-            position="RB", number=22
-        )
-        players['rb2'] = Player.objects.create(
-            team=team, first_name="David", last_name="Swift",
-            position="RB", number=28
-        )
-        players['wr1'] = Player.objects.create(
-            team=team, first_name="Antonio", last_name="Speed",
-            position="WR", number=81
-        )
-        players['wr2'] = Player.objects.create(
-            team=team, first_name="Mike", last_name="Hands",
-            position="WR", number=84
-        )
-        players['te'] = Player.objects.create(
-            team=team, first_name="Travis", last_name="Kelso",
-            position="TE", number=87
-        )
-
-        # Defense
-        players['lb1'] = Player.objects.create(
-            team=team, first_name="Ray", last_name="Tackle",
-            position="LB", number=52
-        )
-        players['lb2'] = Player.objects.create(
-            team=team, first_name="Patrick", last_name="Willis",
-            position="LB", number=55
-        )
-        players['cb'] = Player.objects.create(
-            team=team, first_name="Deion", last_name="Lockdown",
-            position="CB", number=21
-        )
-        players['s'] = Player.objects.create(
-            team=team, first_name="Ed", last_name="Reed",
-            position="S", number=20
-        )
-
-        # Special teams
-        players['k'] = Player.objects.create(
-            team=team, first_name="Justin", last_name="Kicker",
-            position="K", number=3
-        )
-        players['p'] = Player.objects.create(
-            team=team, first_name="Pat", last_name="Punter",
-            position="P", number=7
-        )
-        players['kr'] = Player.objects.create(
-            team=team, first_name="Devin", last_name="Hester",
-            position="WR", number=23
-        )
-
-        # Create game
-        game = Game.objects.create(
+        """Set up team, players, season, and game via factories."""
+        season = SeasonFactory(year=2024)
+        team = season.team
+        game = GameFactory(
             season=season,
-            date="2024-09-15",
             opponent="Rival Tigers",
             location="home",
             weather="clear",
             field_condition="grass",
             team_score=0,
-            opponent_score=0
+            opponent_score=0,
         )
 
-        return {
-            'team': team,
-            'season': season,
-            'game': game,
-            'players': players,
+        players = {
+            'qb':  PlayerFactory(team=team, position="QB", last_name="Quarterback"),
+            'rb1': PlayerFactory(team=team, position="RB", last_name="Runner"),
+            'rb2': PlayerFactory(team=team, position="RB"),
+            'wr1': PlayerFactory(team=team, position="WR", last_name="Speed"),
+            'wr2': PlayerFactory(team=team, position="WR"),
+            'te':  PlayerFactory(team=team, position="TE"),
+            'lb1': PlayerFactory(team=team, position="LB"),
+            'lb2': PlayerFactory(team=team, position="LB"),
+            'cb':  PlayerFactory(team=team, position="CB"),
+            's':   PlayerFactory(team=team, position="S"),
+            'k':   PlayerFactory(team=team, position="K"),
+            'p':   PlayerFactory(team=team, position="P"),
+            'kr':  PlayerFactory(team=team, position="WR"),
         }
+
+        return {'team': team, 'season': season, 'game': game, 'players': players}
 
     def test_full_game_simulation(self, game_setup):
         """
@@ -291,12 +235,6 @@ class TestGameSimulation:
             kicker=p['k']
         )
 
-        # Update score: 7-0
-
-        # --- Opponent scores (simulated via kickoff return for simplicity) ---
-        # In real tracking, this would be opponent's offensive plays
-        # For test purposes, we just note opponent scored
-
         # Kickoff after TD
         play_num += 1
         KickoffSnap.objects.create(
@@ -395,8 +333,6 @@ class TestGameSimulation:
         )
 
         # --- Field Goal Drive ---
-        # Short drive after INT, settle for FG
-
         # 1st & 10 - Run for 6
         play_num += 1
         RunPlay.objects.create(
@@ -453,7 +389,7 @@ class TestGameSimulation:
             down=4,
             ball_position=33,
             kicker=p['k'],
-            kick_distance=50,  # 33 yard line + 17 yards
+            kick_distance=50,
             result="GOOD"
         )
 
@@ -461,14 +397,11 @@ class TestGameSimulation:
         QuarterScore.objects.create(
             game=game,
             quarter=2,
-            team_score=3,  # Points scored this quarter
+            team_score=3,
             opponent_score=0
         )
 
         # ========== THIRD QUARTER ==========
-
-        # --- Passing TD Drive ---
-        # After halftime, receive kickoff
 
         play_num += 1
         KickoffReturnSnap.objects.create(
@@ -590,8 +523,6 @@ class TestGameSimulation:
 
         # ========== FOURTH QUARTER ==========
 
-        # Opponent scores (simulated) making it 17-14
-
         # --- Clock-killing drive with runs ---
         # 1st & 10 - Run for 4
         play_num += 1
@@ -688,50 +619,41 @@ class TestGameSimulation:
 
         # ========== VERIFY GAME STATISTICS ==========
 
-        # Verify game result
         assert game.is_win is True
         assert game.result == "W"
+        assert game.snaps.count() == play_num
 
-        # Verify play count
-        total_plays = play_num
-        assert game.snaps.count() == total_plays
-
-        # ========== TEST OFFENSIVE REPORTS ==========
+        # ========== OFFENSIVE REPORTS ==========
 
         offense_service = OffenseReportService(game_ids=[game.id])
 
-        # Rushing stats
         rushing = offense_service.get_rushing_totals()
-        assert rushing["attempts"] == 13  # Count all run plays
+        assert rushing["attempts"] == 13
         assert rushing["yards"] > 0
         assert rushing["touchdowns"] == 1
 
-        # Passing stats
         passing = offense_service.get_passing_totals()
-        assert passing["attempts"] == 10  # Count all pass plays
-        assert passing["completions"] == 7  # Complete passes
+        assert passing["attempts"] == 10
+        assert passing["completions"] == 7
         assert passing["touchdowns"] == 1
         assert passing["sacks"] == 1
 
-        # Per-player rushing
         rushing_by_player = offense_service.get_rushing_by_player()
         rb1_stats = next(
-            (p for p in rushing_by_player if p["ball_carrier__last_name"] == "Runner"),
+            (r for r in rushing_by_player if r["ball_carrier__last_name"] == "Runner"),
             None
         )
         assert rb1_stats is not None
         assert rb1_stats["touchdowns"] == 1
 
-        # Per-QB passing
         passing_by_qb = offense_service.get_passing_by_quarterback()
         assert len(passing_by_qb) == 1
         qb_stats = passing_by_qb[0]
         assert qb_stats["quarterback__last_name"] == "Quarterback"
         assert qb_stats["touchdowns"] == 1
-        assert qb_stats["completion_pct"] > 60  # Should be decent
-        assert qb_stats["passer_rating"] > 0  # Has a rating
+        assert qb_stats["completion_pct"] > 60
+        assert qb_stats["passer_rating"] > 0
 
-        # Receiving stats
         receiving = offense_service.get_receiving_by_player()
         wr1_stats = next(
             (r for r in receiving if r["receiver__last_name"] == "Speed"),
@@ -740,62 +662,37 @@ class TestGameSimulation:
         assert wr1_stats is not None
         assert wr1_stats["receptions"] >= 3
 
-        # ========== TEST DEFENSIVE REPORTS ==========
+        # ========== DEFENSIVE REPORTS ==========
 
         defense_service = DefenseReportService(game_ids=[game.id])
-
         defense_totals = defense_service.get_team_totals()
         assert defense_totals["total_interceptions"] == 1
         assert defense_totals["total_tfl"] == 1
         assert defense_totals["int_return_yards"] == 15
 
-        # ========== TEST SPECIAL TEAMS REPORTS ==========
+        # ========== SPECIAL TEAMS REPORTS ==========
 
         st_service = SpecialTeamsReportService(game_ids=[game.id])
 
-        # Punt stats
         punt_totals = st_service.get_punt_totals()
         assert punt_totals["punts"] == 1
         assert punt_totals["total_yards"] == 45
 
-        # Field goal stats
         fg_totals = st_service.get_field_goal_totals()
         assert fg_totals["attempts"] == 1
         assert fg_totals["made"] == 1
         assert fg_totals["percentage"] == 100.0
 
-        # Extra point stats
         xp_totals = st_service.get_extra_point_totals()
         assert xp_totals["pat_attempts"] == 2
         assert xp_totals["pat_made"] == 2
 
-        # ========== VERIFY QUARTER SCORES ==========
+        # ========== QUARTER SCORES ==========
 
         quarters = game.quarter_scores.all()
         assert quarters.count() == 4
-
-        # Total up quarter scores
-        team_total = sum(q.team_score for q in quarters)
-        opp_total = sum(q.opponent_score for q in quarters)
-        assert team_total == 17
-        assert opp_total == 14
-
-        print(f"\n{'='*50}")
-        print(f"GAME SIMULATION COMPLETE")
-        print(f"{'='*50}")
-        print(f"Final Score: {game.season.team.abbreviation} {game.team_score} - {game.opponent} {game.opponent_score}")
-        print(f"Result: {'WIN' if game.is_win else 'LOSS'}")
-        print(f"Total Plays: {total_plays}")
-        print(f"\nOffense:")
-        print(f"  Rushing: {rushing['attempts']} att, {rushing['yards']} yds, {rushing['touchdowns']} TD")
-        print(f"  Passing: {passing['completions']}/{passing['attempts']}, {passing['yards']} yds, {passing['touchdowns']} TD, {passing['interceptions']} INT")
-        print(f"\nDefense:")
-        print(f"  Interceptions: {defense_totals['total_interceptions']}")
-        print(f"  TFLs: {defense_totals['total_tfl']}")
-        print(f"\nSpecial Teams:")
-        print(f"  FG: {fg_totals['made']}/{fg_totals['attempts']}")
-        print(f"  PAT: {xp_totals['pat_made']}/{xp_totals['pat_attempts']}")
-        print(f"{'='*50}")
+        assert sum(q.team_score for q in quarters) == 17
+        assert sum(q.opponent_score for q in quarters) == 14
 
 
 @pytest.mark.django_db
@@ -804,23 +701,17 @@ class TestDriveScenarios:
 
     @pytest.fixture
     def basic_setup(self, db):
-        """Basic game setup for drive tests."""
-        team = Team.objects.create(name="Test Team", abbreviation="TST")
-        season = Season.objects.create(year=2024, team=team)
-        game = Game.objects.create(
-            season=season,
-            date="2024-09-15",
-            opponent="Opponent",
-            location="home",
-            weather="clear",
-            field_condition="grass"
-        )
-        qb = Player.objects.create(team=team, first_name="QB", last_name="Test", position="QB", number=1)
-        rb = Player.objects.create(team=team, first_name="RB", last_name="Test", position="RB", number=2)
-        wr = Player.objects.create(team=team, first_name="WR", last_name="Test", position="WR", number=3)
-        k = Player.objects.create(team=team, first_name="K", last_name="Test", position="K", number=4)
-
-        return {'game': game, 'qb': qb, 'rb': rb, 'wr': wr, 'k': k}
+        """Basic game setup for drive tests via factories."""
+        season = SeasonFactory()
+        team = season.team
+        game = GameFactory(season=season, location="home", weather="clear", field_condition="grass")
+        return {
+            'game': game,
+            'qb': PlayerFactory(team=team, position="QB"),
+            'rb': PlayerFactory(team=team, position="RB"),
+            'wr': PlayerFactory(team=team, position="WR"),
+            'k':  PlayerFactory(team=team, position="K"),
+        }
 
     def test_td_drive_with_2pt_conversion(self, basic_setup):
         """Test a TD drive followed by 2-point conversion."""
@@ -829,7 +720,6 @@ class TestDriveScenarios:
         rb = basic_setup['rb']
         wr = basic_setup['wr']
 
-        # TD run
         RunPlay.objects.create(
             game=game,
             sequence_number=1,
@@ -841,7 +731,6 @@ class TestDriveScenarios:
             is_touchdown=True
         )
 
-        # 2-point conversion pass
         ExtraPointSnap.objects.create(
             game=game,
             sequence_number=2,
