@@ -123,7 +123,9 @@ def _defense_next_state(play, ball_pos, down, dist, tackle_yds, game):
     Normal plays advance the opponent's ball toward our endzone.
     """
     if play.play_result in (DefenseSnap.PlayResult.INTERCEPTION, DefenseSnap.PlayResult.FUMBLE_RECOVERY):
-        return {'down': 1, 'distance': 10, 'ball_position': ball_pos, 'situation': 'turnover'}
+        return_yds = play.interception_return_yards or play.fumble_return_yards or 0
+        new_pos = max(-50, min(50, ball_pos + return_yds))
+        return {'down': 1, 'distance': 10, 'ball_position': new_pos, 'situation': 'turnover'}
 
     new_ball_pos = max(-50, min(50, ball_pos - tackle_yds))
 
@@ -177,8 +179,15 @@ def compute_next_state(current_state, play_type, play_data, result_data=None):
             'situation': 'turnover',
         }
 
+    # Safety: our ball carrier downed in our own endzone (opponent scores 2, then punts to us)
+    if result_data.get('is_safety'):
+        return {'down': 1, 'distance': 10, 'ball_position': -20, 'situation': 'safety'}
+
     # Special teams — kickoff ball position computed in the endpoint, not here
     if play_type == 'kickoff':
+        if play_data.get('is_onside_kick'):
+            sit = 'normal' if play_data.get('onside_recovered') else 'opponent_ball'
+            return {'down': 1, 'distance': 10, 'ball_position': play_data.get('ball_pos_after', -25), 'situation': sit}
         return {
             'down': 1,
             'distance': 10,
@@ -378,6 +387,7 @@ def tracker_add_run(request, pk):
     is_touchdown = data.get('is_touchdown', False) or (
         not fumble_lost and ball_pos + yards_gained >= 50
     )
+    is_safety = not is_touchdown and not fumble_lost and ball_pos + data.get('yards_gained', 0) <= -50
 
     play = RunPlay.objects.create(
         game=game,
@@ -398,12 +408,15 @@ def tracker_add_run(request, pk):
 
     if play.is_touchdown:
         _adjust_score(game, team_pts=6)
+    elif is_safety:
+        _adjust_score(game, opp_pts=2)
 
     result_data = {
         'yards_gained': play.yards_gained,
         'is_touchdown': play.is_touchdown,
         'is_first_down': play.is_first_down,
         'fumble_lost': play.fumble_lost,
+        'is_safety': is_safety,
     }
     next_state = compute_next_state(_current_state(data), 'run', data, result_data)
     summary = f"{_player_name(play.ball_carrier)} run for {play.yards_gained} yds"
@@ -433,6 +446,8 @@ def tracker_add_pass(request, pk):
     is_touchdown = data.get('is_touchdown', False) or (
         not is_interception and not fumble_lost and ball_pos + yards_gained >= 50
     )
+    raw_end = ball_pos + (data.get('sack_yards', 0) if data.get('was_sacked') else data.get('yards_gained', 0))
+    is_safety = not is_touchdown and not is_interception and not fumble_lost and raw_end <= -50
 
     play = PassPlay.objects.create(
         game=game,
@@ -444,7 +459,7 @@ def tracker_add_pass(request, pk):
         formation=data.get('formation', ''),
         quarterback_id=data.get('quarterback') or None,
         receiver_id=data.get('receiver') or None,
-        target_id=data.get('receiver') or None,
+        target_id=data.get('target') or None,
         is_complete=data.get('is_complete', False),
         yards_gained=yards_gained,
         is_touchdown=is_touchdown,
@@ -459,6 +474,8 @@ def tracker_add_pass(request, pk):
 
     if play.is_touchdown:
         _adjust_score(game, team_pts=6)
+    elif is_safety:
+        _adjust_score(game, opp_pts=2)
 
     qb_name = _player_name(play.quarterback)
     yards = play.yards_gained
@@ -479,6 +496,7 @@ def tracker_add_pass(request, pk):
         'is_first_down': play.is_first_down,
         'is_interception': play.is_interception,
         'fumble_lost': play.fumble_lost,
+        'is_safety': is_safety,
     }
     next_state = compute_next_state(_current_state(data), 'pass', data, result_data)
     detail = {
@@ -797,6 +815,17 @@ def tracker_undo_play(request, pk):
     if isinstance(actual, (RunPlay, PassPlay)) and actual.is_touchdown:
         game.team_score = max(0, game.team_score - 6)
         game.save(update_fields=['team_score'])
+    elif isinstance(actual, RunPlay) and not actual.is_touchdown and not actual.fumble_lost:
+        # Reverse safety: runner downed in own endzone (yards_gained is clamped so sum == -50)
+        if actual.ball_position is not None and actual.ball_position + actual.yards_gained <= -50:
+            game.opponent_score = max(0, game.opponent_score - 2)
+            game.save(update_fields=['opponent_score'])
+    elif isinstance(actual, PassPlay) and not actual.is_touchdown and not actual.is_interception and not actual.fumble_lost:
+        # Reverse safety: sack or completion that ended in own endzone
+        end_pos = actual.ball_position + (actual.sack_yards if actual.was_sacked else actual.yards_gained)
+        if actual.ball_position is not None and end_pos <= -50:
+            game.opponent_score = max(0, game.opponent_score - 2)
+            game.save(update_fields=['opponent_score'])
     elif isinstance(actual, DefenseSnap) and actual.is_defensive_touchdown:
         game.team_score = max(0, game.team_score - 6)
         game.save(update_fields=['team_score'])
