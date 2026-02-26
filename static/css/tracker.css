@@ -182,7 +182,7 @@ body:has(#tracker-app) .footer {
     display: flex;
     align-items: stretch;
     padding: 6px 12px 10px;
-    height: 56px;
+    height: 80px;
 }
 
 .field-endzone {
@@ -294,40 +294,30 @@ body:has(#tracker-app) .footer {
 
 .field-line {
     position: absolute;
-    top: 50%;
-    width: 40px;
-    height: 40px;
-    transform: translate(-50%, -50%);
+    top: 0;
+    height: 100%;
+    width: 6px;
+    transform: translateX(-50%);
     transition: left 0.3s ease-out;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     z-index: 3;
     pointer-events: none;
 }
 
 .field-ball {
-    width: 28px;
-    height: 28px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
-.field-ball::before {
-    content: '🏈';
-    display: block;
-    transform: rotate(135deg);
+    width: 6px;
+    flex: 1;
+    background: #7c3d14;
+    border-radius: 3px;
+    box-shadow: 0 0 5px rgba(180, 100, 40, 0.8);
 }
 
 .field-ball-label {
     position: absolute;
-    top: -22px;
+    top: auto;
+    bottom: 4px;
     font-size: 0.55rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.6);
