@@ -10,9 +10,9 @@ services:
     environment:
       POSTGRES_DB: sportsman
       POSTGRES_USER: sportsman
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sportsman"]
+      test: ["CMD-SHELL", "pg_isready -U sportsman -d sportsman"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,8 +30,8 @@ services:
       - DB_HOST=db
       - DB_NAME=sportsman
       - DB_USER=sportsman
-      - DB_PASSWORD=${DB_PASSWORD:-changeme}
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-generate-a-secret-key}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
     volumes:
       - static_files:/app/staticfiles
@@ -52,7 +52,30 @@ services:
       - static_files:/app/staticfiles:ro
       - media_files:/app/media:ro
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+
+  # Backup sidecar: pg_dump daily at 02:00, 7-day retention.
+  # Dumps land in ./backups/ (same volume mounted on db service).
+  # Restore: docker compose exec db psql -U sportsman sportsman < /backups/<file>.sql
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+    volumes:
+      - ./backups:/backups
+    # crond -f runs in foreground; the crontab writes a timestamped dump then prunes files >7 days old.
+    entrypoint: >
+      sh -c "
+        echo '0 2 * * * pg_dump -h db -U sportsman -d sportsman -F p --no-password
+          > /backups/sportsman_\$$(date +\\%Y\\%m\\%d_\\%H\\%M\\%S).sql
+          && find /backups -name \"sportsman_*.sql\" -mtime +7 -delete' | crontab -
+        && crond -f -d 8
+      "
 
 volumes:
   postgres_data:

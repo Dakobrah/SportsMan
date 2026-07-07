@@ -39,6 +39,14 @@ class PuntSnap(SpecialTeamsSnap):
         null=True, blank=True, help_text="Ball hang time in seconds"
     )
     is_blocked = models.BooleanField(default=False)
+    blocked_recovered_by = models.CharField(
+        max_length=10, blank=True, default='',
+        help_text="'us' if we recovered a blocked punt, 'opponent' otherwise",
+    )
+    blocked_td = models.BooleanField(
+        default=False,
+        help_text="True when we returned a blocked punt for a touchdown",
+    )
     is_touchback = models.BooleanField(default=False)
     out_of_bounds = models.BooleanField(default=False)
     downed_at_yard_line = models.SmallIntegerField(null=True, blank=True)

@@ -8,7 +8,7 @@
     --t-surface-2: #1f2230;
     --t-border: #2a2d3d;
     --t-text: #e4e4ef;
-    --t-text-muted: #7a7d90;
+    --t-text-muted: #9298b0; /* was #7a7d90 — bumped for WCAG AA 4.5:1 on --t-surface */
     --t-green: #22c55e;
     --t-blue: #3b82f6;
     --t-purple: #8b5cf6;
@@ -85,6 +85,17 @@ body:has(#tracker-app) .footer {
 @keyframes pulse-dot {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
+}
+
+.viewer-badge {
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #fff;
+    background: var(--t-red);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-left: auto;
 }
 
 .scoreboard-main {
@@ -246,6 +257,18 @@ body:has(#tracker-app) .footer {
     height: 50%;
     top: 25%;
     background: rgba(255,255,255,0.25);
+}
+
+/* Line of scrimmage — brown vertical, identical construction to first-down line */
+.field-los-line {
+    position: absolute;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(to right, rgba(160,82,45,0.7), rgba(160,82,45,0.3));
+    box-shadow: 0 0 4px rgba(160,82,45,0.5);
+    transform: translateX(-50%);
+    transition: left 0.3s ease;
+    z-index: 2;
 }
 
 /* First down indicator line (yellow) */
@@ -691,12 +714,19 @@ body:has(#tracker-app) .footer {
     color: #fff;
 }
 
-/* Ensure interactive elements show clear focus state inside tracker scope */
+/* Ensure all interactive elements show a clear focus ring (WCAG 2.4.7) */
 .play-btn:focus-visible,
 .toggle-btn:focus-visible,
 .quick-yard-btn:focus-visible,
 .submit-play-btn:focus-visible,
-.penalty-item:focus-visible {
+.penalty-item:focus-visible,
+.st-btn:focus-visible,
+.cancel-play-btn:focus-visible,
+.undo-btn:focus-visible,
+.scoreboard-back:focus-visible,
+.quarter-badge:focus-visible,
+.team-score:focus-visible,
+.btn:focus-visible {
     outline: 3px solid rgba(59,130,246,0.95);
     outline-offset: 3px;
 }

@@ -95,6 +95,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from django.conf import settings
+        if not settings.DEBUG:
+            self.stderr.write(self.style.ERROR(
+                "seed_dev_data must not run with DEBUG=False. "
+                "Set DJANGO_SETTINGS_MODULE to a development config."
+            ))
+            return
+
         if options["reset"]:
             self._reset()
 
@@ -129,8 +137,10 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
 
     def _reset(self):
-        deleted, _ = Team.objects.filter(abbreviation="RAMS").delete()
+        # Users first: User.team is on_delete=PROTECT, so deleting the team
+        # while seed users still reference it raises ProtectedError.
         User.objects.filter(username__in=["admin", "coach"]).delete()
+        deleted, _ = Team.objects.filter(abbreviation="RAMS").delete()
         self.stdout.write(f"  Cleared seed data ({deleted} team rows deleted).")
 
     def _get_or_create_team(self):

@@ -55,9 +55,9 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
     "user": "5000/hour",
 }
 
-# Longer token lifetimes for local use
+# Token lifetimes for trusted LAN — still reasonable even on shared tablets
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=4),   # Was 12 h; 4 h is a full game day
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,

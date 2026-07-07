@@ -10,7 +10,12 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Full user serializer."""
+    """
+    Full user serializer.
+
+    ``team_id`` is writable only for staff users.  Regular users cannot
+    self-assign to a different team — that must go through Django admin.
+    """
 
     team = TeamMinimalSerializer(read_only=True)
     team_id = serializers.PrimaryKeyRelatedField(
@@ -35,6 +40,15 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
         ]
         read_only_fields = ["date_joined"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get("request")
+        # Non-staff users cannot change their own team assignment.
+        if request and not request.user.is_staff:
+            fields["team_id"].read_only = True
+            fields["team_id"].required = False
+        return fields
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

@@ -3,9 +3,11 @@ ViewSets for snap models.
 """
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from apps.core.mixins import ReadWriteSerializerMixin
 from apps.core.pagination import SnapCursorPagination
+from apps.core.permissions import IsTeamMember
 from .models import (
     RunPlay,
     PassPlay,
@@ -43,7 +45,22 @@ from .filters import (
 )
 
 
-class RunPlayViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
+class _TeamScopedMixin:
+    """Scope queryset to the requesting user's team."""
+    permission_classes = [IsAuthenticated, IsTeamMember]
+    # Snap tables are the append-heavy hot path — cursor pagination skips
+    # the per-request COUNT(*) that page-number pagination runs.
+    pagination_class = SnapCursorPagination
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        team = getattr(self.request.user, 'team', None)
+        if team:
+            qs = qs.filter(game__season__team=team)
+        return qs
+
+
+class RunPlayViewSet(_TeamScopedMixin, ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """ViewSet for RunPlay CRUD operations."""
 
     queryset = RunPlay.objects.select_related(
@@ -65,7 +82,7 @@ class RunPlayViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
         return self._paginate_player_filter(request, "player_id", "ball_carrier_id")
 
 
-class PassPlayViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
+class PassPlayViewSet(_TeamScopedMixin, ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """ViewSet for PassPlay CRUD operations."""
 
     queryset = PassPlay.objects.select_related(
@@ -87,7 +104,7 @@ class PassPlayViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
         return self._paginate_player_filter(request, "player_id", "receiver_id", is_complete=True)
 
 
-class DefenseSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
+class DefenseSnapViewSet(_TeamScopedMixin, ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """ViewSet for DefenseSnap CRUD operations."""
 
     queryset = DefenseSnap.objects.select_related(
@@ -109,7 +126,7 @@ class DefenseSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PuntSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
+class PuntSnapViewSet(_TeamScopedMixin, ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """ViewSet for PuntSnap CRUD operations."""
 
     queryset = PuntSnap.objects.select_related("game", "punter")
@@ -119,7 +136,7 @@ class PuntSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
     ordering_fields = ["sequence_number", "punt_yards", "created_at"]
 
 
-class KickoffSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
+class KickoffSnapViewSet(_TeamScopedMixin, ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """ViewSet for KickoffSnap CRUD operations."""
 
     queryset = KickoffSnap.objects.select_related("game", "kicker")
@@ -129,7 +146,7 @@ class KickoffSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
     ordering_fields = ["sequence_number", "kick_yards", "created_at"]
 
 
-class FieldGoalSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
+class FieldGoalSnapViewSet(_TeamScopedMixin, ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """ViewSet for FieldGoalSnap CRUD operations."""
 
     queryset = FieldGoalSnap.objects.select_related("game", "kicker", "holder")
@@ -139,7 +156,7 @@ class FieldGoalSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
     ordering_fields = ["sequence_number", "kick_distance", "created_at"]
 
 
-class ExtraPointSnapViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
+class ExtraPointSnapViewSet(_TeamScopedMixin, ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """ViewSet for ExtraPointSnap CRUD operations."""
 
     queryset = ExtraPointSnap.objects.select_related(

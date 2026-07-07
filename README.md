@@ -1,13 +1,14 @@
-# Sports-Man: Football Analytics API
+# Sports-Man: Football Analytics Platform
 
-A Django REST API for tracking American football game statistics at the individual play level.
+A Django application for tracking American football at the individual play level: a live game-day tracker, a server-rendered coaching frontend, and a REST API with database-level analytics.
 
 ## Features
 
+- **Live game tracker** — mobile-first play entry with a real-time field visualization. Server-authoritative game state (possession, down & distance, ball position, coin toss, quarter) survives reloads and crashes; every open tracker page syncs within ~4 seconds via lightweight polling; `?view=1` gives coaches and the press box a read-only live view. One-tap undo with exact score/state rewind.
 - **Play-by-play tracking** for Offense, Defense, and Special Teams
-- **Polymorphic models** for different play types (Run, Pass, Defense, Punt, Kickoff, Field Goal)
-- **Analytics reports** with database-level aggregation
-- **JWT authentication** with team-based access control
+- **Polymorphic models** for different play types (Run, Pass, Defense, Punt, Kickoff, Field Goal, Extra Point)
+- **Analytics reports** with database-level aggregation and version-keyed caching
+- **Dual interface** — session-authenticated web frontend and JWT-authenticated REST API, both team-scoped
 - **Docker deployment** optimized for local network access
 
 ## Quick Start
@@ -42,6 +43,7 @@ A Django REST API for tracking American football game statistics at the individu
    ```
 
 5. Access the application:
+   - Web app: http://localhost/
    - API Docs: http://localhost/api/docs/
    - Admin: http://localhost/admin/
    - Health: http://localhost/api/health/
@@ -56,7 +58,18 @@ To access from other devices on your network:
    ALLOWED_HOSTS=192.168.1.100,localhost,127.0.0.1
    ```
 3. Restart: `docker compose restart`
-4. Access from any device: `http://192.168.1.100/api/docs/`
+4. Access from any device: `http://192.168.1.100/`
+
+## Live Game Tracker
+
+Open a game and tap **Live Tracker**, or go directly to `/games/<id>/tracker/`.
+
+- **Operator flow:** record the coin toss (who won, receive/defer), then enter plays as they happen. The tracker advances down & distance, ball position, and possession automatically, handles touchdowns → extra points, safeties → free kicks, and turnovers, and keeps the score in sync.
+- **Multi-device:** any team member who opens the same tracker sees new plays and score changes within a few seconds. Append `?view=1` for a read-only viewer (press box, assistant coaches).
+- **Durable:** all live state is stored server-side (`GameState`); reloading a device mid-drive restores exactly where the game left off. Undo removes the last play and rewinds score and situation precisely — manual score corrections survive.
+- **Concurrency-safe:** play writes are serialized per game with row locking and a unique sequence constraint; duplicate submissions get an idempotent 409.
+
+Architecture, sync protocol, and query budgets are documented in [docs/DESIGN-live-tracker.md](docs/DESIGN-live-tracker.md).
 
 ## API Endpoints
 
@@ -66,7 +79,7 @@ To access from other devices on your network:
 - `POST /api/v1/auth/register/` - Register new user
 
 ### Teams
-- `GET/POST /api/v1/teams/` - List/Create teams
+- `GET/POST /api/v1/teams/` - List/Create teams (creation is staff-only)
 - `GET/PUT/DELETE /api/v1/teams/{id}/` - Team details
 - `GET/POST /api/v1/players/` - List/Create players
 - `GET/POST /api/v1/seasons/` - List/Create seasons
@@ -76,6 +89,9 @@ To access from other devices on your network:
 - `GET/PUT/DELETE /api/v1/games/{id}/` - Game details
 
 ### Snaps (Play-by-Play)
+
+Snap list endpoints use **cursor pagination** (`?cursor=`), not page numbers.
+
 - `GET/POST /api/v1/snaps/run/` - Rushing plays
 - `GET/POST /api/v1/snaps/pass/` - Passing plays
 - `GET/POST /api/v1/snaps/defense/` - Defensive plays
@@ -94,6 +110,13 @@ To access from other devices on your network:
 - `GET /api/v1/reports/defense/players/` - Player defense stats
 - `GET /api/v1/reports/special-teams/punting/totals/` - Punt stats
 - `GET /api/v1/reports/special-teams/kicking/totals/` - FG stats
+
+### Tracker (session auth, used by the live tracker page)
+
+- `POST /games/{id}/tracker/<play-type>/` - Record a play (run, pass, penalty, kickoff, punt, field-goal, extra-point, defense)
+- `POST /games/{id}/tracker/coin-toss/ · update-score/ · update-quarter/ · undo/` - Game-state management
+- `GET /games/{id}/tracker/state/?since=<version>&after_seq=<n>` - Polling endpoint for live sync
+- `GET /games/{id}/tracker/plays/` - Recent-plays feed
 
 ## Development
 
@@ -120,6 +143,17 @@ To access from other devices on your network:
    python manage.py runserver
    ```
 
+### Sample Data
+
+```bash
+# Roster, two seasons of games, and a ready-to-track live game
+# (creates users: admin/admin1234, coach/coach1234 — DEBUG only)
+python manage.py seed_dev_data          # add --reset to start clean
+
+# Drive the live game with a scripted quarter of plays
+python manage.py simulate_quarter
+```
+
 ### Running Tests
 
 ```bash
@@ -130,74 +164,48 @@ pytest
 pytest --cov=apps --cov-report=html
 
 # Run specific test file
-pytest tests/unit/test_snap_models.py
+pytest tests/integration/test_tracker_endpoints.py
 
-# Run with verbose output
-pytest -v
-
-# Run only integration tests
+# Run only integration / unit tests
 pytest tests/integration/
-
-# Run only unit tests
 pytest tests/unit/
 ```
 
+> **Note:** template-rendering tests use `RequestFactory` + direct view calls
+> rather than the Django test client — the test client's template-context
+> capture is incompatible with Python 3.14 + Django 5.0.
+
 ## Test Suite
 
-The project includes comprehensive tests organized into unit and integration tests.
+Tests are organized into unit and integration suites.
 
 ### Unit Tests
 
-- **[test_snap_models.py](tests/unit/test_snap_models.py)** - Tests for all play-by-play models
-  - Run plays (basic, touchdown, fumble, penalty)
-  - Pass plays (complete, incomplete, sack, interception, thrown away)
-  - Defense snaps (tackle, TFL, sack, INT return, fumble recovery, assists)
-  - Special teams (punt, kickoff, field goal, extra point, 2PT conversions)
-
-- **[test_serializers.py](tests/unit/test_serializers.py)** - Serializer validation tests
-  - Team/Player/Season creation and validation
-  - Game serializers with computed fields
-  - Play serializers with cross-field validation (e.g., fumble_lost requires fumbled)
-
-- **[test_report_services.py](tests/unit/test_report_services.py)** - Analytics service tests
-  - Offense reports (rushing totals, passing stats, passer rating calculation)
-  - Defense reports (tackles, sacks, turnovers by player)
-  - Special teams reports (punting averages, FG percentages)
+- **[test_tracker_logic.py](tests/unit/test_tracker_logic.py)** / **[test_tracker_logic_outcomes.py](tests/unit/test_tracker_logic_outcomes.py)** — the pure play-rules state machine: down/distance/position math and scoring-as-data (TDs, safeties, blocked punts, defensive scores)
+- **[test_snap_models.py](tests/unit/test_snap_models.py)** — play-by-play model behavior
+- **[test_serializers.py](tests/unit/test_serializers.py)** — API serializer validation
+- **[test_report_services.py](tests/unit/test_report_services.py)** — analytics aggregation (rushing/passing totals, passer rating, defense, special teams)
+- **[test_cache_version.py](tests/unit/test_cache_version.py)** — the version-keyed cache contract (any snap/game change produces a new version)
+- **[test_dashboard_metrics.py](tests/unit/test_dashboard_metrics.py)** — dashboard metric computation
 
 ### Integration Tests
 
-- **[test_api.py](tests/integration/test_api.py)** - API endpoint tests
-  - Authentication requirements
-  - CRUD operations for teams, players, games
-  - Report endpoint filtering
-
-- **[test_game_simulation.py](tests/integration/test_game_simulation.py)** - Full game simulation
-  - Simulates a complete football game with 40+ plays across 4 quarters
-  - Q1: Opening kickoff, 8-play TD drive, opponent scores (7-7)
-  - Q2: Defensive stand, FG drive, halftime (10-7)
-  - Q3: Big play TD, defensive INT (17-7)
-  - Q4: Two-minute drill TD by opponent, victory formation (17-14 WIN)
-  - Validates all report services with real aggregated statistics
+- **[test_tracker_endpoints.py](tests/integration/test_tracker_endpoints.py)** — HTTP contract for every tracker endpoint: auth matrix, server-authoritative stamping, state transitions, score deltas, and all undo paths
+- **[test_tracker_polling.py](tests/integration/test_tracker_polling.py)** — the live-sync protocol: delta payloads, version bumps, idle-poll query budget
+- **[test_tracker_n_plus_one.py](tests/integration/test_tracker_n_plus_one.py)** — query-count regression guards for the feed and page load
+- **[test_report_pages.py](tests/integration/test_report_pages.py)** — report page auth + rendering
+- **[test_api.py](tests/integration/test_api.py)** — REST API CRUD and permissions
+- **[test_game_simulation.py](tests/integration/test_game_simulation.py)** — a complete simulated game validated against the report services
 
 ### Test Factories
 
-Test data is generated using Factory Boy. Available factories in [tests/factories.py](tests/factories.py):
+Test data is generated with Factory Boy — see [tests/factories/](tests/factories/). Factories are deterministic (fixed quarters/downs, 0–0 scores) so results never depend on creation order:
 
 ```python
-from tests.factories import (
-    TeamFactory,
-    PlayerFactory,
-    SeasonFactory,
-    GameFactory,
-    RunPlayFactory,
-    PassPlayFactory,
-)
+from tests.factories import TeamFactory, PlayerFactory, GameFactory, RunPlayFactory
 
-# Create a player on a specific team
 team = TeamFactory(name="Test Team")
 qb = PlayerFactory(team=team, position="QB")
-
-# Create a game with default season/team
 game = GameFactory(team_score=21, opponent_score=14)
 ```
 
@@ -217,8 +225,12 @@ game = GameFactory(team_score=21, opponent_score=14)
 sportsman/
 ├── apps/
 │   ├── accounts/        # User authentication & JWT
-│   ├── core/            # Shared utilities, pagination, permissions
-│   ├── games/           # Game & QuarterScore models
+│   ├── core/            # Shared utilities: cache, pagination, permissions, storage
+│   ├── frontend/        # Web app: views, dashboard, live tracker
+│   │   ├── tracker.py        # Tracker endpoints + GameState management
+│   │   ├── tracker_logic.py  # Pure play-rules state machine
+│   │   └── play_feed.py      # Batched snap serialization (shared by feed/poll/pages)
+│   ├── games/           # Game, GameState & QuarterScore models
 │   ├── reports/         # Analytics service layer
 │   │   └── services/    # Offense, Defense, Special Teams reports
 │   ├── snaps/           # Play-by-play tracking
@@ -226,6 +238,10 @@ sportsman/
 │   └── teams/           # Team, Player, Season models
 ├── api/
 │   └── v1/              # API v1 endpoints & URL routing
+├── static/
+│   └── js/tracker/      # Tracker client (ES modules: state, flow, forms, poll, ...)
+├── templates/           # Server-rendered frontend templates
+├── docs/                # Architecture docs (ADR-001, DESIGN-live-tracker)
 ├── sportsman/
 │   └── settings/        # Environment-specific configs
 │       ├── base.py      # Shared settings
@@ -234,20 +250,21 @@ sportsman/
 │       ├── production.py
 │       └── test.py
 ├── tests/
-│   ├── integration/     # API & full system tests
-│   │   ├── test_api.py
-│   │   └── test_game_simulation.py
-│   ├── unit/            # Model & service tests
-│   │   ├── test_report_services.py
-│   │   ├── test_serializers.py
-│   │   └── test_snap_models.py
+│   ├── integration/     # HTTP contract, polling, N+1 guards, full-game simulation
+│   ├── unit/            # State machine, models, services, cache
 │   ├── conftest.py      # Pytest fixtures
-│   └── factories.py     # Factory Boy test data
+│   └── factories/       # Factory Boy test data
 ├── scripts/             # Backup & deployment scripts
 ├── docker-compose.yml
 ├── Dockerfile
 └── nginx.conf           # Reverse proxy config
 ```
+
+## Documentation
+
+- [docs/DESIGN-live-tracker.md](docs/DESIGN-live-tracker.md) — as-built design of the live tracker (state model, sync protocol, undo, performance budgets) and the future-improvements roadmap
+- [docs/FOOTBALL-SEMANTICS.md](docs/FOOTBALL-SEMANTICS.md) — the football rules ledger (NFHS): every rule the tracker enforces, simplifies, or does not model
+- [docs/ADR-001-system-architecture.md](docs/ADR-001-system-architecture.md) — whole-application architecture record
 
 ## License
 

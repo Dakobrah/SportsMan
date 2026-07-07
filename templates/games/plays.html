@@ -75,14 +75,14 @@
                             </td>
                             <td>
                                 {% if play.ball_position is not None %}
-                                {% if play.ball_position > 0 %}OPP {% endif %}{{ play.ball_position|abs }}
+                                {{ play.ball_position_display }}
                                 {% else %}
                                 <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge bg-{{ play.play_type_color }} me-2">{{ play.play_type }}</span>
-                                {{ play.description }}
+                                <span class="badge bg-{{ play.badge_color }} me-2">{{ play.type_label }}</span>
+                                {{ play.summary }}
                                 {% if play.is_touchdown %}
                                 <span class="badge bg-success ms-1">TD</span>
                                 {% endif %}
@@ -90,8 +90,8 @@
                                 <span class="badge bg-info ms-1">1st</span>
                                 {% endif %}
                             </td>
-                            <td class="fw-bold {% if play.yards_gained > 0 %}text-success{% elif play.yards_gained < 0 %}text-danger{% endif %}">
-                                {% if play.yards_gained > 0 %}+{% endif %}{{ play.yards_gained|default:"-" }}
+                            <td class="fw-bold {% if play.yards > 0 %}text-success{% elif play.yards < 0 %}text-danger{% endif %}">
+                                {% if play.yards > 0 %}+{% endif %}{{ play.yards|default:"-" }}
                             </td>
                             <td>
                                 <a href="{% url 'frontend:play_edit' play.id %}" class="btn btn-sm btn-link p-0">

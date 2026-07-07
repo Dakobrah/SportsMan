@@ -17,8 +17,10 @@ class GameFactory(DjangoModelFactory):
     location = "home"
     weather = "clear"
     field_condition = "grass"
-    team_score = factory.Faker("pyint", min_value=0, max_value=50)
-    opponent_score = factory.Faker("pyint", min_value=0, max_value=50)
+    # Deterministic scores — random values made result-dependent tests
+    # (records, streaks, undo floors) latently flaky.
+    team_score = 0
+    opponent_score = 0
 
 
 class QuarterScoreFactory(DjangoModelFactory):

@@ -27,14 +27,16 @@ class MobilePagination(PageNumberPagination):
 
 class SnapCursorPagination(CursorPagination):
     """
-    Cursor-based pagination for snap lists.
+    Cursor-based pagination for snap lists — avoids the COUNT(*) that
+    PageNumberPagination runs on every request and stays consistent under
+    concurrent inserts.
 
-    Use cursor pagination for:
-    - Large datasets with frequent inserts
-    - Infinite scroll UIs (mobile-friendly)
-    - Consistent ordering without offset drift
+    Ordering must be globally unique and stable: sequence_number is only
+    unique per game, so a global list ordered by it would skip/duplicate
+    rows at cursor boundaries. (-created_at, -id) is unique and matches
+    insertion order.
     """
 
     page_size = 20
-    ordering = "-sequence_number"
+    ordering = ("-created_at", "-id")
     cursor_query_param = "cursor"

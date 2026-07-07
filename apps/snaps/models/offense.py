@@ -41,12 +41,13 @@ class OffenseSnap(BaseSnap):
         - Run plays always set `play_result` to RUN.
         - Pass plays set to SACK when `was_sacked` is true, otherwise PASS.
         """
-        name = type(self).__name__
-        if name == 'RunPlay':
+        # Import locally to avoid circular import at module level.
+        from apps.snaps.models.offense import RunPlay, PassPlay
+        if isinstance(self, RunPlay):
             self.play_result = OffenseSnap.PlayResult.RUN
-        elif name == 'PassPlay':
+        elif isinstance(self, PassPlay):
             self.play_result = (
-                OffenseSnap.PlayResult.SACK if getattr(self, 'was_sacked', False)
+                OffenseSnap.PlayResult.SACK if self.was_sacked
                 else OffenseSnap.PlayResult.PASS
             )
         super().save(*args, **kwargs)

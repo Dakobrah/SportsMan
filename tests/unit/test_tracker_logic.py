@@ -82,7 +82,10 @@ class TestComputeNextStateRunPass:
     def test_safety_returns_safety_situation(self):
         state = compute_next_state(_state(2, 10, -45), 'run', {}, _result(yards_gained=-5, is_safety=True))
         assert state['situation'] == 'safety'
-        assert state['ball_position'] == -20
+        # After a safety we free-kick from our own 20.  In the -50…+50 coordinate
+        # frame, OWN 20 = -50 + 20 = -30.  ball_position -20 would be OWN 30, which
+        # is incorrect.  Confirmed against _ball_pos_display(-30) → "OWN 20".
+        assert state['ball_position'] == -30
 
     def test_ball_position_advances_correctly(self):
         state = compute_next_state(_state(1, 10, -30), 'run', {}, _result(yards_gained=8))
@@ -100,9 +103,15 @@ class TestComputeNextStateRunPass:
 
 class TestComputeNextStateSpecialTeams:
 
-    def test_kickoff_normal_returns_normal(self):
+    def test_kickoff_opponent_receives_returns_opponent_ball(self):
+        # ball_pos_after > 0 → ball is in the opponent's territory → they received → opponent_ball
         state = compute_next_state(_state(), 'kickoff', {'ball_pos_after': 25})
-        assert state == {'down': 1, 'distance': 10, 'ball_position': 25, 'situation': 'normal'}
+        assert state == {'down': 1, 'distance': 10, 'ball_position': 25, 'situation': 'opponent_ball'}
+
+    def test_kickoff_we_receive_returns_normal(self):
+        # ball_pos_after < 0 → ball is in our territory → we received → normal (we're on offense)
+        state = compute_next_state(_state(), 'kickoff', {'ball_pos_after': -25})
+        assert state == {'down': 1, 'distance': 10, 'ball_position': -25, 'situation': 'normal'}
 
     def test_kickoff_onside_recovered_is_normal(self):
         state = compute_next_state(
@@ -131,7 +140,7 @@ class TestComputeNextStateSpecialTeams:
     def test_field_goal_good_triggers_kickoff(self):
         state = compute_next_state(_state(4, 3, 20), 'field_goal', {'result': 'GOOD'})
         assert state['situation'] == 'kickoff'
-        assert state['ball_position'] == -15  # our OWN 35
+        assert state['ball_position'] == -10  # NFHS free kick from our OWN 40
 
     def test_field_goal_miss_gives_opponent_ball(self):
         state = compute_next_state(_state(4, 5, 20), 'field_goal', {'result': 'MISS'})
@@ -140,7 +149,7 @@ class TestComputeNextStateSpecialTeams:
     def test_extra_point_triggers_kickoff(self):
         state = compute_next_state({'down': None, 'distance': None, 'ball_position': 3}, 'extra_point', {})
         assert state['situation'] == 'kickoff'
-        assert state['ball_position'] == -15
+        assert state['ball_position'] == -10  # NFHS free kick from our OWN 40
 
 
 # ---------------------------------------------------------------------------

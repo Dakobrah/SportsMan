@@ -78,8 +78,8 @@ class KickoffSnapFilter(django_filters.FilterSet):
 class FieldGoalSnapFilter(django_filters.FilterSet):
     """Filter for FieldGoalSnap model."""
 
-    min_distance = django_filters.NumberFilter(field_name="distance", lookup_expr="gte")
-    max_distance = django_filters.NumberFilter(field_name="distance", lookup_expr="lte")
+    min_distance = django_filters.NumberFilter(field_name="kick_distance", lookup_expr="gte")
+    max_distance = django_filters.NumberFilter(field_name="kick_distance", lookup_expr="lte")
 
     class Meta:
         model = FieldGoalSnap

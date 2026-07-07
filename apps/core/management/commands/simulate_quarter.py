@@ -454,10 +454,5 @@ def _ds(state):
 
 def _fmt_pos(pos):
     """Format a ball_position integer as 'OWN 25' / 'OPP 14' / '50'."""
-    if pos is None:
-        return "--"
-    if pos == 0:
-        return "50"
-    if pos < 0:
-        return f"OWN {50 + pos}"
-    return f"OPP {50 - pos}"
+    from apps.frontend.play_feed import ball_pos_display
+    return ball_pos_display(pos) if pos is not None else "--"

@@ -66,6 +66,13 @@ class BaseSnap(PolymorphicModel, TimeStampedModel):
     )
     notes = models.TextField(blank=True)
 
+    # Undo metadata: how this snap changed the score, and the GameState
+    # snapshot taken just before the play was applied (scores excluded so
+    # manual score edits survive an undo).
+    score_delta_team = models.SmallIntegerField(default=0)
+    score_delta_opponent = models.SmallIntegerField(default=0)
+    prior_state = models.JSONField(null=True, blank=True)
+
     class Meta:
         db_table = "snaps"
         ordering = ["game", "sequence_number"]

@@ -30,9 +30,9 @@ class OffenseReportService(BaseReportService):
             avg_yards=AvgCoalesce("yards_gained", 0.0),
         )
 
-    def get_rushing_by_player(self) -> list[dict]:
-        """Per-player rushing statistics."""
-        return list(
+    def get_rushing_by_player(self, limit: int | None = None) -> list[dict]:
+        """Per-player rushing statistics. limit slices at the database."""
+        qs = (
             RunPlay.objects.filter(self.filters, ball_carrier__isnull=False)
             .values(*self.player_values("ball_carrier"))
             .annotate(
@@ -50,6 +50,9 @@ class OffenseReportService(BaseReportService):
             )
             .order_by("-yards")
         )
+        if limit is not None:
+            qs = qs[:limit]
+        return list(qs)
 
     def get_passing_totals(self) -> dict:
         """Team passing totals."""
@@ -66,9 +69,9 @@ class OffenseReportService(BaseReportService):
             longest=MaxCoalesce("yards_gained", 0, q=Q(is_complete=True)),
         )
 
-    def get_passing_by_quarterback(self) -> list[dict]:
-        """Per-QB passing statistics with passer rating."""
-        qb_stats = list(
+    def get_passing_by_quarterback(self, limit: int | None = None) -> list[dict]:
+        """Per-QB passing statistics with passer rating. limit slices at the database."""
+        qs = (
             PassPlay.objects.filter(self.filters, quarterback__isnull=False)
             .values(*self.player_values("quarterback"))
             .annotate(
@@ -86,6 +89,9 @@ class OffenseReportService(BaseReportService):
             )
             .order_by("-yards")
         )
+        if limit is not None:
+            qs = qs[:limit]
+        qb_stats = list(qs)
 
         # Calculate passer rating
         for stat in qb_stats:
@@ -118,9 +124,9 @@ class OffenseReportService(BaseReportService):
 
         return round(((a + b + c + d) / 6) * 100, 1)
 
-    def get_receiving_by_player(self) -> list[dict]:
-        """Per-receiver statistics."""
-        return list(
+    def get_receiving_by_player(self, limit: int | None = None) -> list[dict]:
+        """Per-receiver statistics. limit slices at the database."""
+        qs = (
             PassPlay.objects.filter(
                 self.filters, receiver__isnull=False, is_complete=True
             )
@@ -137,3 +143,6 @@ class OffenseReportService(BaseReportService):
             )
             .order_by("-yards")
         )
+        if limit is not None:
+            qs = qs[:limit]
+        return list(qs)

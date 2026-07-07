@@ -97,8 +97,20 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Manifest storage that also rewrites ES-module relative imports
+        # (the tracker JS) to hashed filenames.
+        "BACKEND": "apps.core.storage.ModuleAwareStaticStorage",
     },
+}
+
+# Cache — LocMem is per-worker; consumers use version-embedded keys
+# (apps.core.cache.data_version) so stale entries are never addressed and
+# TTL/LRU evicts them. No cross-worker invalidation needed.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "TIMEOUT": 300,
+    }
 }
 
 # Media files
@@ -150,12 +162,17 @@ REST_FRAMEWORK = {
 
 # JWT Settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),   # Was 8 h; short window limits stolen-token exposure
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
 }
+
+# Registration control
+# Set to True only if you want open self-registration (not recommended for K-12).
+# When False, only Django admin users can create accounts.
+REGISTRATION_ENABLED = False
 
 # OpenAPI Documentation
 SPECTACULAR_SETTINGS = {

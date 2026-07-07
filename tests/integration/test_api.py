@@ -39,9 +39,21 @@ class TestTeamEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == existing + 3
 
-    def test_create_team_success(self, authenticated_client):
-        """Create team with valid data."""
+    def test_create_team_requires_staff(self, authenticated_client):
+        """Non-staff users may not create teams (IsAdminOrReadOnly)."""
         response = authenticated_client.post(
+            "/api/v1/teams/",
+            {"name": "New Team", "abbreviation": "NT"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_team_as_staff(self, api_client):
+        """Staff can create teams with valid data."""
+        from tests.factories import UserFactory
+        api_client.force_authenticate(user=UserFactory(is_staff=True))
+
+        response = api_client.post(
             "/api/v1/teams/",
             {"name": "New Team", "abbreviation": "NT"},
         )

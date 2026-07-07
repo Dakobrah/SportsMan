@@ -7,17 +7,23 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth import get_user_model
+from apps.core.permissions import IsRegistrationEnabled
 from .serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer
 
 User = get_user_model()
 
 
 class RegisterView(generics.CreateAPIView):
-    """User registration endpoint."""
+    """
+    User registration endpoint.
+
+    Gated by settings.REGISTRATION_ENABLED (default: False for K-12 deployments).
+    When disabled, account creation goes through Django admin only.
+    """
 
     queryset = User.objects.all()
     serializer_class = UserCreateSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsRegistrationEnabled]
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):

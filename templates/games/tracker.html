@@ -24,49 +24,60 @@
     <!-- ===== SCOREBOARD ===== -->
     <header id="scoreboard" class="scoreboard">
         <div class="scoreboard-top-bar">
-            <a href="{% url 'frontend:game_detail' game.id %}" class="scoreboard-back" title="Back to game">
-                <i class="bi bi-chevron-left"></i>
+            <a href="{% url 'frontend:game_detail' game.id %}" class="scoreboard-back"
+               aria-label="Back to game detail">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
             </a>
             <span class="scoreboard-title">LIVE</span>
             <span class="scoreboard-dot"></span>
+            <span id="viewer-badge" class="viewer-badge hidden" aria-label="Read-only viewer mode">VIEWER</span>
         </div>
 
         <div class="scoreboard-main">
             <div class="scoreboard-team" id="team-side">
-                <div class="team-label">{{ team.abbreviation }}</div>
-                <div class="team-score" id="team-score">{{ game.team_score }}</div>
-                <div class="poss-indicator" id="team-poss"></div>
+                <div class="team-label" aria-hidden="true">{{ team.abbreviation }}</div>
+                <div class="team-score" id="team-score"
+                     role="button" tabindex="0"
+                     aria-label="{{ team.abbreviation }} score: {{ game.team_score }} — tap to edit">{{ game.team_score }}</div>
+                <div class="poss-indicator" id="team-poss" aria-hidden="true"></div>
             </div>
 
             <div class="scoreboard-divider">
-                <div class="quarter-badge" id="quarter-display" title="Tap to change quarter">Q1</div>
-                <div class="game-clock" id="down-distance-bar">
+                <div class="quarter-badge" id="quarter-display"
+                     role="button" tabindex="0"
+                     aria-label="Quarter 1 — tap to change">Q1</div>
+                <div class="game-clock" id="down-distance-bar" aria-live="polite" aria-atomic="true">
                     <span id="down-display">1st</span> &amp; <span id="distance-display">10</span>
                 </div>
             </div>
 
             <div class="scoreboard-team" id="opp-side">
-                <div class="team-label">{{ game.opponent }}</div>
-                <div class="team-score" id="opp-score">{{ game.opponent_score }}</div>
-                <div class="poss-indicator" id="opp-poss"></div>
+                <div class="team-label" aria-hidden="true">{{ game.opponent }}</div>
+                <div class="team-score" id="opp-score"
+                     role="button" tabindex="0"
+                     aria-label="{{ game.opponent }} score: {{ game.opponent_score }} — tap to edit">{{ game.opponent_score }}</div>
+                <div class="poss-indicator" id="opp-poss" aria-hidden="true"></div>
             </div>
         </div>
 
-        <!-- Field Position -->
-        <div class="field-viz">
+        <!-- Field Position (decorative — screen readers use scoreboard text for position) -->
+        <div class="field-viz" aria-hidden="true">
             <div class="field-endzone field-ez-home">{{ team.abbreviation }}</div>
             <div class="field-track">
                 <!-- Hash marks (10-yard and 1-yard intervals) -->
                 <div class="field-hash-marks" id="field-hash-marks"></div>
-                
+
+                <!-- Line of scrimmage (brown) -->
+                <div class="field-los-line" id="los-line" style="left:25%"></div>
+
                 <!-- First down indicator line (yellow) -->
                 <div class="field-first-down-line" id="first-down-line" style="left:35%"></div>
-                
+
                 <!-- Yard line numbers -->
                 <div class="field-yard-marks">
                     <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>40</span><span>30</span><span>20</span><span>10</span><span>0</span>
                 </div>
-                
+
                 <!-- Ball position marker -->
                 <div class="field-line" id="ball-marker" style="left: 25%">
                     <div class="field-ball"></div>
@@ -77,68 +88,45 @@
         </div>
     </header>
 
-    <!-- ===== COIN TOSS MODAL ===== -->
-    <div id="coin-toss-modal" class="modal hidden">
+    <!-- ===== COIN TOSS RECORDER MODAL ===== -->
+    <div id="coin-toss-modal" class="modal hidden"
+         role="dialog" aria-modal="true" aria-labelledby="coin-toss-title">
         <div class="modal-content">
-            <h2>Coin Toss</h2>
-            <p class="modal-subtitle">Who calls it?</p>
-            
-            <!-- Team Selection -->
-            <div class="team-choice-buttons" id="team-choice-buttons">
-                <button class="btn btn-lg btn-choice" data-team="home">
-                    <i class="bi bi-person"></i> {{ team.abbreviation }}
-                </button>
-                <button class="btn btn-lg btn-choice" data-team="away">
-                    <i class="bi bi-person"></i> {{ game.opponent }}
-                </button>
-            </div>
-            
-            <!-- Call Selection (Heads/Tails) -->
-            <div id="call-selection" class="call-choice-buttons hidden">
-                <p class="modal-text">What did <span id="calling-team-name"></span> call?</p>
-                <div class="coin-toss-buttons">
-                    <button class="btn btn-lg" id="coin-heads" data-result="heads">
-                        <i class="bi bi-coin"></i> Heads
+            <h2 id="coin-toss-title">Coin Toss</h2>
+
+            <!-- Step 1: who won the toss on the field -->
+            <div id="coin-winner-step">
+                <p class="modal-subtitle">Who won the toss?</p>
+                <div class="team-choice-buttons">
+                    <button class="btn btn-lg btn-choice" data-team="home">
+                        <i class="bi bi-person"></i> {{ team.abbreviation }}
                     </button>
-                    <button class="btn btn-lg" id="coin-tails" data-result="tails">
-                        <i class="bi bi-coin"></i> Tails
+                    <button class="btn btn-lg btn-choice" data-team="away">
+                        <i class="bi bi-person"></i> {{ game.opponent }}
                     </button>
                 </div>
             </div>
-            
-            <!-- Result Display -->
-            <div id="coin-result" class="coin-result-display hidden">
-                <p class="modal-text">Coin came up:</p>
-                <p class="coin-result-value" id="coin-result-value">HEADS</p>
-                <p class="modal-text" id="coin-winner"></p>
-                <button class="btn btn-lg btn-primary" id="coin-continue">
-                    Continue
-                </button>
-            </div>
-        </div>
-    </div>
 
-    <!-- ===== DEFER DECISION MODAL ===== -->
-    <div id="defer-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2>Coin Toss Winner</h2>
-            <p class="modal-subtitle" id="defer-team-msg">{{ team.abbreviation }} won the coin toss</p>
-            <p class="modal-text">Defer to second half or play first?</p>
-            <div class="defer-buttons">
-                <button class="btn btn-lg btn-primary" id="btn-defer" data-choice="defer">
-                    <i class="bi bi-skip-forward"></i> Defer
-                </button>
-                <button class="btn btn-lg btn-success" id="btn-play" data-choice="play">
-                    <i class="bi bi-play-fill"></i> Play First
-                </button>
+            <!-- Step 2: what the winner elected -->
+            <div id="coin-choice-step" class="hidden">
+                <p class="modal-subtitle"><span id="coin-choice-team"></span> elected to…</p>
+                <div class="defer-buttons">
+                    <button class="btn btn-lg btn-success" data-choice="receive">
+                        <i class="bi bi-download"></i> Receive
+                    </button>
+                    <button class="btn btn-lg btn-primary" data-choice="defer">
+                        <i class="bi bi-skip-forward"></i> Defer
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ===== OUR TOUCHDOWN MODAL ===== -->
-    <div id="team-td-modal" class="modal hidden">
+    <div id="team-td-modal" class="modal hidden"
+         role="dialog" aria-modal="true" aria-labelledby="team-td-title">
         <div class="modal-content td-modal td-modal--team">
-            <h2>Touchdown!</h2>
+            <h2 id="team-td-title">Touchdown!</h2>
             <p class="modal-subtitle">{{ team.abbreviation }} scored &mdash; +6</p>
             <p class="modal-text">Proceed to extra point attempt.</p>
             <div class="defer-buttons">
@@ -150,14 +138,18 @@
     </div>
 
     <!-- ===== OPPONENT TOUCHDOWN MODAL ===== -->
-    <div id="opponent-td-modal" class="modal hidden">
+    <div id="opponent-td-modal" class="modal hidden"
+         role="dialog" aria-modal="true" aria-labelledby="opp-td-title">
         <div class="modal-content td-modal td-modal--opp">
-            <h2>Opponent Touchdown!</h2>
+            <h2 id="opp-td-title">Opponent Touchdown!</h2>
             <p class="modal-subtitle">{{ game.opponent }} scored &mdash; +6</p>
-            <p class="modal-text">Did their extra point attempt succeed?</p>
+            <p class="modal-text">How did their conversion attempt go?</p>
             <div class="defer-buttons">
                 <button class="btn btn-lg btn-success" id="opp-ep-good">
-                    <i class="bi bi-check-lg"></i> Good (+1)
+                    <i class="bi bi-check-lg"></i> Kick (+1)
+                </button>
+                <button class="btn btn-lg btn-warning" id="opp-ep-two">
+                    <i class="bi bi-2-circle"></i> 2-Pt (+2)
                 </button>
                 <button class="btn btn-lg btn-outline-secondary" id="opp-ep-miss">
                     <i class="bi bi-x-lg"></i> No Good
@@ -167,7 +159,7 @@
     </div>
 
     <!-- ===== LIVE CONTENT ===== -->
-    <div class="view-inner">
+    <main class="view-inner" id="main-content" aria-label="Play entry">
 
         <!-- Play Type Buttons - Offense -->
         <div id="play-type-buttons-offense" class="play-grid">
@@ -222,22 +214,23 @@
             </div>
 
             <!-- Dynamic Form Area -->
-            <div id="play-form-area" class="form-area hidden"></div>
+            <div id="play-form-area" class="form-area hidden" aria-live="assertive" aria-atomic="false"></div>
 
             <!-- Recent Plays -->
-            <section class="recent-section">
+            <section class="recent-section" aria-label="Recent plays">
                 <div class="recent-header">
-                    <h6>Recent Plays</h6>
-                    <button id="undo-btn" class="undo-btn" title="Undo last play">
-                        <i class="bi bi-arrow-counterclockwise"></i> Undo
+                    <h6 aria-hidden="true">Recent Plays</h6>
+                    <button id="undo-btn" class="undo-btn" aria-label="Undo last play">
+                        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Undo
                     </button>
                 </div>
-                <div id="plays-feed" class="plays-feed">
+                <div id="plays-feed" class="plays-feed"
+                     aria-live="polite" aria-label="Play feed" aria-relevant="additions">
                     {% for snap in recent_plays %}
-                    <div class="feed-item">
+                    <div class="feed-item" data-seq="{{ snap.sequence_number }}">
                         <span class="feed-seq">#{{ snap.sequence_number }}</span>
                         <span class="feed-qtr">Q{{ snap.quarter }}</span>
-                        <span class="feed-desc">{{ snap }}</span>
+                        <span class="feed-desc">{{ snap.summary }}</span>
                     </div>
                     {% empty %}
                     <div class="feed-empty">
@@ -247,11 +240,11 @@
                     {% endfor %}
                 </div>
             </section>
-    </div>
+    </main>
 
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/tracker.js' %}"></script>
+<script type="module" src="{% static 'js/tracker/main.js' %}"></script>
 {% endblock %}

@@ -12,7 +12,6 @@ urlpatterns = [
 
     # Coin toss & game setup
     path('games/<int:pk>/tracker/coin-toss/', tracker.tracker_coin_toss, name='coin_toss'),
-    path('games/<int:pk>/tracker/defer-decision/', tracker.tracker_defer_decision, name='defer_decision'),
 
     # AJAX play creation endpoints
     path('games/<int:pk>/tracker/run/', tracker.tracker_add_run, name='add_run'),
@@ -26,6 +25,8 @@ urlpatterns = [
 
     # Game state endpoints
     path('games/<int:pk>/tracker/update-score/', tracker.tracker_update_score, name='update_score'),
+    path('games/<int:pk>/tracker/update-quarter/', tracker.tracker_update_quarter, name='update_quarter'),
     path('games/<int:pk>/tracker/undo/', tracker.tracker_undo_play, name='undo_play'),
     path('games/<int:pk>/tracker/plays/', tracker.tracker_recent_plays, name='recent_plays'),
+    path('games/<int:pk>/tracker/state/', tracker.tracker_state, name='state'),
 ]
