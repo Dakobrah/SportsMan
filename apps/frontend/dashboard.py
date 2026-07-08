@@ -177,10 +177,17 @@ def _compute_dashboard(current_season, team):
 @login_required
 def home(request):
     """Main dashboard view."""
-    current_season = Season.objects.order_by('-year').first()
-
-    # Use the user's team when available, otherwise fall back to the season's team
-    team = getattr(request.user, 'team', None) or (current_season.team if current_season else None)
+    # Scope the "current season" to the user's own team so the record/points
+    # KPIs and the team-scoped coaching metrics describe the SAME team. Picking
+    # the globally-latest season (any team) made the metrics filter
+    # (game__season=current_season AND game__season__team=team) match zero rows
+    # whenever the user's team didn't own that season — a blank metrics panel.
+    team = getattr(request.user, 'team', None)
+    if team:
+        current_season = Season.objects.filter(team=team).order_by('-year').first()
+    else:
+        current_season = Season.objects.order_by('-year').first()
+        team = current_season.team if current_season else None
 
     # Version-keyed cache: any snap/game change produces a new key, so a
     # short TTL only bounds memory, not staleness.
