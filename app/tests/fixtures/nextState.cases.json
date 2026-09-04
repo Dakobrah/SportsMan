@@ -1,0 +1,23 @@
+[
+ {"n":"td",            "s":{"down":2,"distance":5,"ball_position":45}, "t":"run",        "d":{}, "r":{"is_touchdown":true}},
+ {"n":"int",           "s":{"down":2,"distance":7,"ball_position":-30},"t":"pass",       "d":{}, "r":{"is_interception":true,"yards_gained":0}},
+ {"n":"fumble",        "s":{"down":3,"distance":4,"ball_position":-20},"t":"run",        "d":{}, "r":{"fumble_lost":true,"yards_gained":2}},
+ {"n":"kickoff",       "s":{"down":null,"distance":null,"ball_position":-15},"t":"kickoff","d":{}, "r":{}},
+ {"n":"punt",          "s":{"down":4,"distance":8,"ball_position":-35},"t":"punt",       "d":{"punt_yards":45}, "r":{}},
+ {"n":"punt_tb",       "s":{"down":4,"distance":8,"ball_position":-35},"t":"punt",       "d":{"punt_yards":55,"is_touchback":true}, "r":{}},
+ {"n":"fg_good",       "s":{"down":4,"distance":3,"ball_position":15}, "t":"field_goal", "d":{"result":"GOOD"}, "r":{}},
+ {"n":"fg_miss",       "s":{"down":4,"distance":3,"ball_position":15}, "t":"field_goal", "d":{"result":"MISS"}, "r":{}},
+ {"n":"xp",            "s":{"down":null,"distance":null,"ball_position":47},"t":"extra_point","d":{"result":"GOOD"}, "r":{}},
+ {"n":"pen_off",       "s":{"down":2,"distance":7,"ball_position":-30},"t":"penalty","d":{"penalty_yards":10,"on_offense":true,"accepted":true}, "r":{}},
+ {"n":"pen_declined",  "s":{"down":2,"distance":7,"ball_position":-30},"t":"penalty","d":{"penalty_yards":10,"on_offense":true,"accepted":false}, "r":{}},
+ {"n":"pen_auto_1st",  "s":{"down":3,"distance":8,"ball_position":-40},"t":"penalty","d":{"penalty_yards":12,"on_offense":false,"accepted":true,"auto_first_down":true}, "r":{}},
+ {"n":"pen_repeat",    "s":{"down":2,"distance":7,"ball_position":-30},"t":"penalty","d":{"penalty_yards":5,"on_offense":true,"accepted":true,"repeat_down":true}, "r":{}},
+ {"n":"pen_def_covers","s":{"down":3,"distance":4,"ball_position":-30},"t":"penalty","d":{"penalty_yards":5,"on_offense":false,"accepted":true}, "r":{}},
+ {"n":"run_1st",       "s":{"down":2,"distance":3,"ball_position":-25},"t":"run", "d":{}, "r":{"yards_gained":8,"is_first_down":true}},
+ {"n":"pass_1st",      "s":{"down":3,"distance":5,"ball_position":-40},"t":"pass","d":{}, "r":{"yards_gained":12,"is_first_down":true}},
+ {"n":"run_short",     "s":{"down":1,"distance":10,"ball_position":-25},"t":"run","d":{}, "r":{"yards_gained":4}},
+ {"n":"downs",         "s":{"down":4,"distance":3,"ball_position":-25},"t":"run","d":{}, "r":{"yards_gained":1}},
+ {"n":"clamp_own",     "s":{"down":1,"distance":10,"ball_position":-49},"t":"run","d":{}, "r":{"yards_gained":-2}},
+ {"n":"clamp_opp",     "s":{"down":1,"distance":10,"ball_position":49},"t":"run","d":{}, "r":{"yards_gained":2,"is_first_down":true}},
+ {"n":"in_bounds",     "s":{"down":1,"distance":10,"ball_position":-48},"t":"run","d":{}, "r":{"yards_gained":2}}
+]
