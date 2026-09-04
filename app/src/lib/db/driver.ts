@@ -5,8 +5,9 @@
  * line is plain SQL, which keeps the report queries readable next to the
  * Django ORM calls they were ported from.
  *
- * Two implementations exist: Capacitor SQLite on device, and `node:sqlite`
- * in tests. That is the point of the abstraction — every report query is
+ * Two implementations exist: `db/tauri.ts` on device (one rusqlite
+ * connection behind a Mutex, in src-tauri/src/db.rs), and `node:sqlite` in
+ * tests. That is the point of the abstraction — every report query is
  * exercised against a real SQLite engine in a plain Node process, with no
  * emulator and no build step.
  */

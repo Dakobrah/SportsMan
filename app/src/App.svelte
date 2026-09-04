@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { openDatabase } from './lib/db/capacitor';
+  import { openDatabase } from './lib/db/tauri';
 
   let status = $state('opening database…');
   let counts = $state<{ teams: number; games: number; snaps: number } | null>(null);

@@ -10,10 +10,14 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "tauri": "tauri",
+    "app": "tauri dev",
+    "app:build": "tauri build"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "@tauri-apps/cli": "^2.11.4",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.3",
     "@vitest/coverage-v8": "^4.1.11",
@@ -23,10 +27,10 @@
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
   },
+  "description": "Local-only football play-by-play tracker",
   "dependencies": {
-    "@capacitor-community/sqlite": "^8.1.1",
-    "@capacitor/cli": "^8.5.0",
-    "@capacitor/core": "^8.5.0"
-  },
-  "description": "Local-only football play-by-play tracker"
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.3",
+    "@tauri-apps/plugin-fs": "^2.5.2"
+  }
 }
