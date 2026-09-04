@@ -123,6 +123,7 @@
 
       cursor = outcome.cursor;
       teamScore = outcome.teamScore;
+      opponentScore = outcome.opponentScore;
       feed = [outcome.entry, ...feed].slice(0, FEED_LIMIT);
       savedLabel = `#${outcome.sequenceNumber} saved ${clock()}`;
 
@@ -146,6 +147,7 @@
       defaults = await recentPlayers(getDb(), gameId);
       cursor = outcome.cursor;
       teamScore = outcome.teamScore;
+      opponentScore = outcome.opponentScore;
       feed = feed.filter((entry) => entry.id !== outcome.removed.id);
       savedLabel = `#${outcome.removed.sequenceNumber} undone ${clock()}`;
       push('Play undone');

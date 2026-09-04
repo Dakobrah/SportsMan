@@ -157,6 +157,39 @@ describe('turnovers keep the ball where it is', () => {
     expect(theirGain.cursor.distance).toBe(2);
   });
 
+  it('moves the ball backwards on a sack and grows the distance', async () => {
+    const { db, gameId, roster } = await setup();
+
+    // 1st & 10 at our own 30, sacked for eight.
+    const out = await recordPlay(db, gameId,
+      { ...OPENING_CURSOR, down: 1, distance: 10, ballPosition: -20 },
+      { ...blankForm('pass'), quarterbackNumber: QB, wasSacked: true, yardsGained: 8 },
+      roster);
+
+    // A sack stores its loss in sackYards with yardsGained left at zero, and
+    // the state machine used to read that zero -- so a sack moved the ball
+    // nowhere and left the distance untouched. Replaying a real game showed
+    // 1st & 10 where the field said 2nd & 18.
+    expect(out.cursor.ballPosition).toBe(-28);
+    expect(out.cursor.down).toBe(2);
+    expect(out.cursor.distance).toBe(18);
+    expect(out.cursor.possession).toBe('us');
+  });
+
+  it('moves a sack the other way when they have the ball', async () => {
+    const { db, gameId, roster } = await setup();
+
+    const out = await recordPlay(db, gameId,
+      { ...OPENING_CURSOR, down: 2, distance: 7, ballPosition: 10, possession: 'them' },
+      { ...blankForm('pass'), quarterbackNumber: QB, wasSacked: true, yardsGained: 6 },
+      roster);
+
+    // They drive toward -50, so their loss moves the ball toward +50.
+    expect(out.cursor.ballPosition).toBe(16);
+    expect(out.cursor.down).toBe(3);
+    expect(out.cursor.distance).toBe(13);
+  });
+
   it('measures their goal-to-go against our end zone', async () => {
     const { db, gameId, roster } = await setup();
 

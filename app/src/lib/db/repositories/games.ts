@@ -1,6 +1,7 @@
 /** Games, their quarter scores, and the live tracker cursor. */
 import type { Database } from '../driver';
 import type { GameCursor } from '../../game/cursor';
+import type { Possession } from '../../game/field';
 import {
   BOOLEAN_COLUMNS,
   type FieldCondition,
@@ -217,28 +218,44 @@ export async function setScores(
   );
 }
 
+export interface Scores {
+  teamScore: number;
+  opponentScore: number;
+}
+
+export async function readScores(db: Database, id: number): Promise<Scores> {
+  const row = await db.get<{ team_score: number; opponent_score: number }>(
+    'SELECT team_score, opponent_score FROM games WHERE id = ?',
+    [id],
+  );
+  return { teamScore: row?.team_score ?? 0, opponentScore: row?.opponent_score ?? 0 };
+}
+
 /**
- * Apply a scoring play, or reverse one on undo. Clamped at zero, matching
- * Django. Note that after a manual score edit the clamp can make an undo
- * diverge from the score the plays imply — acceptable, since the coach's
- * manual value is the authoritative one.
+ * Apply a scoring play, or reverse one on undo.
+ *
+ * `side` is who scored, which is the team that had the ball -- not always
+ * us. Replaying a real game caught this: without it, both teams' points
+ * landed on our scoreboard and a 36-33 game finished 69-0.
+ *
+ * Clamped at zero, matching Django. After a manual score edit the clamp can
+ * make an undo diverge from the score the plays imply, which is acceptable:
+ * the coach's manual value is the authoritative one.
  */
-export async function addToTeamScore(
+export async function addScore(
   db: Database,
   id: number,
   delta: number,
-): Promise<number> {
+  side: Possession,
+): Promise<Scores> {
+  const column = side === 'us' ? 'team_score' : 'opponent_score';
   await db.run(
-    `UPDATE games SET team_score = MAX(0, team_score + ?),
+    `UPDATE games SET ${column} = MAX(0, ${column} + ?),
                       updated_at = datetime('now')
      WHERE id = ?`,
     [delta, id],
   );
-  const row = await db.get<{ team_score: number }>(
-    'SELECT team_score FROM games WHERE id = ?',
-    [id],
-  );
-  return row?.team_score ?? 0;
+  return readScores(db, id);
 }
 
 export async function listQuarterScores(

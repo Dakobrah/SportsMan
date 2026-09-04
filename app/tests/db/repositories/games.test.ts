@@ -4,13 +4,14 @@ import { seedGame } from '../../support/seed';
 import { createTeam } from '../../../src/lib/db/repositories/teams';
 import { createSeason } from '../../../src/lib/db/repositories/seasons';
 import {
-  addToTeamScore,
+  addScore,
   createGame,
   getGame,
   getGameContext,
   listGames,
   listQuarterScores,
   readGameCursor,
+  readScores,
   setScores,
   updateGame,
   upsertQuarterScore,
@@ -104,11 +105,24 @@ describe('games repository', () => {
     const db = await createTestDb();
     const { gameId } = await seedGame(db);
 
-    expect(await addToTeamScore(db, gameId, 6)).toBe(6);
-    expect(await addToTeamScore(db, gameId, 1)).toBe(7);
-    expect(await addToTeamScore(db, gameId, -1)).toBe(6);
+    expect(await addScore(db, gameId, 6, 'us')).toMatchObject({ teamScore: 6 });
+    expect(await addScore(db, gameId, 1, 'us')).toMatchObject({ teamScore: 7 });
+    expect(await addScore(db, gameId, -1, 'us')).toMatchObject({ teamScore: 6 });
     // Undoing past zero must not produce a negative score.
-    expect(await addToTeamScore(db, gameId, -50)).toBe(0);
+    expect(await addScore(db, gameId, -50, 'us')).toMatchObject({ teamScore: 0 });
+  });
+
+  it('credits the side that actually scored', async () => {
+    const db = await createTestDb();
+    const { gameId } = await seedGame(db);
+
+    // Replaying a real game caught points from both teams landing on ours.
+    await addScore(db, gameId, 6, 'us');
+    await addScore(db, gameId, 7, 'them');
+    expect(await addScore(db, gameId, 3, 'them')).toEqual({ teamScore: 6, opponentScore: 10 });
+
+    await addScore(db, gameId, -3, 'them');
+    expect(await readScores(db, gameId)).toEqual({ teamScore: 6, opponentScore: 7 });
   });
 
   it('sets either score independently', async () => {

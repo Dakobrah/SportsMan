@@ -11,7 +11,7 @@
  * unchanged.
  */
 import type { Database } from '../db/driver';
-import { addToTeamScore, getGameContext, readGameCursor, writeGameCursor } from '../db/repositories/games';
+import { addScore, getGameContext, readGameCursor, readScores, writeGameCursor } from '../db/repositories/games';
 import { rosterForGame } from '../db/repositories/players';
 import { deleteSnap, getSnap, insertSnap, lastSnap, listSnaps, type NewSnap } from '../db/repositories/snaps';
 import type { Game, Player, Season, Snap, Team } from '../db/repositories/types';
@@ -50,7 +50,9 @@ export interface RecordPlayOutcome {
   sequenceNumber: number;
   next: NextState;
   cursor: GameCursor;
+  /** Both sides, because either can score. */
   teamScore: number;
+  opponentScore: number;
   entry: FeedEntry;
 }
 
@@ -58,6 +60,7 @@ export interface UndoOutcome {
   removed: Snap;
   cursor: GameCursor;
   teamScore: number;
+  opponentScore: number;
 }
 
 export interface TrackerSnapshot {
@@ -252,10 +255,12 @@ export async function recordPlay(
   return db.transaction(async () => {
     const { id, sequenceNumber } = await insertSnap(db, gameId, toSnapRow(form, cursor, roster));
 
+    // Points go to whoever had the ball. Applying them to us regardless is
+    // how a 36-33 game replayed as 69-0.
     const points = pointsFor(form);
-    const teamScore = points
-      ? await addToTeamScore(db, gameId, points)
-      : ((await getGameContext(db, gameId))?.game.teamScore ?? 0);
+    const scores = points
+      ? await addScore(db, gameId, points, cursor.possession)
+      : await readScores(db, gameId);
 
     // Read the stored row back and advance from that, rather than from the
     // form. The cursor a reload rebuilds is then the same one returned here
@@ -277,7 +282,8 @@ export async function recordPlay(
       sequenceNumber,
       next,
       cursor: advanced,
-      teamScore,
+      teamScore: scores.teamScore,
+      opponentScore: scores.opponentScore,
       entry: toFeedEntry(snap, playerLookup(roster)),
     };
   });
@@ -296,16 +302,22 @@ export async function undoLastPlay(db: Database, gameId: number): Promise<UndoOu
     const snap = await lastSnap(db, gameId);
     if (!snap) throw new AppError('There is no play to undo.', 'nothing_to_undo');
 
+    // Take the points off the side that scored them, which the snap records.
     const points = pointsForSnap(snap);
     await deleteSnap(db, snap.id);
-    const teamScore = points
-      ? await addToTeamScore(db, gameId, -points)
-      : ((await getGameContext(db, gameId))?.game.teamScore ?? 0);
+    const scores = points
+      ? await addScore(db, gameId, -points, snap.possession)
+      : await readScores(db, gameId);
 
     const cursor = await rebuildCursor(db, gameId);
     await writeGameCursor(db, gameId, cursor);
 
-    return { removed: snap, cursor, teamScore };
+    return {
+      removed: snap,
+      cursor,
+      teamScore: scores.teamScore,
+      opponentScore: scores.opponentScore,
+    };
   });
 }
 

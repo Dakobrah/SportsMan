@@ -11,6 +11,7 @@
 import type { Database } from '../db/driver';
 import { lastSnap } from '../db/repositories/snaps';
 import type { Situation, Snap, SnapKind } from '../db/repositories/types';
+import { snapYardage } from './summary';
 import { FIRST_DOWN_DISTANCE, KICKOFF_TOUCHBACK_SPOT, type Possession } from './field';
 import {
   computeNextState,
@@ -90,7 +91,15 @@ export const snapToPlayData = (snap: Snap): PlayData => ({
 });
 
 export const snapToPlayResult = (snap: Snap): PlayResult => ({
-  yardsGained: snap.yardsGained,
+  /**
+   * A sack stores its loss in `sackYards` with `yardsGained` left at zero,
+   * matching Django's shape and what the passing reports expect. Feeding
+   * that zero to the state machine meant a sack moved the ball nowhere and
+   * never grew the distance -- replaying a real game showed 1st & 10 after
+   * an eight-yard sack where the field said 2nd & 18. `snapYardage` is the
+   * one definition of what a play actually moved the ball.
+   */
+  yardsGained: snapYardage(snap),
   isTouchdown: snap.isTouchdown,
   isFirstDown: snap.isFirstDown,
   isInterception: snap.isInterception,

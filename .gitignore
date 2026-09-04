@@ -78,3 +78,5 @@ backups/*.sql.gz
 # Tauri build output
 app/src-tauri/target/
 app/src-tauri/gen/
+
+# Replay tooling reads the nflverse CSV from .pbp-cache (already ignored).
