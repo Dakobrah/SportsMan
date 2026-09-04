@@ -21,9 +21,11 @@ import type { Database } from '../../src/lib/db/driver';
 import { createTeam } from '../../src/lib/db/repositories/teams';
 import { createSeason } from '../../src/lib/db/repositories/seasons';
 import { createPlayer, rosterForGame } from '../../src/lib/db/repositories/players';
-import { createGame, getGame } from '../../src/lib/db/repositories/games';
+import { createGame, getGame, readGameCursor } from '../../src/lib/db/repositories/games';
 import { listSnaps } from '../../src/lib/db/repositories/snaps';
 import { recordPlay } from '../../src/lib/game/recordPlay';
+import { rebuildCursor } from '../../src/lib/game/cursor';
+import { playerLookup, summarize } from '../../src/lib/game/summary';
 import type { GameCursor } from '../../src/lib/game/cursor';
 import { blankForm, type PlayForm } from '../../src/lib/game/playForm';
 import type { Player, Position } from '../../src/lib/db/repositories/types';
@@ -309,5 +311,109 @@ describe('replaying a real game', () => {
 
     expect(game?.teamScore).toBe(realUs);
     expect(game?.opponentScore).toBe(realThem);
+  });
+
+  it('produces the same offensive totals the game actually produced', async () => {
+    const db = await createTestDb();
+    const { gameId, roster } = await seedFromFixture(db);
+
+    for (const play of fixture.plays) {
+      const cursor = realCursor(play);
+      const form = toForm(play);
+      if (!cursor || !form) continue;
+      await recordPlay(db, gameId, cursor, form, roster as Player[]);
+    }
+
+    const ours = (await listSnaps(db, gameId)).filter((s) => s.possession === 'us');
+    const runs = ours.filter((s) => s.kind === 'RUN');
+    const passes = ours.filter((s) => s.kind === 'PASS');
+    const completions = passes.filter((s) => s.isComplete);
+
+    const mine = {
+      rushYards: runs.reduce((t, s) => t + s.yardsGained, 0),
+      rushAttempts: runs.length,
+      passYards: completions.reduce((t, s) => t + s.yardsGained, 0),
+      completions: completions.length,
+      attempts: passes.filter((s) => !s.wasSacked).length,
+      sacks: passes.filter((s) => s.wasSacked).length,
+      touchdowns: ours.filter((s) => s.isTouchdown).length,
+      interceptions: ours.filter((s) => s.isInterception).length,
+    };
+
+    // The same numbers straight off the source data.
+    const theirs = fixture.plays.filter((p) => p.posteam === US);
+    // A two-point run is a conversion attempt, not a rushing attempt: the
+    // tracker records it as an extra point, and so does the box score.
+    const realRuns = theirs.filter(
+      (p) => ['run', 'qb_kneel', 'qb_spike'].includes(p.play_type) && !p.two_point_conv_result,
+    );
+    const realPasses = theirs.filter((p) => p.play_type === 'pass' && !p.two_point_conv_result);
+    const real = {
+      rushYards: realRuns.reduce((t, p) => t + p.yards_gained, 0),
+      rushAttempts: realRuns.length,
+      passYards: realPasses.filter((p) => p.complete_pass).reduce((t, p) => t + p.yards_gained, 0),
+      completions: realPasses.filter((p) => p.complete_pass).length,
+      attempts: realPasses.filter((p) => !p.sack).length,
+      sacks: realPasses.filter((p) => p.sack).length,
+      touchdowns: theirs.filter((p) => p.touchdown && !p.return_touchdown).length,
+      interceptions: theirs.filter((p) => p.interception).length,
+    };
+
+    console.log(
+      `${US} offense — ours vs real\n` +
+      Object.keys(real).map((k) => {
+        const key = k as keyof typeof real;
+        const flag = mine[key] === real[key] ? ' ' : '!';
+        return `  ${flag} ${k.padEnd(14)} ${String(mine[key]).padStart(4)}  ${String(real[key]).padStart(4)}`;
+      }).join('\n'),
+    );
+
+    expect(mine).toEqual(real);
+  });
+
+  it('leaves a clean, replayable record of the game', async () => {
+    const db = await createTestDb();
+    const { gameId, roster } = await seedFromFixture(db);
+
+    for (const play of fixture.plays) {
+      const cursor = realCursor(play);
+      const form = toForm(play);
+      if (!cursor || !form) continue;
+      await recordPlay(db, gameId, cursor, form, roster as Player[]);
+    }
+
+    const snaps = await listSnaps(db, gameId);
+
+    // Sequence numbers are contiguous from one, with no gaps or repeats.
+    expect(snaps.map((s) => s.sequenceNumber)).toEqual(
+      Array.from({ length: snaps.length }, (_, i) => i + 1),
+    );
+
+    // Every play carries a side, and both sides are represented.
+    const sides = new Set(snaps.map((s) => s.possession));
+    expect(sides).toEqual(new Set(['us', 'them']));
+
+    // Our players are attributed; theirs are numbers without a link.
+    const ourRuns = snaps.filter((s) => s.kind === 'RUN' && s.possession === 'us');
+    const theirRuns = snaps.filter((s) => s.kind === 'RUN' && s.possession === 'them');
+    expect(ourRuns.some((s) => s.ballCarrierId !== null)).toBe(true);
+    expect(theirRuns.every((s) => s.ballCarrierId === null)).toBe(true);
+    expect(theirRuns.some((s) => s.ballCarrierNumber !== null)).toBe(true);
+
+    // Every play describes itself; none falls through to "Play #n".
+    const players = playerLookup(roster as Player[]);
+    const summaries = snaps.map((s) => summarize(s, players));
+    expect(summaries.filter((line) => /^Play #/.test(line))).toHaveLength(0);
+
+    // The cursor rebuilt from the plays matches the stored one, so a reload
+    // mid-game lands exactly where the coach left off.
+    expect(await rebuildCursor(db, gameId)).toEqual(await readGameCursor(db, gameId));
+
+    console.log(
+      `record: ${snaps.length} plays, ` +
+      `${snaps.filter((s) => s.possession === 'us').length} ours / ` +
+      `${snaps.filter((s) => s.possession === 'them').length} theirs\n` +
+      `  first: ${summaries[0]}\n  last:  ${summaries[summaries.length - 1]}`,
+    );
   });
 });
