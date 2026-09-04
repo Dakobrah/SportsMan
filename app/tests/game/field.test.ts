@@ -91,23 +91,3 @@ describe('rendering geometry', () => {
     }
   });
 });
-
-describe('hash marks', () => {
-  it('sits 70 feet 9 inches from each sideline, as the NFL specifies', () => {
-    expect(field.HASH_FROM_SIDELINE_FEET).toBeCloseTo(70.75, 6);
-    expect(field.FIELD_WIDTH_FEET).toBe(160);
-    expect(field.HASH_PCT).toBeCloseTo(44.21875, 6);
-  });
-
-  it('places the two rows 18 feet 6 inches apart, the width of the posts', () => {
-    const apartPct = 100 - field.HASH_PCT * 2;
-    const apartFeet = (apartPct / 100) * field.FIELD_WIDTH_FEET;
-    expect(apartFeet).toBeCloseTo(18.5, 6);
-  });
-
-  it('is symmetrical about the middle of the field', () => {
-    expect(field.HASH_PCT).toBeLessThan(50);
-    expect(100 - field.HASH_PCT).toBeCloseTo(100 - field.HASH_PCT, 6);
-    expect((field.HASH_PCT + (100 - field.HASH_PCT)) / 2).toBeCloseTo(50, 6);
-  });
-});

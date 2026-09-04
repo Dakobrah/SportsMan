@@ -1,7 +1,6 @@
 <script lang="ts">
   import {
     END_ZONE_PCT,
-    HASH_PCT,
     PLAYING_PCT,
     fieldPercent,
     toDisplay,
@@ -17,8 +16,8 @@
    * rendering and nothing else.
    *
    * The geometry lives in field.ts so it can be asserted rather than
-   * eyeballed: end zones outside the playing surface, and hash marks at the
-   * NFL's 70'9" from each sideline.
+   * eyeballed: end zones outside the playing surface, and one yard mark per
+   * yard along each sideline.
    */
   interface Props {
     ballPosition: number;
@@ -60,8 +59,8 @@
   <!-- The playing surface, so yard spacing is 1% per yard inside it. -->
   <div class="playing" style="left: {END_ZONE_PCT}%; width: {PLAYING_PCT}%">
     <div class="fives"></div>
-    <div class="hash" style="top: {HASH_PCT}%"></div>
-    <div class="hash" style="top: {100 - HASH_PCT}%"></div>
+    <div class="yardmarks top"></div>
+    <div class="yardmarks bottom"></div>
   </div>
 
   <!-- Goal lines: the edges of the playing surface. -->
@@ -103,16 +102,19 @@
     );
   }
 
-  /* Inbounds lines: one short tick per yard, in two rows at NFL spacing. */
-  .hash {
-    position: absolute; left: 0; right: 0; height: 9px;
-    transform: translateY(-50%);
+  /* One mark per yard along each sideline. The spacing is exact; the tick
+     length is exaggerated, since a true 2-foot mark would be about a pixel
+     at this size. */
+  .yardmarks {
+    position: absolute; left: 0; right: 0; height: 7px;
     background: repeating-linear-gradient(
       to right,
-      rgba(255, 255, 255, 0.4) 0 1px,
+      rgba(255, 255, 255, 0.38) 0 1px,
       transparent 1px 1%
     );
   }
+  .yardmarks.top { top: 0; }
+  .yardmarks.bottom { bottom: 0; }
 
   .endzone {
     position: absolute; top: 0; bottom: 0;

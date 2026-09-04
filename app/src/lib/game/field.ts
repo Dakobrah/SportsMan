@@ -195,16 +195,11 @@ export function fieldPercent(position: number, swapped = false): number {
 }
 
 /**
- * Hash marks, to NFL spec.
+ * Yard marks along each sideline.
  *
- * A regulation field is 160 feet wide and the inbounds lines sit 70 feet
- * 9 inches from each sideline -- which puts them 18 feet 6 inches apart, the
- * width of the goal posts. College (40 feet apart) and high school
- * (53 feet 4 inches) are wider; this draws the professional spacing.
- *
- * Expressed as a percentage of field width, which is the strip's HEIGHT in
- * the side-on view the tracker draws.
+ * A regulation field carries a short mark at every yard just inside each
+ * sideline. At the size this strip is drawn a true 2-foot mark would be
+ * about a pixel, so the tick LENGTH is exaggerated for legibility; the
+ * SPACING is exact, one per yard across the hundred-yard playing surface.
  */
-export const FIELD_WIDTH_FEET = 160;
-export const HASH_FROM_SIDELINE_FEET = 70 + 9 / 12;
-export const HASH_PCT = (HASH_FROM_SIDELINE_FEET / FIELD_WIDTH_FEET) * 100;
+export const SIDELINE_MARK_YARDS = 1;
