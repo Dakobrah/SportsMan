@@ -20,6 +20,11 @@ import { EXTRA_POINT_SPOT } from '../../src/lib/game/field';
 import { readGameCursor, writeGameCursor } from '../../src/lib/db/repositories/games';
 import { getPlayer } from '../../src/lib/db/repositories/players';
 
+/** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
+const RB = 22;
+const QB = 7;
+const K = 3;
+
 async function setup() {
   const db = await createTestDb();
   const { teamId, gameId } = await seedGame(db);
@@ -34,12 +39,12 @@ async function setup() {
 
 describe('tracker durability', () => {
   it('does not rewind a play across a reload', async () => {
-    const { db, gameId, rb, roster } = await setup();
+    const { db, gameId, roster } = await setup();
 
     // 1st & 10 on our own 25, twelve-yard gain.
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 12, isFirstDown: true },
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 12, isFirstDown: true },
       roster,
     );
     expect(out.cursor.ballPosition).toBe(-13);
@@ -51,18 +56,18 @@ describe('tracker durability', () => {
   });
 
   it('returns the cursor a reload would rebuild, for every kind of play', async () => {
-    const { db, gameId, rb, qb, k, roster } = await setup();
+    const { db, gameId, roster } = await setup();
 
     const forms: PlayForm[] = [
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 6 },
-      { ...blankForm('pass'), quarterbackId: qb, receiverId: rb, isComplete: true, yardsGained: 14, isFirstDown: true },
-      { ...blankForm('pass'), quarterbackId: qb, wasSacked: true, yardsGained: 6 },
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 6 },
+      { ...blankForm('pass'), quarterbackNumber: QB, receiverNumber: RB, isComplete: true, yardsGained: 14, isFirstDown: true },
+      { ...blankForm('pass'), quarterbackNumber: QB, wasSacked: true, yardsGained: 6 },
       { ...blankForm('penalty'), penaltyName: 'False Start', penaltyYards: 5, accepted: true, onOffense: true },
-      { ...blankForm('punt'), punterId: k, puntYards: 42 },
-      { ...blankForm('kickoff'), kickerId: k, kickYards: 60, isTouchback: true },
-      { ...blankForm('field_goal'), kickerId: k, kickDistance: 34, result: 'GOOD' },
-      { ...blankForm('extra_point'), attemptType: 'KICK', result: 'GOOD', kickerId: k },
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 30, isTouchdown: true },
+      { ...blankForm('punt'), punterNumber: K, puntYards: 42 },
+      { ...blankForm('kickoff'), kickerNumber: K, kickYards: 60, isTouchback: true },
+      { ...blankForm('field_goal'), kickerNumber: K, kickDistance: 34, result: 'GOOD' },
+      { ...blankForm('extra_point'), attemptType: 'KICK', result: 'GOOD', kickerNumber: K },
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 30, isTouchdown: true },
     ];
 
     let cursor = OPENING_CURSOR;
@@ -78,11 +83,11 @@ describe('tracker durability', () => {
   });
 
   it('keeps a quarter change that no play follows', async () => {
-    const { db, gameId, rb, roster } = await setup();
+    const { db, gameId, roster } = await setup();
 
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 5 },
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 5 },
       roster,
     );
 
@@ -94,25 +99,25 @@ describe('tracker durability', () => {
   });
 
   it('carries the quarter forward through later plays', async () => {
-    const { db, gameId, rb, roster } = await setup();
+    const { db, gameId, roster } = await setup();
 
     const first = await recordPlay(db, gameId, OPENING_CURSOR,
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 3 }, roster);
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 3 }, roster);
     await writeGameCursor(db, gameId, { ...first.cursor, quarter: 3 });
 
     const resumed = await loadTracker(db, gameId);
     const next = await recordPlay(db, gameId, resumed.cursor,
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 4 }, roster);
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 4 }, roster);
 
     expect(next.cursor.quarter).toBe(3);
     expect((await loadTracker(db, gameId)).cursor.quarter).toBe(3);
   });
 
   it('reopens the extra point after a reload mid-chain', async () => {
-    const { db, gameId, rb, roster } = await setup();
+    const { db, gameId, roster } = await setup();
 
     await recordPlay(db, gameId, OPENING_CURSOR,
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 40, isTouchdown: true }, roster);
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 40, isTouchdown: true }, roster);
 
     // Force-quit between the touchdown and the extra point.
     const reloaded = await loadTracker(db, gameId);
@@ -122,12 +127,12 @@ describe('tracker durability', () => {
   });
 
   it('leaves the stored cursor consistent after an undo', async () => {
-    const { db, gameId, rb, roster } = await setup();
+    const { db, gameId, roster } = await setup();
 
     let cursor = OPENING_CURSOR;
     for (const yards of [4, 9, 15]) {
       cursor = (await recordPlay(db, gameId, cursor,
-        { ...blankForm('run'), ballCarrierId: rb, yardsGained: yards }, roster)).cursor;
+        { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: yards }, roster)).cursor;
     }
 
     const undone = await undoLastPlay(db, gameId);
@@ -136,10 +141,10 @@ describe('tracker durability', () => {
   });
 
   it('rebuilds a usable cursor for a game whose cursor was never written', async () => {
-    const { db, gameId, rb, roster } = await setup();
+    const { db, gameId, roster } = await setup();
 
     await recordPlay(db, gameId, OPENING_CURSOR,
-      { ...blankForm('run'), ballCarrierId: rb, yardsGained: 7, isFirstDown: false }, roster);
+      { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 7, isFirstDown: false }, roster);
 
     // Simulate an imported game: plays present, cursor still at defaults.
     await writeGameCursor(db, gameId, OPENING_CURSOR);

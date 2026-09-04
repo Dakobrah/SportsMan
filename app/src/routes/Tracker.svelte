@@ -224,19 +224,19 @@
       <SpecialTeamsMenu onselect={openForm} onback={() => (panel = 'grid')} />
     {:else if form}
       {#if form.type === 'run'}
-        <RunFormView bind:form {roster} {busy} onsave={save} oncancel={cancelForm} />
+        <RunFormView bind:form {roster} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'pass'}
-        <PassFormView bind:form {roster} {busy} onsave={save} oncancel={cancelForm} />
+        <PassFormView bind:form {roster} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'penalty'}
         <PenaltyFormView bind:form {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'kickoff'}
-        <KickoffFormView bind:form {roster} {busy} onsave={save} oncancel={cancelForm} />
+        <KickoffFormView bind:form {roster} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'punt'}
-        <PuntFormView bind:form {roster} {busy} onsave={save} oncancel={cancelForm} />
+        <PuntFormView bind:form {roster} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'field_goal'}
-        <FieldGoalFormView bind:form {roster} {busy} onsave={save} oncancel={cancelForm} />
+        <FieldGoalFormView bind:form {roster} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'extra_point'}
-        <ExtraPointFormView bind:form {roster} {busy} onsave={save} oncancel={cancelForm} />
+        <ExtraPointFormView bind:form {roster} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
       {/if}
     {/if}
 

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { Player } from '../../../db/repositories/types';
+  import type { Player, Possession } from '../../../db/repositories/types';
   import { SELECT_POSITIONS, type RunForm } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
-  import PlayerSelect from '../PlayerSelect.svelte';
+  import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
@@ -10,17 +10,18 @@
   interface Props {
     form: RunForm;
     roster: Player[];
+    possession: Possession;
     busy: boolean;
     onsave: () => void;
     oncancel: () => void;
   }
-  let { form = $bindable(), roster, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, busy, onsave, oncancel }: Props = $props();
 </script>
 
 <FormShell type="run" {busy} {onsave} {oncancel}>
-  <PlayerSelect
-    label="Ball carrier" players={roster} positions={SELECT_POSITIONS.ballCarrier}
-    value={form.ballCarrierId} onchange={(v) => (form.ballCarrierId = v)}
+  <JerseyInput
+    label="Ball carrier" {roster} {possession} positions={SELECT_POSITIONS.ballCarrier}
+    value={form.ballCarrierNumber} onchange={(v) => (form.ballCarrierNumber = v)}
   />
   <YardsInput value={form.yardsGained} onchange={(v) => (form.yardsGained = v)} />
   <div class="toggles">

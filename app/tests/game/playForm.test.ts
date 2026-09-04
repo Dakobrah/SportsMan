@@ -25,15 +25,18 @@ describe('play forms', () => {
     expect(blankForm('field_goal')).toMatchObject({ kickDistance: 30, result: 'GOOD' });
     expect(blankForm('extra_point')).toMatchObject({ attemptType: 'KICK', result: 'GOOD' });
     expect(blankForm('penalty')).toMatchObject({ penaltyYards: 5, accepted: true });
-    expect(blankForm('run')).toMatchObject({ yardsGained: 0, ballCarrierId: null });
+    expect(blankForm('run')).toMatchObject({ yardsGained: 0, ballCarrierNumber: null });
   });
 
   it('starts every form empty of players and notes', () => {
     for (const type of ALL_TYPES) {
       const form = blankForm(type) as unknown as Record<string, unknown>;
       expect(form.notes).toBe('');
+      // Players are identified by the jersey number the coach types, so
+      // there are no id fields on a form at all.
       for (const key of Object.keys(form)) {
-        if (key.endsWith('Id')) expect(form[key]).toBeNull();
+        if (key.endsWith('Number') && key !== 'kickYards') expect(form[key]).toBeNull();
+        expect(key.endsWith('Id')).toBe(false);
       }
     }
   });

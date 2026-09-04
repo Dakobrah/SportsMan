@@ -8,12 +8,14 @@
  * the rain should get a legible message pointing at the field, not a CHECK
  * constraint failure.
  *
- * `validatePlayers` takes the roster as data rather than querying, so the
- * whole module stays pure and the tracker's already-loaded roster is reused.
+ * Jersey numbers are checked for range only, not roster membership. The app
+ * keeps one team's roster, but a game has two, and once possession is
+ * tracked the opponent's plays get recorded too -- so an unknown number is
+ * ordinary, not an error. The number is stored either way and the player
+ * link is set only when it resolves; see toSnapRow.
  */
-import type { Player } from '../db/repositories/types';
 import type { GameCursor } from './cursor';
-import type { PlayForm } from './playForm';
+import { JERSEY_MAX, JERSEY_MIN, type PlayForm } from './playForm';
 
 export interface FieldRange {
   min: number;
@@ -129,41 +131,43 @@ export function validateForm(form: PlayForm): void {
   }
 }
 
-/** Which form fields name a player, per kind. */
-function playerFields(form: PlayForm): [string, number | null][] {
+/** Which form fields hold a jersey number, per kind. */
+export function jerseyFields(form: PlayForm): [string, number | null][] {
   switch (form.type) {
     case 'run':
-      return [['ballCarrierId', form.ballCarrierId]];
+      return [['ballCarrierNumber', form.ballCarrierNumber]];
     case 'pass':
       return [
-        ['quarterbackId', form.quarterbackId],
-        ['receiverId', form.receiverId],
+        ['quarterbackNumber', form.quarterbackNumber],
+        ['receiverNumber', form.receiverNumber],
       ];
     case 'kickoff':
-      return [['kickerId', form.kickerId]];
+      return [['kickerNumber', form.kickerNumber]];
     case 'punt':
-      return [['punterId', form.punterId]];
+      return [['punterNumber', form.punterNumber]];
     case 'field_goal':
-      return [['kickerId', form.kickerId]];
     case 'extra_point':
-      return [['kickerId', form.kickerId]];
+      return [['kickerNumber', form.kickerNumber]];
     case 'penalty':
       return [];
   }
 }
 
 /**
- * Every player named on the play must be on this game's roster. Django
- * re-queried the database for this on every play; the tracker already holds
- * the roster, so it is a set lookup.
+ * Jersey numbers must be whole and in range. Deliberately NOT checked
+ * against the roster: an unrostered number is how the opponent's offence
+ * gets recorded at all.
  */
-export function validatePlayers(form: PlayForm, roster: Player[]): void {
-  const onRoster = new Set(roster.map((player) => player.id));
-  for (const [field, id] of playerFields(form)) {
-    if (id !== null && !onRoster.has(id)) {
+export function validateJerseys(form: PlayForm): void {
+  for (const [field, number] of jerseyFields(form)) {
+    if (number === null) continue;
+    if (!Number.isInteger(number)) {
+      throw new ValidationError('Jersey number must be a whole number.', 'not_an_integer', field);
+    }
+    if (number < JERSEY_MIN || number > JERSEY_MAX) {
       throw new ValidationError(
-        'That player is not on this game’s roster.',
-        'unknown_player',
+        `Jersey number must be between ${JERSEY_MIN} and ${JERSEY_MAX}.`,
+        'out_of_range',
         field,
       );
     }

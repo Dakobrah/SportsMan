@@ -6,16 +6,18 @@
  * here. tests/support/testDb.ts mirrors this list, reading the same files
  * from disk.
  *
- * At three entries this is still clearer written out than scanned from the
- * directory; revisit that when it reaches five.
+ * Written out rather than scanned from the directory: four entries is still
+ * clearer read than globbed, and the order is explicit.
  */
 import schemaV1 from './schema.sql?raw';
 import gameCursorV2 from './002_game_cursor.sql?raw';
 import possessionV3 from './003_possession.sql?raw';
+import jerseyNumbersV4 from './004_jersey_numbers.sql?raw';
 import type { Migration } from './migrate';
 
 export const migrations: Migration[] = [
   { version: 1, name: 'initial schema', sql: schemaV1 },
   { version: 2, name: 'game cursor', sql: gameCursorV2 },
   { version: 3, name: 'possession', sql: possessionV3 },
+  { version: 4, name: 'jersey numbers', sql: jerseyNumbersV4 },
 ];

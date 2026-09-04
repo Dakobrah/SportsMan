@@ -5,11 +5,10 @@ import {
   checkNumber,
   validateCursor,
   validateForm,
-  validatePlayers,
+  validateJerseys,
 } from '../../src/lib/game/validate';
 import { blankForm } from '../../src/lib/game/playForm';
 import { OPENING_CURSOR } from '../../src/lib/game/cursor';
-import { makePlayer } from '../support/snapFixture';
 
 describe('numeric ranges', () => {
   it('accepts both ends of every declared range', () => {
@@ -108,32 +107,41 @@ describe('form validation', () => {
   });
 });
 
-describe('player validation', () => {
-  const roster = [makePlayer({ id: 1, number: 22 }), makePlayer({ id: 2, number: 7, position: 'QB' })];
-
-  it('accepts players on the roster', () => {
-    expect(() => validatePlayers({ ...blankForm('run'), ballCarrierId: 1 }, roster)).not.toThrow();
-    expect(() =>
-      validatePlayers({ ...blankForm('pass'), quarterbackId: 2, receiverId: 1 }, roster),
-    ).not.toThrow();
-  });
-
-  it('accepts a play with nobody attached', () => {
-    expect(() => validatePlayers(blankForm('run'), roster)).not.toThrow();
-  });
-
-  it('rejects a player from another team and says which field', () => {
-    try {
-      validatePlayers({ ...blankForm('pass'), quarterbackId: 2, receiverId: 99 }, roster);
-      expect.unreachable('should have thrown');
-    } catch (error) {
-      const failure = error as ValidationError;
-      expect(failure.code).toBe('unknown_player');
-      expect(failure.field).toBe('receiverId');
+describe('jersey validation', () => {
+  it('accepts any number in range, on the roster or not', () => {
+    // The opponent's offence is never on our roster, so an unknown number
+    // has to be an ordinary answer rather than an error.
+    for (const number of [0, 1, 22, 99]) {
+      expect(() => validateJerseys({ ...blankForm('run'), ballCarrierNumber: number })).not.toThrow();
     }
   });
 
-  it('rejects everyone when the roster is empty', () => {
-    expect(() => validatePlayers({ ...blankForm('run'), ballCarrierId: 1 }, [])).toThrow();
+  it('accepts a play with nobody attached', () => {
+    expect(() => validateJerseys(blankForm('run'))).not.toThrow();
+    expect(() => validateJerseys(blankForm('pass'))).not.toThrow();
+  });
+
+  it('rejects a number outside 0-99 and says which field', () => {
+    try {
+      validateJerseys({ ...blankForm('pass'), quarterbackNumber: 7, receiverNumber: 100 });
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      const failure = error as ValidationError;
+      expect(failure.code).toBe('out_of_range');
+      expect(failure.field).toBe('receiverNumber');
+    }
+    expect(() => validateJerseys({ ...blankForm('run'), ballCarrierNumber: -1 })).toThrow();
+  });
+
+  it('rejects a fractional number', () => {
+    expect(() => validateJerseys({ ...blankForm('punt'), punterNumber: 2.5 })).toThrow(/whole number/);
+  });
+
+  it('checks every jersey field a form carries', () => {
+    expect(() => validateJerseys({ ...blankForm('field_goal'), kickerNumber: 250 })).toThrow();
+    expect(() => validateJerseys({ ...blankForm('kickoff'), kickerNumber: 250 })).toThrow();
+    expect(() => validateJerseys({ ...blankForm('extra_point'), kickerNumber: 250 })).toThrow();
+    // A penalty names nobody.
+    expect(() => validateJerseys({ ...blankForm('penalty'), penaltyName: 'Clipping' })).not.toThrow();
   });
 });

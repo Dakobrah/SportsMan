@@ -21,6 +21,8 @@ import { getGame } from '../../src/lib/db/repositories/games';
 import { countSnaps } from '../../src/lib/db/repositories/snaps';
 import type { Database } from '../../src/lib/db/driver';
 
+/** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
+
 let db: Database;
 let gameId: number;
 
@@ -149,7 +151,8 @@ describe('tracker', () => {
     await mounted();
 
     await user.click(screen.getByRole('button', { name: 'Run' }));
-    const yards = screen.getByRole('spinbutton');
+    // The run form now has two number inputs: the jersey and the yardage.
+    const yards = screen.getByLabelText('Yards gained');
     await user.clear(yards);
     await user.type(yards, '500');
     await user.click(screen.getByRole('button', { name: /Save Run Play/ }));
@@ -175,6 +178,62 @@ describe('tracker', () => {
     await user.click(screen.getByRole('button', { name: /Save Field Goal/ }));
     await waitFor(() => expect(screen.getByText('KICKOFF')).toBeInTheDocument());
     expect((await getGame(db, gameId))?.teamScore).toBe(3);
+  });
+
+  it('takes a ball carrier by jersey number and links one of ours', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+
+    const jersey = screen.getByLabelText(/Ball carrier/);
+    await user.type(jersey, '22');
+    // Matching the roster is shown inline rather than gating the entry.
+    await waitFor(() => expect(screen.getByText('Alex Danforth')).toBeInTheDocument());
+
+    await user.type(screen.getByLabelText('Yards gained'), '6');
+    await user.click(screen.getByRole('button', { name: /Save Run Play/ }));
+
+    await waitFor(() =>
+      expect(within(screen.getByRole('list')).getByText(/Danforth run for 6 yds/))
+        .toBeInTheDocument(),
+    );
+  });
+
+  it('offers roster numbers as one-tap chips', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    // #22 is our running back; the chip fills the field without typing.
+    await user.click(screen.getByRole('button', { name: '22' }));
+
+    expect(screen.getByLabelText(/Ball carrier/)).toHaveValue(22);
+    expect(screen.getByText('Alex Danforth')).toBeInTheDocument();
+  });
+
+  it('records an opponent carrier who is on no roster', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    // Give them the ball.
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.click(screen.getByRole('button', { name: 'INT' }));
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    // No chips now: our roster is meaningless for their offence.
+    expect(screen.queryByRole('button', { name: '22' })).not.toBeInTheDocument();
+    expect(screen.getByText('opponent')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/Ball carrier/), '40');
+    await user.type(screen.getByLabelText('Yards gained'), '8');
+    await user.click(screen.getByRole('button', { name: /Save Run Play/ }));
+
+    await waitFor(() =>
+      expect(within(screen.getByRole('list')).getByText('#40 run for 8 yds')).toBeInTheDocument(),
+    );
   });
 
   it('does not move the ball on screen when it is intercepted', async () => {

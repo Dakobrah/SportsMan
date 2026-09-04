@@ -21,10 +21,10 @@ import { type GameCursor, advance, cursorAfter, playTypeOf, rebuildCursor,
          snapToGameState, snapToPlayData, snapToPlayResult } from './cursor';
 import type { NextState } from './nextState';
 import { computeNextState } from './nextState';
-import type { PlayForm } from './playForm';
+import { playerByNumber, type PlayForm } from './playForm';
 import { pointsFor, pointsForSnap } from './score';
 import { playerLookup, snapYardage, summarize } from './summary';
-import { validateCursor, validateForm, validatePlayers } from './validate';
+import { validateCursor, validateForm, validateJerseys } from './validate';
 
 /** How many plays the live feed keeps on screen (tracker.js). */
 export const FEED_LIMIT = 15;
@@ -72,7 +72,15 @@ export interface TrackerSnapshot {
  * opponent's 15 and our own 47 — neither of which is where those plays
  * happen, and neither of which accounted for the opponent kicking.
  */
-export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
+export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] = []): NewSnap {
+  /**
+   * A jersey number becomes a player link only when we have the ball. Their
+   * #22 is a different person from ours, so resolving an opponent's number
+   * against our roster would attribute their carries to our running back.
+   */
+  const link = (number: number | null): number | null =>
+    cursor.possession === 'us' ? (playerByNumber(number, roster)?.id ?? null) : null;
+
   const header = {
     quarter: cursor.quarter,
     down: cursor.down,
@@ -87,7 +95,8 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
     case 'run':
       return {
         ...header, kind: 'RUN',
-        ballCarrierId: form.ballCarrierId,
+        ballCarrierNumber: form.ballCarrierNumber,
+        ballCarrierId: link(form.ballCarrierNumber),
         yardsGained: form.yardsGained,
         isTouchdown: form.isTouchdown,
         isFirstDown: form.isFirstDown,
@@ -98,10 +107,12 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
     case 'pass':
       return {
         ...header, kind: 'PASS',
-        quarterbackId: form.quarterbackId,
-        receiverId: form.receiverId,
+        quarterbackNumber: form.quarterbackNumber,
+        quarterbackId: link(form.quarterbackNumber),
+        receiverNumber: form.receiverNumber,
+        receiverId: link(form.receiverNumber),
         // Django set target and receiver to the same player (tracker.py:523).
-        targetId: form.receiverId,
+        targetId: link(form.receiverNumber),
         isComplete: form.isComplete,
         // A sack's loss lives in sackYards, so the gain is zero.
         yardsGained: form.wasSacked ? 0 : form.yardsGained,
@@ -129,7 +140,8 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
       return {
         ...header, kind: 'KICKOFF',
         down: null, distance: null, ballPosition: kickoffSpotFor(cursor.possession),
-        kickerId: form.kickerId,
+        kickerNumber: form.kickerNumber,
+        kickerId: link(form.kickerNumber),
         kickYards: form.kickYards,
         isTouchback: form.isTouchback,
         isOnsideKick: form.isOnsideKick,
@@ -139,7 +151,8 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
     case 'punt':
       return {
         ...header, kind: 'PUNT',
-        punterId: form.punterId,
+        punterNumber: form.punterNumber,
+        punterId: link(form.punterNumber),
         puntYards: form.puntYards,
         isTouchback: form.isTouchback,
         isBlocked: form.isBlocked,
@@ -149,7 +162,8 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
     case 'field_goal':
       return {
         ...header, kind: 'FG',
-        kickerId: form.kickerId,
+        kickerNumber: form.kickerNumber,
+        kickerId: link(form.kickerNumber),
         kickDistance: form.kickDistance,
         result: form.result,
       };
@@ -160,7 +174,8 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
         down: null, distance: null, ballPosition: extraPointSpotFor(cursor.possession),
         attemptType: form.attemptType,
         result: form.result,
-        kickerId: form.kickerId,
+        kickerNumber: form.kickerNumber,
+        kickerId: link(form.kickerNumber),
       };
   }
 }
@@ -189,10 +204,10 @@ export async function recordPlay(
   // Throws before anything is written, carrying the field to highlight.
   validateCursor(cursor);
   validateForm(form);
-  validatePlayers(form, roster);
+  validateJerseys(form);
 
   return db.transaction(async () => {
-    const { id, sequenceNumber } = await insertSnap(db, gameId, toSnapRow(form, cursor));
+    const { id, sequenceNumber } = await insertSnap(db, gameId, toSnapRow(form, cursor, roster));
 
     const points = pointsFor(form);
     const teamScore = points

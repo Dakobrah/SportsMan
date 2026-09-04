@@ -12,25 +12,36 @@ import type { Player, Snap } from '../db/repositories/types';
 
 export type PlayerLookup = ReadonlyMap<number, Player>;
 
-/** '#22 Danforth', or 'Unknown' when nobody was attached to the play. */
-function tag(id: number | null, players: PlayerLookup): string {
-  if (id === null) return 'Unknown';
-  const player = players.get(id);
-  return player ? `#${player.number} ${player.lastName}` : 'Unknown';
+/**
+ * '#22 Danforth' for one of ours, '#22' for anyone else.
+ *
+ * The bare number is the normal case for the opponent's offence, which has
+ * no roster here, so it must read as a real answer rather than a failure.
+ */
+function tag(id: number | null, number: number | null, players: PlayerLookup): string {
+  if (id !== null) {
+    const player = players.get(id);
+    if (player) return `#${player.number} ${player.lastName}`;
+  }
+  if (number !== null) return `#${number}`;
+  return 'Unknown';
 }
 
 export function summarize(snap: Snap, players: PlayerLookup): string {
   switch (snap.kind) {
     case 'RUN':
-      return `${tag(snap.ballCarrierId, players)} run for ${snap.yardsGained} yds`;
+      return `${tag(snap.ballCarrierId, snap.ballCarrierNumber, players)} run for ${snap.yardsGained} yds`;
 
     case 'PASS': {
-      const passer = tag(snap.quarterbackId, players);
+      const passer = tag(snap.quarterbackId, snap.quarterbackNumber, players);
       if (snap.wasSacked) return `${passer} sacked for ${snap.sackYards} yds`;
       if (snap.isInterception) return `${passer} INTERCEPTED`;
       if (snap.isComplete) {
-        const to = snap.receiverId !== null ? ` to ${tag(snap.receiverId, players)}` : '';
-        return `${passer}${to} for ${snap.yardsGained} yds`;
+        const receiver =
+          snap.receiverId !== null || snap.receiverNumber !== null
+            ? ` to ${tag(snap.receiverId, snap.receiverNumber, players)}`
+            : '';
+        return `${passer}${receiver} for ${snap.yardsGained} yds`;
       }
       return `${passer} pass incomplete`;
     }
@@ -55,7 +66,7 @@ export function summarize(snap: Snap, players: PlayerLookup): string {
       if (snap.defenseResult === 'PENALTY') {
         return `PENALTY: ${snap.penaltyDescription || 'on defense'}`;
       }
-      return `${tag(snap.primaryPlayerId, players)} ${snap.defenseResult ?? 'play'}`;
+      return `${tag(snap.primaryPlayerId, null, players)} ${snap.defenseResult ?? 'play'}`;
 
     default:
       return `Play #${snap.sequenceNumber}`;

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { Player } from '../../../db/repositories/types';
+  import type { Player, Possession } from '../../../db/repositories/types';
   import { SELECT_POSITIONS, type PassForm } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
-  import PlayerSelect from '../PlayerSelect.svelte';
+  import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
@@ -10,11 +10,12 @@
   interface Props {
     form: PassForm;
     roster: Player[];
+    possession: Possession;
     busy: boolean;
     onsave: () => void;
     oncancel: () => void;
   }
-  let { form = $bindable(), roster, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, busy, onsave, oncancel }: Props = $props();
 
   /** A sack is not a completion, and an interception is not either. */
   function toggleSack() {
@@ -56,14 +57,14 @@
 </script>
 
 <FormShell type="pass" {busy} {onsave} {oncancel}>
-  <PlayerSelect
-    label="Quarterback" players={roster} positions={SELECT_POSITIONS.quarterback}
-    value={form.quarterbackId} onchange={(v) => (form.quarterbackId = v)}
+  <JerseyInput
+    label="Quarterback" {roster} {possession} positions={SELECT_POSITIONS.quarterback}
+    value={form.quarterbackNumber} onchange={(v) => (form.quarterbackNumber = v)}
   />
   {#if !form.wasSacked}
-    <PlayerSelect
-      label="Receiver" players={roster} positions={SELECT_POSITIONS.receiver}
-      value={form.receiverId} onchange={(v) => (form.receiverId = v)}
+    <JerseyInput
+      label="Receiver" {roster} {possession} positions={SELECT_POSITIONS.receiver}
+      value={form.receiverNumber} onchange={(v) => (form.receiverNumber = v)}
     />
   {/if}
 

@@ -9,7 +9,7 @@
  * once, so exclusivity is a property of the type rather than something a
  * click handler has to maintain.
  */
-import type { Position } from '../db/repositories/types';
+import type { Player, Position } from '../db/repositories/types';
 
 export type PlayFormType =
   | 'run'
@@ -22,7 +22,9 @@ export type PlayFormType =
 
 export interface RunForm {
   type: 'run';
-  ballCarrierId: number | null;
+  /** The jersey number the coach typed. Resolved to a roster player only
+   *  when we have the ball -- their #22 is not our #22. */
+  ballCarrierNumber: number | null;
   yardsGained: number;
   isTouchdown: boolean;
   isFirstDown: boolean;
@@ -33,8 +35,8 @@ export interface RunForm {
 
 export interface PassForm {
   type: 'pass';
-  quarterbackId: number | null;
-  receiverId: number | null;
+  quarterbackNumber: number | null;
+  receiverNumber: number | null;
   isComplete: boolean;
   wasSacked: boolean;
   yardsGained: number;
@@ -58,7 +60,7 @@ export interface PenaltyForm {
 
 export interface KickoffForm {
   type: 'kickoff';
-  kickerId: number | null;
+  kickerNumber: number | null;
   kickYards: number;
   isTouchback: boolean;
   isOnsideKick: boolean;
@@ -68,7 +70,7 @@ export interface KickoffForm {
 
 export interface PuntForm {
   type: 'punt';
-  punterId: number | null;
+  punterNumber: number | null;
   puntYards: number;
   isTouchback: boolean;
   isBlocked: boolean;
@@ -78,7 +80,7 @@ export interface PuntForm {
 
 export interface FieldGoalForm {
   type: 'field_goal';
-  kickerId: number | null;
+  kickerNumber: number | null;
   kickDistance: number;
   result: 'GOOD' | 'MISS' | 'BLOCK';
   notes: string;
@@ -88,7 +90,7 @@ export interface ExtraPointForm {
   type: 'extra_point';
   attemptType: 'KICK' | '2PT_RUN' | '2PT_PASS';
   result: 'GOOD' | 'MISS';
-  kickerId: number | null;
+  kickerNumber: number | null;
   notes: string;
 }
 
@@ -141,12 +143,12 @@ export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { 
   switch (type) {
     case 'run':
       return {
-        type: 'run', ballCarrierId: null, yardsGained: 0,
+        type: 'run', ballCarrierNumber: null, yardsGained: 0,
         isTouchdown: false, isFirstDown: false, fumbled: false, fumbleLost: false, notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'pass':
       return {
-        type: 'pass', quarterbackId: null, receiverId: null,
+        type: 'pass', quarterbackNumber: null, receiverNumber: null,
         isComplete: false, wasSacked: false, yardsGained: 0,
         isTouchdown: false, isFirstDown: false, isInterception: false,
         fumbled: false, fumbleLost: false, notes: '',
@@ -158,21 +160,21 @@ export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { 
       } as Extract<PlayForm, { type: T }>;
     case 'kickoff':
       return {
-        type: 'kickoff', kickerId: null, kickYards: 60,
+        type: 'kickoff', kickerNumber: null, kickYards: 60,
         isTouchback: false, isOnsideKick: false, outOfBounds: false, notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'punt':
       return {
-        type: 'punt', punterId: null, puntYards: 40,
+        type: 'punt', punterNumber: null, puntYards: 40,
         isTouchback: false, isBlocked: false, outOfBounds: false, notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'field_goal':
       return {
-        type: 'field_goal', kickerId: null, kickDistance: 30, result: 'GOOD', notes: '',
+        type: 'field_goal', kickerNumber: null, kickDistance: 30, result: 'GOOD', notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'extra_point':
       return {
-        type: 'extra_point', attemptType: 'KICK', result: 'GOOD', kickerId: null, notes: '',
+        type: 'extra_point', attemptType: 'KICK', result: 'GOOD', kickerNumber: null, notes: '',
       } as Extract<PlayForm, { type: T }>;
     default: {
       const exhaustive: never = type;
@@ -180,3 +182,20 @@ export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { 
     }
   }
 }
+
+/** Jersey numbers are 0-99, and 0 is a legal number. */
+export const JERSEY_MIN = 0;
+export const JERSEY_MAX = 99;
+
+/**
+ * Find the roster player wearing `number`.
+ *
+ * Only meaningful for our own plays. The opponent's #22 has nothing to do
+ * with ours, so callers must not resolve against this roster when the other
+ * team has the ball -- see toSnapRow.
+ */
+export const playerByNumber = (
+  number: number | null,
+  roster: Player[],
+): Player | undefined =>
+  number == null ? undefined : roster.find((player) => player.number === number);

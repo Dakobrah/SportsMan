@@ -150,10 +150,13 @@ export interface Snap {
   fumbleRecoveredById: number | null;
 
   ballCarrierId: number | null;
+  ballCarrierNumber: number | null;
 
   quarterbackId: number | null;
+  quarterbackNumber: number | null;
   targetId: number | null;
   receiverId: number | null;
+  receiverNumber: number | null;
   isComplete: boolean;
   airYards: number;
   yardsAfterCatch: number;
@@ -175,12 +178,14 @@ export interface Snap {
   isDefensiveTouchdown: boolean;
 
   kickerId: number | null;
+  kickerNumber: number | null;
   holderId: number | null;
   result: KickResult | null;
   isTouchback: boolean;
   outOfBounds: boolean;
 
   punterId: number | null;
+  punterNumber: number | null;
   puntYards: number;
   hangTimeSeconds: number | null;
   isBlocked: boolean;
