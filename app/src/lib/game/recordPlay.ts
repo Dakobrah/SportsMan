@@ -21,7 +21,13 @@ import { type GameCursor, advance, cursorAfter, playTypeOf, rebuildCursor,
          snapToGameState, snapToPlayData, snapToPlayResult } from './cursor';
 import type { NextState } from './nextState';
 import { computeNextState } from './nextState';
-import { playerByNumber, type PlayForm } from './playForm';
+import {
+  emptyDefaults,
+  playerByNumber,
+  rememberPlayers,
+  type DefaultsByTeam,
+  type PlayForm,
+} from './playForm';
 import { pointsFor, pointsForSnap } from './score';
 import { playerLookup, snapYardage, summarize } from './summary';
 import { validateCursor, validateForm, validateJerseys } from './validate';
@@ -61,6 +67,43 @@ export interface TrackerSnapshot {
   roster: Player[];
   cursor: GameCursor;
   feed: FeedEntry[];
+  /** Who last filled each role, per side. */
+  defaults: DefaultsByTeam;
+}
+
+/**
+ * Rebuild the per-side player defaults from the plays already recorded.
+ *
+ * Read from the database rather than held in memory so they survive a
+ * reload, like everything else the tracker shows. Folded oldest-first, so
+ * the most recent non-null value for each role wins.
+ */
+export async function recentPlayers(
+  db: Database,
+  gameId: number,
+): Promise<DefaultsByTeam> {
+  const rows = await db.all<{
+    possession: 'us' | 'them';
+    quarterback_number: number | null;
+    receiver_number: number | null;
+    kicker_number: number | null;
+    punter_number: number | null;
+  }>(
+    `SELECT possession, quarterback_number, receiver_number,
+            kicker_number, punter_number
+     FROM snaps WHERE game_id = ? ORDER BY sequence_number ASC`,
+    [gameId],
+  );
+
+  const out = emptyDefaults();
+  for (const row of rows) {
+    const side = out[row.possession] ?? out.us;
+    if (row.quarterback_number !== null) side.quarterbackNumber = row.quarterback_number;
+    if (row.receiver_number !== null) side.receiverNumber = row.receiver_number;
+    if (row.kicker_number !== null) side.kickerNumber = row.kicker_number;
+    if (row.punter_number !== null) side.punterNumber = row.punter_number;
+  }
+  return out;
 }
 
 /**
@@ -279,14 +322,16 @@ export async function loadTracker(
   // database that predates it or came in through an import.
   const cursor = (await readGameCursor(db, gameId)) ?? (await rebuildCursor(db, gameId));
   const recent = await listSnaps(db, gameId, { order: 'desc', limit: FEED_LIMIT });
+  const defaults = await recentPlayers(db, gameId);
   const players = playerLookup(roster);
 
   return {
     ...context,
     roster,
     cursor,
+    defaults,
     feed: recent.map((snap) => toFeedEntry(snap, players)),
   };
 }
 
-export { cursorAfter };
+export { cursorAfter, rememberPlayers };

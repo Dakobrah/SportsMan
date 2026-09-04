@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type PuntForm } from '../../../game/playForm';
+  import { SELECT_POSITIONS, type PuntForm , type PlayDefaults } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
@@ -10,16 +10,18 @@
     form: PuntForm;
     roster: Player[];
     possession: Possession;
+    defaults: PlayDefaults;
     busy: boolean;
     onsave: () => void;
     oncancel: () => void;
   }
-  let { form = $bindable(), roster, possession, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, defaults, busy, onsave, oncancel }: Props = $props();
 </script>
 
 <FormShell type="punt" {busy} {onsave} {oncancel}>
   <JerseyInput label="Punter" {roster} {possession} positions={SELECT_POSITIONS.punter}
-               value={form.punterNumber} onchange={(v) => (form.punterNumber = v)} />
+               carried={form.punterNumber !== null && form.punterNumber === defaults.punterNumber}
+    value={form.punterNumber} onchange={(v) => (form.punterNumber = v)} />
   <label class="field">
     <span>Punt distance</span>
     <input type="number" inputmode="numeric" value={form.puntYards}

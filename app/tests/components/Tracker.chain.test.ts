@@ -23,6 +23,10 @@ import type { Database } from '../../src/lib/db/driver';
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
 
+/** Jersey numbers on the seeded roster. Forms take the number, not an id. */
+const QB = 7;
+const K = 3;
+
 let db: Database;
 let gameId: number;
 
@@ -234,6 +238,76 @@ describe('tracker', () => {
     await waitFor(() =>
       expect(within(screen.getByRole('list')).getByText('#40 run for 8 yds')).toBeInTheDocument(),
     );
+  });
+
+  it('carries the quarterback forward to the next pass', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.type(screen.getByLabelText(/Quarterback/), String(QB));
+    await user.click(screen.getByRole('button', { name: 'Complete' }));
+    await user.type(screen.getByLabelText('Yards gained'), '9');
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pass' })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+
+    // Same quarterback, already filled in, and flagged as carried over.
+    expect(screen.getByLabelText(/Quarterback/)).toHaveValue(QB);
+    expect(screen.getAllByText('↺ last play').length).toBeGreaterThan(0);
+  });
+
+  it('lets a carried-over player be replaced', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.type(screen.getByLabelText(/Quarterback/), String(QB));
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pass' })).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    const field = screen.getByLabelText(/Quarterback/);
+    await user.clear(field);
+    await user.type(field, '12');
+
+    expect(field).toHaveValue(12);
+    // No longer the remembered value, so the carried flag goes away.
+    expect(screen.queryByText('↺ last play')).not.toBeInTheDocument();
+  });
+
+  it('does not carry our players over to the opponent', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.type(screen.getByLabelText(/Quarterback/), String(QB));
+    await user.click(screen.getByRole('button', { name: 'INT' }));
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pass' })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+
+    // They have the ball now. Our quarterback says nothing about theirs.
+    expect(screen.getByLabelText(/Quarterback/)).toHaveValue(null);
+    expect(screen.queryByText('↺ last play')).not.toBeInTheDocument();
+  });
+
+  it('remembers the kicker across a scoring chain', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    await user.click(screen.getByRole('button', { name: 'Special Teams' }));
+    await user.click(screen.getByRole('button', { name: 'Field Goal' }));
+    await user.type(screen.getByLabelText(/Kicker/), String(K));
+    await user.click(screen.getByRole('button', { name: /Save Field Goal/ }));
+
+    // The kickoff opens itself, already holding the same kicker.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Save Kickoff/ })).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText(/Kicker/)).toHaveValue(K);
   });
 
   it('does not move the ball on screen when it is intercepted', async () => {

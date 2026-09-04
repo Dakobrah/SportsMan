@@ -199,3 +199,77 @@ export const playerByNumber = (
   roster: Player[],
 ): Player | undefined =>
   number == null ? undefined : roster.find((player) => player.number === number);
+
+/**
+ * Player numbers carried forward from earlier plays.
+ *
+ * One quarterback takes most of the snaps and one kicker takes all the
+ * kicks, so re-typing them every play is pure friction. The receiver is
+ * included because it is asked for, but note it is the one that genuinely
+ * changes play to play -- which is why a carried-over value is flagged in
+ * the UI rather than filled in silently.
+ *
+ * The ball carrier is deliberately NOT sticky: it varies as much as the
+ * receiver and has no positional reason to repeat.
+ */
+export interface PlayDefaults {
+  quarterbackNumber: number | null;
+  receiverNumber: number | null;
+  kickerNumber: number | null;
+  punterNumber: number | null;
+}
+
+export const NO_DEFAULTS: PlayDefaults = {
+  quarterbackNumber: null,
+  receiverNumber: null,
+  kickerNumber: null,
+  punterNumber: null,
+};
+
+/** Kept per side: the last quarterback we used says nothing about theirs. */
+export type DefaultsByTeam = Record<'us' | 'them', PlayDefaults>;
+
+export const emptyDefaults = (): DefaultsByTeam => ({
+  us: { ...NO_DEFAULTS },
+  them: { ...NO_DEFAULTS },
+});
+
+/** Pre-fill a blank form with whoever last filled each role. */
+export function applyDefaults<T extends PlayForm>(form: T, defaults: PlayDefaults): T {
+  switch (form.type) {
+    case 'pass':
+      return {
+        ...form,
+        quarterbackNumber: defaults.quarterbackNumber,
+        receiverNumber: defaults.receiverNumber,
+      };
+    case 'kickoff':
+    case 'field_goal':
+    case 'extra_point':
+      return { ...form, kickerNumber: defaults.kickerNumber };
+    case 'punt':
+      return { ...form, punterNumber: defaults.punterNumber };
+    default:
+      return form;
+  }
+}
+
+/** Fold a just-saved form into the running defaults for that side. */
+export function rememberPlayers(defaults: PlayDefaults, form: PlayForm): PlayDefaults {
+  switch (form.type) {
+    case 'pass':
+      return {
+        ...defaults,
+        quarterbackNumber: form.quarterbackNumber ?? defaults.quarterbackNumber,
+        receiverNumber: form.receiverNumber ?? defaults.receiverNumber,
+      };
+    case 'kickoff':
+    case 'field_goal':
+    case 'extra_point':
+      return { ...defaults, kickerNumber: form.kickerNumber ?? defaults.kickerNumber };
+    case 'punt':
+      return { ...defaults, punterNumber: form.punterNumber ?? defaults.punterNumber };
+    default:
+      return defaults;
+  }
+}

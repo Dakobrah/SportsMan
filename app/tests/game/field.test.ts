@@ -56,3 +56,58 @@ describe('field position', () => {
     expect(field.toDisplay(50)).toBe('OPP 0');
   });
 });
+
+describe('rendering geometry', () => {
+  it('puts the goal lines at the inside edge of each end zone', () => {
+    // The end zones sit outside the playing surface, not on top of it: our
+    // goal line is the boundary, not the 10-yard line.
+    expect(field.fieldPercent(field.OWN_GOAL)).toBeCloseTo(field.END_ZONE_PCT, 6);
+    expect(field.fieldPercent(field.OPPONENT_GOAL)).toBeCloseTo(100 - field.END_ZONE_PCT, 6);
+  });
+
+  it('reserves ten of a hundred and twenty yards for each end zone', () => {
+    expect(field.END_ZONE_PCT).toBeCloseTo(100 / 12, 6);
+    expect(
+      field.fieldPercent(field.OPPONENT_GOAL) - field.fieldPercent(field.OWN_GOAL),
+    ).toBeCloseTo(100 * (100 / 120), 6);
+  });
+
+  it('puts midfield in the middle', () => {
+    expect(field.fieldPercent(field.MIDFIELD)).toBeCloseTo(50, 6);
+  });
+
+  it('spaces yard lines evenly along the playing surface', () => {
+    const fromOurGoal = field.fieldPercent(-30) - field.fieldPercent(field.OWN_GOAL);
+    const fromTheirGoal = field.fieldPercent(field.OPPONENT_GOAL) - field.fieldPercent(30);
+    expect(fromOurGoal).toBeCloseTo(fromTheirGoal, 6);
+  });
+
+  it('mirrors the whole field when ends are swapped', () => {
+    for (const position of [field.OWN_GOAL, -25, field.MIDFIELD, 25, field.OPPONENT_GOAL]) {
+      expect(field.fieldPercent(position, true)).toBeCloseTo(
+        100 - field.fieldPercent(position),
+        6,
+      );
+    }
+  });
+});
+
+describe('hash marks', () => {
+  it('sits 70 feet 9 inches from each sideline, as the NFL specifies', () => {
+    expect(field.HASH_FROM_SIDELINE_FEET).toBeCloseTo(70.75, 6);
+    expect(field.FIELD_WIDTH_FEET).toBe(160);
+    expect(field.HASH_PCT).toBeCloseTo(44.21875, 6);
+  });
+
+  it('places the two rows 18 feet 6 inches apart, the width of the posts', () => {
+    const apartPct = 100 - field.HASH_PCT * 2;
+    const apartFeet = (apartPct / 100) * field.FIELD_WIDTH_FEET;
+    expect(apartFeet).toBeCloseTo(18.5, 6);
+  });
+
+  it('is symmetrical about the middle of the field', () => {
+    expect(field.HASH_PCT).toBeLessThan(50);
+    expect(100 - field.HASH_PCT).toBeCloseTo(100 - field.HASH_PCT, 6);
+    expect((field.HASH_PCT + (100 - field.HASH_PCT)) / 2).toBeCloseTo(50, 6);
+  });
+});

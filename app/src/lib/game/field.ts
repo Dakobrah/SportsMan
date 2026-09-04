@@ -170,3 +170,41 @@ export const isRedZoneFor = (position: number, team: Possession): boolean =>
 /** True when `team` has fewer than ten yards to the goal line. */
 export const isGoalToGoFor = (position: number, team: Possession): boolean =>
   yardsToGoalFor(position, team) < FIRST_DOWN_DISTANCE;
+
+// ---------------------------------------------------------------------------
+// Rendering geometry
+// ---------------------------------------------------------------------------
+
+/**
+ * A football field is 120 yards long: 100 of playing surface between two
+ * 10-yard end zones. The -50..+50 coordinate covers the PLAYING surface
+ * only, so it occupies the middle 100/120 of a drawn field and the end zones
+ * sit outside it.
+ *
+ * Drawing the end zones as overlays on the full width instead puts our goal
+ * line around the 10-yard line, which is exactly where the ball then appears
+ * to stop.
+ */
+export const END_ZONE_PCT = 100 / 12;
+export const PLAYING_PCT = 100 - END_ZONE_PCT * 2;
+
+/** Where `position` sits across the whole 120-yard graphic, as a percentage. */
+export function fieldPercent(position: number, swapped = false): number {
+  const along = END_ZONE_PCT + ((position + 50) / 100) * PLAYING_PCT;
+  return swapped ? 100 - along : along;
+}
+
+/**
+ * Hash marks, to NFL spec.
+ *
+ * A regulation field is 160 feet wide and the inbounds lines sit 70 feet
+ * 9 inches from each sideline -- which puts them 18 feet 6 inches apart, the
+ * width of the goal posts. College (40 feet apart) and high school
+ * (53 feet 4 inches) are wider; this draws the professional spacing.
+ *
+ * Expressed as a percentage of field width, which is the strip's HEIGHT in
+ * the side-on view the tracker draws.
+ */
+export const FIELD_WIDTH_FEET = 160;
+export const HASH_FROM_SIDELINE_FEET = 70 + 9 / 12;
+export const HASH_PCT = (HASH_FROM_SIDELINE_FEET / FIELD_WIDTH_FEET) * 100;

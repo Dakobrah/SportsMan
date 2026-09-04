@@ -18,9 +18,11 @@
     positions?: readonly Position[];
     possession: Possession;
     value: number | null;
+    /** True when this number came from an earlier play rather than this one. */
+    carried?: boolean;
     onchange: (value: number | null) => void;
   }
-  let { label, roster, positions, possession, value, onchange }: Props = $props();
+  let { label, roster, positions, possession, value, carried = false, onchange }: Props = $props();
 
   const ours = $derived(possession === 'us');
 
@@ -47,6 +49,7 @@
       {#if matched}<em class="who">{matched.firstName} {matched.lastName}</em>
       {:else if unmatched}<em class="who off">not on roster</em>
       {:else if !ours}<em class="who off">opponent</em>{/if}
+      {#if carried && value !== null}<em class="carried">↺ last play</em>{/if}
     </span>
     <input
       type="number" inputmode="numeric" enterkeyhint="done"
@@ -75,6 +78,12 @@
   .jersey { display: grid; gap: 0.5rem; }
   .who { font-style: normal; font-weight: 700; color: var(--t-green); margin-left: 0.35rem; }
   .who.off { color: var(--t-text-muted); font-weight: 500; }
+  /* A carried-over value is right most of the time and wrong occasionally,
+     so it has to be visible before the coach hits save. */
+  .carried {
+    font-style: normal; font-size: 0.75rem; font-weight: 700;
+    color: var(--t-amber); margin-left: 0.4rem;
+  }
   input { min-height: 52px; font-size: 1.15rem; font-weight: 700; }
 
   /* Same floor as the quick-yard chips: a gloved thumb must not catch the

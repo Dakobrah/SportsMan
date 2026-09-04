@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type FieldGoalForm } from '../../../game/playForm';
+  import { SELECT_POSITIONS, type FieldGoalForm , type PlayDefaults } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
@@ -10,11 +10,12 @@
     form: FieldGoalForm;
     roster: Player[];
     possession: Possession;
+    defaults: PlayDefaults;
     busy: boolean;
     onsave: () => void;
     oncancel: () => void;
   }
-  let { form = $bindable(), roster, possession, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, defaults, busy, onsave, oncancel }: Props = $props();
 
   // A union, so the three outcomes cannot both be set -- no exclusivity
   // bookkeeping needed.
@@ -27,7 +28,8 @@
 
 <FormShell type="field_goal" {busy} {onsave} {oncancel}>
   <JerseyInput label="Kicker" {roster} {possession} positions={SELECT_POSITIONS.kicker}
-               value={form.kickerNumber} onchange={(v) => (form.kickerNumber = v)} />
+               carried={form.kickerNumber !== null && form.kickerNumber === defaults.kickerNumber}
+    value={form.kickerNumber} onchange={(v) => (form.kickerNumber = v)} />
   <label class="field">
     <span>Kick distance</span>
     <input type="number" inputmode="numeric" value={form.kickDistance}
