@@ -5,6 +5,11 @@
  * Ported from the five `compute_*_bluf` functions in
  * `apps/core/helpers.py`. Those repeated the same count-and-pluralise
  * construction a dozen times; `unit()` below does it once.
+ *
+ * The input keys were snake_case on arrival, matching the Python. They are
+ * camelCase here like every other domain type in the app -- `toDomain` in
+ * db/repositories/types.ts exists precisely so snake_case stops at the
+ * database boundary.
  */
 
 /** "1 TD" / "2 TDs" — the plural defaults to the singular plus "s". */
@@ -46,19 +51,19 @@ export function passingBluf(data: PassingTotals): string {
 }
 
 export interface DefenseTotals {
-  total_tackles?: number;
-  total_tfl?: number;
-  total_sacks?: number;
-  total_interceptions?: number;
-  defensive_touchdowns?: number;
+  totalTackles?: number;
+  totalTfl?: number;
+  totalSacks?: number;
+  totalInterceptions?: number;
+  defensiveTouchdowns?: number;
 }
 
 export function defenseBluf(data: DefenseTotals): string {
-  const tackles = data.total_tackles ?? 0;
-  const tfl = data.total_tfl ?? 0;
-  const sacks = data.total_sacks ?? 0;
-  const interceptions = data.total_interceptions ?? 0;
-  const defensiveTouchdowns = data.defensive_touchdowns ?? 0;
+  const tackles = data.totalTackles ?? 0;
+  const tfl = data.totalTfl ?? 0;
+  const sacks = data.totalSacks ?? 0;
+  const interceptions = data.totalInterceptions ?? 0;
+  const defensiveTouchdowns = data.defensiveTouchdowns ?? 0;
 
   if (!tackles && !tfl && !sacks && !interceptions) {
     return 'No defensive stats recorded.';
@@ -92,11 +97,11 @@ export function fieldGoalBluf(data: FieldGoalTotals): string {
 
 export interface PuntTotals {
   punts?: number;
-  avg_yards?: number;
+  avgYards?: number;
   longest?: number;
 }
 
 export function puntBluf(data: PuntTotals): string {
   if (!data.punts) return 'No punts.';
-  return `${data.punts} punts, ${(data.avg_yards ?? 0).toFixed(1)} avg, longest ${data.longest ?? 0}`;
+  return `${data.punts} punts, ${(data.avgYards ?? 0).toFixed(1)} avg, longest ${data.longest ?? 0}`;
 }

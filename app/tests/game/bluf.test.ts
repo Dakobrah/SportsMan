@@ -68,19 +68,19 @@ describe('defenseBluf', () => {
   });
 
   it('leads with sacks and interceptions', () => {
-    const bluf = defenseBluf({ total_tackles: 40, total_sacks: 3, total_interceptions: 2 });
+    const bluf = defenseBluf({ totalTackles: 40, totalSacks: 3, totalInterceptions: 2 });
     expect(bluf).toContain('3 sacks');
     expect(bluf).toContain('2 INTs');
   });
 
   it('leads with a defensive touchdown', () => {
-    expect(defenseBluf({ total_tackles: 30, defensive_touchdowns: 1 })).toContain(
+    expect(defenseBluf({ totalTackles: 30, defensiveTouchdowns: 1 })).toContain(
       '1 defensive TD',
     );
   });
 
   it('falls back to the tackle count', () => {
-    expect(defenseBluf({ total_tackles: 45 })).toContain('45 total tackles');
+    expect(defenseBluf({ totalTackles: 45 })).toContain('45 total tackles');
   });
 });
 
@@ -115,17 +115,17 @@ describe('puntBluf', () => {
   });
 
   it('reports the average and longest', () => {
-    const bluf = puntBluf({ punts: 6, avg_yards: 45.0, longest: 58 });
+    const bluf = puntBluf({ punts: 6, avgYards: 45.0, longest: 58 });
     expect(bluf).toContain('6 punts, 45.0 avg');
     expect(bluf).toContain('longest 58');
   });
 
   it('formats a whole-number average to one decimal', () => {
-    expect(puntBluf({ punts: 4, avg_yards: 37.0, longest: 44 })).toContain('4 punts, 37.0 avg');
+    expect(puntBluf({ punts: 4, avgYards: 37.0, longest: 44 })).toContain('4 punts, 37.0 avg');
   });
 
   // Matches the Python, which did not special-case a single punt.
   it('does not pluralise punts specially', () => {
-    expect(puntBluf({ punts: 1, avg_yards: 42.0, longest: 42 })).toContain('1 punts, 42.0 avg');
+    expect(puntBluf({ punts: 1, avgYards: 42.0, longest: 42 })).toContain('1 punts, 42.0 avg');
   });
 });
