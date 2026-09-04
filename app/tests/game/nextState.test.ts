@@ -33,9 +33,9 @@ describe('computeNextState', () => {
       expect(result.ballPosition).toBe(EXTRA_POINT_SPOT);
     });
 
-    it('flips the field on an interception', () => {
+    it('hands the ball over on the spot after an interception', () => {
       const result = computeNextState(
-        { down: 2, distance: 7, ballPosition: -30 },
+        { down: 2, distance: 7, ballPosition: -30, possession: 'us' },
         'pass',
         {},
         { isInterception: true, yardsGained: 0 },
@@ -43,36 +43,59 @@ describe('computeNextState', () => {
       expect(result.situation).toBe('turnover');
       expect(result.down).toBe(1);
       expect(result.distance).toBe(10);
-      expect(result.ballPosition).toBe(30);
+      // The ball does not move. Django mirrored it to +30, so on screen it
+      // jumped the width of the field.
+      expect(result.ballPosition).toBe(-30);
+      expect(result.possession).toBe('them');
     });
 
-    it('flips the field on a lost fumble', () => {
+    it('hands the ball over where a lost fumble ended', () => {
       const result = computeNextState(
-        { down: 3, distance: 4, ballPosition: -20 },
+        { down: 3, distance: 4, ballPosition: -20, possession: 'us' },
         'run',
         {},
         { fumbleLost: true, yardsGained: 2 },
       );
       expect(result.situation).toBe('turnover');
-      expect(result.ballPosition).toBe(18);
+      // Fumbled forward two yards to our own 32; they take over there.
+      expect(result.ballPosition).toBe(-18);
+      expect(result.possession).toBe('them');
     });
   });
 
   describe('special teams', () => {
-    it('gives the receiving team their 25 on a kickoff', () => {
-      const result = computeNextState({ down: null, distance: null, ballPosition: -15 }, 'kickoff');
+    it('gives the receiving team their own 25 on a kickoff', () => {
+      const result = computeNextState(
+        { down: null, distance: null, ballPosition: -15, possession: 'us' },
+        'kickoff',
+      );
       expect(result.situation).toBe('normal');
-      expect(result.ballPosition).toBe(KICKOFF_TOUCHBACK_SPOT);
+      // We kicked, so they receive on THEIR 25, which is +25 here. Django
+      // returned -25, our own 25, wherever the kick came from.
+      expect(result.ballPosition).toBe(25);
+      expect(result.possession).toBe('them');
     });
 
-    it('flips the field on a returned punt', () => {
+    it('gives us their kickoff at our own 25', () => {
       const result = computeNextState(
-        { down: 4, distance: 8, ballPosition: -35 },
+        { down: null, distance: null, ballPosition: 15, possession: 'them' },
+        'kickoff',
+      );
+      expect(result.ballPosition).toBe(KICKOFF_TOUCHBACK_SPOT);
+      expect(result.possession).toBe('us');
+    });
+
+    it('leaves a punt where it landed and changes possession', () => {
+      const result = computeNextState(
+        { down: 4, distance: 8, ballPosition: -35, possession: 'us' },
         'punt',
         { puntYards: 45 },
       );
       expect(result.situation).toBe('opponent_ball');
-      expect(result.ballPosition).toBe(-10);
+      // 45 yards downfield from our own 15 is their 40. Django mirrored it.
+      expect(result.ballPosition).toBe(10);
+      expect(result.possession).toBe('them');
+      expect(result.distance).toBe(10);
     });
 
     it('gives the receiving team their 20 on a punt touchback', () => {
@@ -81,9 +104,20 @@ describe('computeNextState', () => {
         'punt',
         { puntYards: 55, isTouchback: true },
       );
-      // FIXED: Python returned -20, which is our own 30 under this
-      // convention. A punt touchback is the receiving team's own 20.
+      // A punt touchback is the RECEIVING team's own 20. We punted, so that
+      // is their 20 at +30. Django returned -20, our own 30.
+      expect(result.ballPosition).toBe(30);
+      expect(result.possession).toBe('them');
+    });
+
+    it('gives us our own 20 on their punt touchback', () => {
+      const result = computeNextState(
+        { down: 4, distance: 8, ballPosition: 35, possession: 'them' },
+        'punt',
+        { puntYards: 55, isTouchback: true },
+      );
       expect(result.ballPosition).toBe(PUNT_TOUCHBACK_SPOT);
+      expect(result.possession).toBe('us');
     });
 
     it('sends a good field goal to the kickoff', () => {
@@ -100,12 +134,15 @@ describe('computeNextState', () => {
 
     it('gives a missed field goal to the opponent at the spot', () => {
       const result = computeNextState(
-        { down: 4, distance: 3, ballPosition: 15 },
+        { down: 4, distance: 3, ballPosition: 15, possession: 'us' },
         'field_goal',
         { result: 'MISS' },
       );
       expect(result.situation).toBe('opponent_ball');
-      expect(result.ballPosition).toBe(-15);
+      // They take over where the kick was attempted. Django mirrored it.
+      expect(result.ballPosition).toBe(15);
+      expect(result.possession).toBe('them');
+      expect(result.distance).toBe(10);
     });
 
     it('sends an extra point to the kickoff', () => {
@@ -202,15 +239,18 @@ describe('computeNextState', () => {
       expect(result).toMatchObject({ down: 2, distance: 6, ballPosition: -21 });
     });
 
-    it('turns the ball over on downs after fourth', () => {
+    it('turns the ball over on downs where the ball stopped', () => {
       const result = computeNextState(
-        { down: 4, distance: 3, ballPosition: -25 },
+        { down: 4, distance: 3, ballPosition: -25, possession: 'us' },
         'run',
         {},
         { yardsGained: 1 },
       );
       expect(result.situation).toBe('turnover_on_downs');
-      expect(result.ballPosition).toBe(24);
+      // Stopped a yard short at our own 26; they take over right there.
+      expect(result.ballPosition).toBe(-24);
+      expect(result.possession).toBe('them');
+      expect(result.distance).toBe(10);
     });
 
     it('never reports a distance below one yard', () => {

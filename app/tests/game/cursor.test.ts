@@ -15,13 +15,16 @@ import { makeSnap } from '../support/snapFixture';
 describe('cursor', () => {
   it('opens first and ten on our own 25', () => {
     expect(OPENING_CURSOR).toEqual({
-      quarter: 1, down: 1, distance: 10, ballPosition: -25, situation: 'normal',
+      quarter: 1, down: 1, distance: 10, ballPosition: -25,
+      situation: 'normal', possession: 'us',
     });
   });
 
   it('carries the quarter through, because the state machine has no clock', () => {
     const cursor = { ...OPENING_CURSOR, quarter: 3 };
-    const next = advance(cursor, { down: 2, distance: 6, ballPosition: -21, situation: 'normal' });
+    const next = advance(cursor, {
+      down: 2, distance: 6, ballPosition: -21, situation: 'normal', possession: 'us',
+    });
     expect(next.quarter).toBe(3);
     expect(next).toMatchObject({ down: 2, distance: 6, ballPosition: -21 });
   });
@@ -90,7 +93,8 @@ describe('cursor', () => {
 
     const cursor = await rebuildCursor(db, gameId);
     expect(cursor).toEqual({
-      quarter: 2, down: 1, distance: 10, ballPosition: -13, situation: 'normal',
+      quarter: 2, down: 1, distance: 10, ballPosition: -13,
+      situation: 'normal', possession: 'us',
     });
   });
 });

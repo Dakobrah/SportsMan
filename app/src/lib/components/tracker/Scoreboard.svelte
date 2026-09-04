@@ -9,14 +9,16 @@
     opponentScore: number;
     cursor: GameCursor;
     savedLabel: string;
+    sidesSwapped: boolean;
     onback: () => void;
+    onswapsides: () => void;
     oneditTeamScore: () => void;
     oneditOpponentScore: () => void;
     oneditQuarter: () => void;
   }
   let {
-    teamAbbr, opponent, teamScore, opponentScore, cursor, savedLabel,
-    onback, oneditTeamScore, oneditOpponentScore, oneditQuarter,
+    teamAbbr, opponent, teamScore, opponentScore, cursor, savedLabel, sidesSwapped,
+    onback, onswapsides, oneditTeamScore, oneditOpponentScore, oneditQuarter,
   }: Props = $props();
 
   const ordinal = (down: number) => ['', '1st', '2nd', '3rd', '4th'][down] ?? String(down);
@@ -33,12 +35,16 @@
   <div class="topbar">
     <button class="back" onclick={onback} aria-label="Back to game">‹</button>
     <span class="live"><span class="dot"></span>LIVE</span>
+    <button class="swap" onclick={onswapsides} title="Swap ends (halftime)">⇄ Ends</button>
     <span class="saved">{savedLabel}</span>
   </div>
 
   <div class="main">
     <button class="side" onclick={oneditTeamScore}>
-      <span class="abbr">{teamAbbr}</span>
+      <span class="abbr">
+        {teamAbbr}
+        <span class="pip" class:on={cursor.possession === 'us'} aria-label={cursor.possession === 'us' ? 'has the ball' : ''}></span>
+      </span>
       <span class="score tabular">{teamScore}</span>
     </button>
 
@@ -52,12 +58,20 @@
     </div>
 
     <button class="side" onclick={oneditOpponentScore}>
-      <span class="abbr">{opponent}</span>
+      <span class="abbr">
+        {opponent}
+        <span class="pip" class:on={cursor.possession === 'them'} aria-label={cursor.possession === 'them' ? 'has the ball' : ''}></span>
+      </span>
       <span class="score tabular">{opponentScore}</span>
     </button>
   </div>
 
-  <FieldView ballPosition={cursor.ballPosition} />
+  <FieldView
+    ballPosition={cursor.ballPosition}
+    possession={cursor.possession}
+    {teamAbbr} {opponent}
+    swapped={sidesSwapped}
+  />
 </header>
 
 <style>
@@ -90,9 +104,21 @@
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
   @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
   .saved {
-    margin-left: auto; font-size: 0.7rem; color: var(--t-text-muted);
+    font-size: 0.7rem; color: var(--t-text-muted);
     font-variant-numeric: tabular-nums;
   }
+  .swap {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.08); border: none; color: #fff;
+    border-radius: 999px; padding: 0 10px; margin-right: 8px;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
+    min-height: 32px; cursor: pointer;
+  }
+  .pip {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: transparent; margin-left: 3px; vertical-align: middle;
+  }
+  .pip.on { background: #e07b28; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.5); }
 
   .main { display: flex; align-items: center; justify-content: space-between; padding: 2px 8px 8px; }
   .side {

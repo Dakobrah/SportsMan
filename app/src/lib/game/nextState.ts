@@ -1,27 +1,38 @@
 /**
  * Down-and-distance state machine.
  *
- * Ported from `apps/core/helpers.py:compute_next_state`, with the field
- * coordinates corrected. The Python version mixed two conventions: it
+ * Ported from `apps/core/helpers.py:compute_next_state`, with two families of
+ * correction.
+ *
+ * The first is coordinates. The Python version mixed two conventions: it
  * returned `35` for a kickoff spot and `-20` for a touchback, which under the
  * documented -50..+50 scheme mean "opponent's 15" and "our own 30" rather
- * than "our own 35" and "their own 20". Those are now expressed as named
- * spots from `field.ts` and are correct by construction.
+ * than "our own 35" and "their own 20". Those are now named spots from
+ * field.ts and correct by construction. It also left the first-down path
+ * unclamped, so a gain could put the ball past the goal line at +51.
  *
- * Also fixed: the original returned an unclamped position on the first-down
- * path, so a gain could put the ball past the goal line at +51. Clamping is
- * applied on every path here.
+ * The second is possession, and it is the bigger one. The original model was
+ * possession-relative: a change of possession mirrored the ball across
+ * midfield (`flip`), so an interception at the opponent's 20 re-read as our
+ * own 20 and the ball jumped the width of the field. On a real field a
+ * turnover moves nobody; the other team takes over on that spot and runs the
+ * other way. The frame here is absolute -- -50 is always the end zone we
+ * defend -- and `possession` says who is driving. A turnover therefore
+ * changes `possession` and the down, and leaves the ball where the play
+ * ended.
  */
 import {
-  EXTRA_POINT_SPOT,
   FIRST_DOWN_DISTANCE,
-  KICKOFF_SPOT,
-  KICKOFF_TOUCHBACK_SPOT,
-  PUNT_TOUCHBACK_SPOT,
+  type Possession,
+  advanceBy,
   clamp,
-  firstDownDistance,
-  flip,
-  yardsToGoal,
+  extraPointSpotFor,
+  firstDownDistanceFor,
+  kickoffSpotFor,
+  kickoffTouchbackSpotFor,
+  otherTeam,
+  puntTouchbackSpotFor,
+  yardsToGoalFor,
 } from './field';
 
 export type Situation =
@@ -45,6 +56,8 @@ export interface GameState {
   down: number | null;
   distance: number | null;
   ballPosition: number | null;
+  /** Who has the ball. Defaults to 'us' for states recorded before this existed. */
+  possession?: Possession;
 }
 
 export interface NextState {
@@ -52,6 +65,7 @@ export interface NextState {
   distance: number | null;
   ballPosition: number;
   situation: Situation;
+  possession: Possession;
 }
 
 /** Fields the client submits with a play. */
@@ -77,25 +91,45 @@ export interface PlayResult {
 
 const FINAL_DOWN = 4;
 
-/** A fresh set of downs at `ballPosition`, respecting goal-to-go. */
-function firstAndTen(ballPosition: number, situation: Situation): NextState {
+/** A fresh set of downs at `ballPosition` for `team`, respecting goal-to-go. */
+function firstAndTen(
+  ballPosition: number,
+  team: Possession,
+  situation: Situation,
+): NextState {
   const position = clamp(ballPosition);
   return {
     down: 1,
-    distance: firstDownDistance(position),
+    distance: firstDownDistanceFor(position, team),
     ballPosition: position,
     situation,
+    possession: team,
   };
 }
 
 /** A dead-ball state with no down — kickoffs and PATs. */
-function deadBall(ballPosition: number, situation: Situation): NextState {
-  return { down: null, distance: null, ballPosition: clamp(ballPosition), situation };
+function deadBall(
+  ballPosition: number,
+  team: Possession,
+  situation: Situation,
+): NextState {
+  return {
+    down: null,
+    distance: null,
+    ballPosition: clamp(ballPosition),
+    situation,
+    possession: team,
+  };
 }
 
-/** The opponent takes over at this spot, expressed from their point of view. */
-function possessionChange(ballPosition: number, situation: Situation): NextState {
-  return firstAndTen(flip(ballPosition), situation);
+/**
+ * The other team takes over.
+ *
+ * The ball does not move: only who is driving, and which way, changes. This
+ * is the single most important difference from the Django original.
+ */
+function turnover(ballPosition: number, from: Possession, situation: Situation): NextState {
+  return firstAndTen(ballPosition, otherTeam(from), situation);
 }
 
 export function computeNextState(
@@ -107,40 +141,55 @@ export function computeNextState(
   const down = current.down ?? 1;
   const distance = current.distance ?? FIRST_DOWN_DISTANCE;
   const ballPosition = current.ballPosition ?? 0;
+  const offense = current.possession ?? 'us';
   const yards = result.yardsGained ?? 0;
 
   // Scoring and turnovers short-circuit, whatever the play type was.
-  if (result.isTouchdown) return deadBall(EXTRA_POINT_SPOT, 'extra_point');
+  if (result.isTouchdown) {
+    // The scoring team keeps the ball for the try, snapped from the
+    // defending team's 3.
+    return deadBall(extraPointSpotFor(offense), offense, 'extra_point');
+  }
   if (result.isInterception || result.fumbleLost) {
-    return possessionChange(ballPosition + yards, 'turnover');
+    // Where the play ended, then possession changes. The spot is unchanged
+    // by the change itself.
+    return turnover(advanceBy(ballPosition, yards, offense), offense, 'turnover');
   }
 
   switch (playType) {
-    case 'kickoff':
+    case 'kickoff': {
       // A returned kick is recorded as its own play, so every kickoff lands
-      // the receiving team on their own 25 here.
-      return firstAndTen(KICKOFF_TOUCHBACK_SPOT, 'normal');
+      // the receiving team on their own 25.
+      const receiver = otherTeam(offense);
+      return firstAndTen(kickoffTouchbackSpotFor(receiver), receiver, 'normal');
+    }
 
-    case 'punt':
-      // Both branches state the result in the RECEIVING team's terms: a
-      // touchback is their own 20, and a returned punt is our spot flipped.
-      return playData.isTouchback
-        ? firstAndTen(PUNT_TOUCHBACK_SPOT, 'opponent_ball')
-        : possessionChange(ballPosition + (playData.puntYards ?? 0), 'opponent_ball');
+    case 'punt': {
+      const receiver = otherTeam(offense);
+      if (playData.isTouchback) {
+        return firstAndTen(puntTouchbackSpotFor(receiver), receiver, 'opponent_ball');
+      }
+      // The ball travels downfield in the punting team's direction, then the
+      // receiving team takes over on that spot.
+      const landed = advanceBy(ballPosition, playData.puntYards ?? 0, offense);
+      return firstAndTen(landed, receiver, 'opponent_ball');
+    }
 
     case 'field_goal':
       return playData.result === 'GOOD'
-        ? deadBall(KICKOFF_SPOT, 'kickoff')
-        : possessionChange(ballPosition, 'opponent_ball');
+        // The scoring team kicks off from its own 35.
+        ? deadBall(kickoffSpotFor(offense), offense, 'kickoff')
+        // A miss hands the ball over on the spot.
+        : turnover(ballPosition, offense, 'opponent_ball');
 
     case 'extra_point':
-      return deadBall(KICKOFF_SPOT, 'kickoff');
+      return deadBall(kickoffSpotFor(offense), offense, 'kickoff');
 
     case 'penalty':
-      return applyPenalty(down, distance, ballPosition, playData);
+      return applyPenalty(down, distance, ballPosition, offense, playData);
 
     default:
-      return applyScrimmagePlay(down, distance, ballPosition, yards, result);
+      return applyScrimmagePlay(down, distance, ballPosition, offense, yards, result);
   }
 }
 
@@ -148,6 +197,7 @@ function applyPenalty(
   down: number,
   distance: number,
   ballPosition: number,
+  offense: Possession,
   playData: PlayData,
 ): NextState {
   const penaltyYards = playData.penaltyYards ?? 0;
@@ -155,24 +205,31 @@ function applyPenalty(
 
   // A declined penalty is no play at all: the down still advances.
   if (playData.accepted === false) {
-    return { down: down + 1, distance, ballPosition: clamp(ballPosition), situation: 'normal' };
+    return {
+      down: down + 1,
+      distance,
+      ballPosition: clamp(ballPosition),
+      situation: 'normal',
+      possession: offense,
+    };
   }
 
-  // Against us the ball goes back and the distance grows; against them the
-  // reverse.
-  const direction = onOffense ? -1 : 1;
-  const newPosition = ballPosition + direction * penaltyYards;
-  const newDistance = distance - direction * penaltyYards;
+  // Against the team with the ball it goes backward and the distance grows;
+  // against the defence, the reverse. Both are expressed in the offence's
+  // direction of travel.
+  const signed = onOffense ? -penaltyYards : penaltyYards;
+  const newPosition = advanceBy(ballPosition, signed, offense);
+  const newDistance = distance - signed;
 
   if (playData.autoFirstDown || newDistance <= 0) {
-    return firstAndTen(newPosition, 'normal');
+    return firstAndTen(newPosition, offense, 'normal');
   }
-  const position = clamp(newPosition);
   return {
     down,
-    distance: Math.min(newDistance, yardsToGoal(position)),
-    ballPosition: position,
+    distance: Math.min(newDistance, yardsToGoalFor(newPosition, offense)),
+    ballPosition: newPosition,
     situation: 'normal',
+    possession: offense,
   };
 }
 
@@ -180,23 +237,26 @@ function applyScrimmagePlay(
   down: number,
   distance: number,
   ballPosition: number,
+  offense: Possession,
   yards: number,
   result: PlayResult,
 ): NextState {
-  const newPosition = ballPosition + yards;
+  const newPosition = advanceBy(ballPosition, yards, offense);
   const newDistance = distance - yards;
 
   if (result.isFirstDown || newDistance <= 0) {
-    return firstAndTen(newPosition, 'normal');
+    return firstAndTen(newPosition, offense, 'normal');
   }
   if (down + 1 > FINAL_DOWN) {
-    return possessionChange(newPosition, 'turnover_on_downs');
+    // Turnover on downs: the defence takes over exactly where the ball
+    // stopped, facing the other way.
+    return turnover(newPosition, offense, 'turnover_on_downs');
   }
-  const position = clamp(newPosition);
   return {
     down: down + 1,
-    distance: Math.max(Math.min(newDistance, yardsToGoal(position)), 1),
-    ballPosition: position,
+    distance: Math.max(Math.min(newDistance, yardsToGoalFor(newPosition, offense)), 1),
+    ballPosition: newPosition,
     situation: 'normal',
+    possession: offense,
   };
 }

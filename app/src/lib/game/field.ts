@@ -56,9 +56,10 @@ export function firstDownDistance(position: number): number {
 export const FIRST_DOWN_DISTANCE = 10;
 
 /**
- * The same spot of turf, seen by the other team.
+ * The mirror-image spot.
  *
- * Used on a change of possession: our +30 (their 20) becomes their -30.
+ * NOT used for changes of possession -- see the Possession section below for
+ * why. It remains only for rendering a mirrored field after a halftime swap.
  */
 export function flip(position: number): number {
   // `0 - position` rather than `-position`: negating zero yields -0, which
@@ -93,3 +94,79 @@ export const KICKOFF_TOUCHBACK_SPOT = ownYardLine(25);
 export const PUNT_TOUCHBACK_SPOT = ownYardLine(20);
 /** A PAT is snapped from the opponent's 3. */
 export const EXTRA_POINT_SPOT = opponentYardLine(3);
+
+
+// ---------------------------------------------------------------------------
+// Possession
+//
+// The coordinate above is ABSOLUTE: -50 is always the end zone we defend and
+// +50 is always the one we attack, for the whole game. Which team is holding
+// the ball is tracked separately.
+//
+// This matters, and it is the fix for a real bug. The original model was
+// possession-RELATIVE: a turnover mirrored the ball across midfield, so an
+// interception at the opponent's 20 re-read as our own 20 and the ball
+// jumped the width of the field on screen. On a real field an interception
+// moves nobody -- the other team simply takes over on that spot, running the
+// other way. Keeping the frame fixed and flipping `possession` instead is
+// what makes the tracker behave like the game.
+//
+// Teams change ends at halftime, but that is a rendering concern only (see
+// `sidesSwapped`); it does not touch a single stored coordinate.
+// ---------------------------------------------------------------------------
+
+/** Who has the ball. 'us' is the team this app is keeping book for. */
+export type Possession = 'us' | 'them';
+
+export const otherTeam = (team: Possession): Possession => (team === 'us' ? 'them' : 'us');
+
+/** The end zone `team` is trying to reach. */
+export const targetGoalOf = (team: Possession): number =>
+  team === 'us' ? OPPONENT_GOAL : OWN_GOAL;
+
+/** The end zone `team` is defending. */
+export const ownGoalOf = (team: Possession): number =>
+  team === 'us' ? OWN_GOAL : OPPONENT_GOAL;
+
+/**
+ * Move the ball `yards` in the direction `team` is driving.
+ *
+ * We drive toward +50, they drive toward -50, so their gains subtract.
+ */
+export const advanceBy = (position: number, yards: number, team: Possession): number =>
+  clamp(team === 'us' ? position + yards : position - yards);
+
+/** Distance from `position` to the end zone `team` is attacking. */
+export const yardsToGoalFor = (position: number, team: Possession): number =>
+  team === 'us' ? OPPONENT_GOAL - position : position - OWN_GOAL;
+
+/** Ten, unless `team`'s goal line is nearer -- then it is first and goal. */
+export const firstDownDistanceFor = (position: number, team: Possession): number =>
+  Math.min(FIRST_DOWN_DISTANCE, yardsToGoalFor(position, team));
+
+/** `team`'s own `yard` line, as an absolute position. */
+export const yardLineOf = (team: Possession, yard: number): number =>
+  team === 'us' ? OWN_GOAL + yard : OPPONENT_GOAL - yard;
+
+/** A kickoff is taken from the kicking team's own 35. */
+export const kickoffSpotFor = (kicker: Possession): number => yardLineOf(kicker, 35);
+
+/** A kickoff touchback gives the receiving team their own 25. */
+export const kickoffTouchbackSpotFor = (receiver: Possession): number =>
+  yardLineOf(receiver, 25);
+
+/** A punt touchback gives the receiving team their own 20. */
+export const puntTouchbackSpotFor = (receiver: Possession): number =>
+  yardLineOf(receiver, 20);
+
+/** A PAT is snapped from the defending team's 3, i.e. the scorer's opp 3. */
+export const extraPointSpotFor = (scorer: Possession): number =>
+  yardLineOf(otherTeam(scorer), 3);
+
+/** True when `team` is inside the opponent's 20. */
+export const isRedZoneFor = (position: number, team: Possession): boolean =>
+  yardsToGoalFor(position, team) <= 20;
+
+/** True when `team` has fewer than ten yards to the goal line. */
+export const isGoalToGoFor = (position: number, team: Possession): boolean =>
+  yardsToGoalFor(position, team) < FIRST_DOWN_DISTANCE;

@@ -41,10 +41,16 @@ afterEach(() => {
   clearToasts();
 });
 
-/** Wait for the scoreboard to appear, i.e. loadTracker has resolved. */
+/**
+ * Wait for the play grid, i.e. loadTracker has resolved and the tracker is
+ * at rest. The team abbreviation is not a usable signal: it appears in the
+ * scoreboard and again as the end-zone label on the field.
+ */
 async function mounted() {
   render(Tracker);
-  await waitFor(() => expect(screen.getByText('NSR')).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument(),
+  );
 }
 
 describe('tracker', () => {
@@ -53,9 +59,9 @@ describe('tracker', () => {
 
     expect(screen.getByText('Q1')).toBeInTheDocument();
     expect(screen.getByText('1st & 10')).toBeInTheDocument();
-    // The play-type grid is the resting state.
-    expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument();
     expect(screen.getByText('No plays yet. Pick a play type above.')).toBeInTheDocument();
+    // Both end zones are labelled and stay put for the whole game.
+    expect(screen.getAllByText('NSR').length).toBeGreaterThanOrEqual(2);
   });
 
   it('records a run and advances the down and distance', async () => {
@@ -169,6 +175,46 @@ describe('tracker', () => {
     await user.click(screen.getByRole('button', { name: /Save Field Goal/ }));
     await waitFor(() => expect(screen.getByText('KICKOFF')).toBeInTheDocument());
     expect((await getGame(db, gameId))?.teamScore).toBe(3);
+  });
+
+  it('does not move the ball on screen when it is intercepted', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    // The field's label carries both facts: where the ball is, and who is
+    // driving. Before the turnover, we have it on our own 25.
+    expect(screen.getByLabelText('Ball at OWN 25, NSR driving')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.click(screen.getByRole('button', { name: 'INT' }));
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+
+    // Same spot, other team. The old model mirrored this to OPP 25, so the
+    // ball appeared to jump the width of the field.
+    await waitFor(() =>
+      expect(screen.getByLabelText('Ball at OWN 25, Westfield driving')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('1st & 10')).toBeInTheDocument();
+
+    const game = await getGame(db, gameId);
+    expect(game?.currentBallPosition).toBe(-25);
+    expect(game?.currentPossession).toBe('them');
+  });
+
+  it('swaps ends for halftime without moving the ball', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    expect((await getGame(db, gameId))?.sidesSwapped).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: /Ends/ }));
+
+    await waitFor(async () =>
+      expect((await getGame(db, gameId))?.sidesSwapped).toBe(true),
+    );
+    // Swapping ends is presentation only: the stored coordinate is untouched.
+    expect((await getGame(db, gameId))?.currentBallPosition).toBe(-25);
+    expect(screen.getByLabelText('Ball at OWN 25, NSR driving')).toBeInTheDocument();
   });
 
   it('persists a quarter change immediately', async () => {

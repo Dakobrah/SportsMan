@@ -16,7 +16,7 @@ import { rosterForGame } from '../db/repositories/players';
 import { deleteSnap, getSnap, insertSnap, lastSnap, listSnaps, type NewSnap } from '../db/repositories/snaps';
 import type { Game, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
-import { EXTRA_POINT_SPOT, KICKOFF_SPOT } from './field';
+import { extraPointSpotFor, kickoffSpotFor } from './field';
 import { type GameCursor, advance, cursorAfter, playTypeOf, rebuildCursor,
          snapToGameState, snapToPlayData, snapToPlayResult } from './cursor';
 import type { NextState } from './nextState';
@@ -67,10 +67,10 @@ export interface TrackerSnapshot {
  * Map a filled-in form onto a flat `snaps` row.
  *
  * Kickoffs and extra points override the ball position with the named spot
- * from field.ts. Django wrote the literals 35 and 3 here
+ * for whichever side is kicking. Django wrote the literals 35 and 3 here
  * (tracker.py:705, :886) which, under the -50..+50 convention, mean the
  * opponent's 15 and our own 47 — neither of which is where those plays
- * happen.
+ * happen, and neither of which accounted for the opponent kicking.
  */
 export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
   const header = {
@@ -78,6 +78,8 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
     down: cursor.down,
     distance: cursor.distance,
     ballPosition: cursor.ballPosition,
+    // Stored so cursorAfter can replay the play in the right direction.
+    possession: cursor.possession,
     notes: form.notes,
   };
 
@@ -126,7 +128,7 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
     case 'kickoff':
       return {
         ...header, kind: 'KICKOFF',
-        down: null, distance: null, ballPosition: KICKOFF_SPOT,
+        down: null, distance: null, ballPosition: kickoffSpotFor(cursor.possession),
         kickerId: form.kickerId,
         kickYards: form.kickYards,
         isTouchback: form.isTouchback,
@@ -155,7 +157,7 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor): NewSnap {
     case 'extra_point':
       return {
         ...header, kind: 'XP',
-        down: null, distance: null, ballPosition: EXTRA_POINT_SPOT,
+        down: null, distance: null, ballPosition: extraPointSpotFor(cursor.possession),
         attemptType: form.attemptType,
         result: form.result,
         kickerId: form.kickerId,

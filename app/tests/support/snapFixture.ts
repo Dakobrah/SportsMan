@@ -4,7 +4,7 @@ import type { Player, Snap } from '../../src/lib/db/repositories/types';
 export function makeSnap(overrides: Partial<Snap> = {}): Snap {
   return {
     id: 1, gameId: 1, kind: 'RUN',
-    sequenceNumber: 1, quarter: 1, gameClockSeconds: null,
+    sequenceNumber: 1, quarter: 1, possession: 'us', gameClockSeconds: null,
     down: 1, distance: 10, ballPosition: -25, formation: '', playId: null, notes: '',
     yardsGained: 0, isTouchdown: false, isFirstDown: false,
     fumbled: false, fumbleLost: false, fumbleRecoveredById: null,

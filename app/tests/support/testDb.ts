@@ -25,6 +25,7 @@ export const schemaSql = readSql('schema.sql');
 export const testMigrations: Migration[] = [
   { version: 1, name: 'initial schema', sql: schemaSql },
   { version: 2, name: 'game cursor', sql: readSql('002_game_cursor.sql') },
+  { version: 3, name: 'possession', sql: readSql('003_possession.sql') },
 ];
 
 class NodeDatabase implements Database {

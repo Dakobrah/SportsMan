@@ -57,8 +57,11 @@ const cursorColumns = [
 ];
 
 describe('migration 002: game cursor', () => {
-  it('is the latest version', () => {
-    expect(latestVersion(testMigrations)).toBe(2);
+  it('is included in the migration list', () => {
+    // Derived rather than hardcoded, so adding a migration does not break a
+    // test about the cursor.
+    expect(latestVersion(testMigrations)).toBeGreaterThanOrEqual(2);
+    expect(testMigrations.some((m) => m.name === 'game cursor')).toBe(true);
   });
 
   it('adds every cursor column to games', async () => {
@@ -118,7 +121,7 @@ describe('migration 002: game cursor', () => {
     ).rejects.toThrow();
   });
 
-  it('migrates a v1 database forward without losing rows', async () => {
+  it('migrates a v1 database forward to latest without losing rows', async () => {
     const db = bareDb();
 
     // Bring it up to v1 only, then put a game in it.
@@ -127,7 +130,7 @@ describe('migration 002: game cursor', () => {
     const id = await seedGame(db);
 
     await migrate(db, testMigrations);
-    expect(await currentVersion(db)).toBe(2);
+    expect(await currentVersion(db)).toBe(latestVersion(testMigrations));
 
     const row = await db.get<{ opponent: string; current_ball_position: number }>(
       'SELECT opponent, current_ball_position FROM games WHERE id = ?',

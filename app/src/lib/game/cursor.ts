@@ -11,7 +11,7 @@
 import type { Database } from '../db/driver';
 import { lastSnap } from '../db/repositories/snaps';
 import type { Situation, Snap, SnapKind } from '../db/repositories/types';
-import { FIRST_DOWN_DISTANCE, KICKOFF_TOUCHBACK_SPOT } from './field';
+import { FIRST_DOWN_DISTANCE, KICKOFF_TOUCHBACK_SPOT, type Possession } from './field';
 import {
   computeNextState,
   type GameState,
@@ -27,6 +27,11 @@ export interface GameCursor {
   distance: number | null;
   ballPosition: number;
   situation: Situation;
+  /**
+   * Who has the ball. The coordinate frame is absolute, so this -- not the
+   * sign of ballPosition -- is what a turnover changes.
+   */
+  possession: Possession;
 }
 
 /** Q1, first and ten on our own 25 — matching the schema's column defaults. */
@@ -36,6 +41,7 @@ export const OPENING_CURSOR: GameCursor = {
   distance: FIRST_DOWN_DISTANCE,
   ballPosition: KICKOFF_TOUCHBACK_SPOT,
   situation: 'normal',
+  possession: 'us',
 };
 
 /**
@@ -50,6 +56,7 @@ export const advance = (cursor: GameCursor, next: NextState): GameCursor => ({
   distance: next.distance,
   ballPosition: next.ballPosition,
   situation: next.situation,
+  possession: next.possession,
 });
 
 const PLAY_TYPE_BY_KIND: Record<SnapKind, PlayType> = {
@@ -70,6 +77,7 @@ export const snapToGameState = (snap: Snap): GameState => ({
   down: snap.down,
   distance: snap.distance,
   ballPosition: snap.ballPosition,
+  possession: snap.possession,
 });
 
 export const snapToPlayData = (snap: Snap): PlayData => ({

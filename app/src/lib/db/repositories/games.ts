@@ -2,6 +2,7 @@
 import type { Database } from '../driver';
 import type { GameCursor } from '../../game/cursor';
 import {
+  BOOLEAN_COLUMNS,
   type FieldCondition,
   type Game,
   type Location,
@@ -18,6 +19,7 @@ const COLUMNS = `id, season_id, date, opponent, location, weather, field_conditi
                  team_score, opponent_score, notes,
                  current_quarter, current_down, current_distance,
                  current_ball_position, current_situation,
+                 current_possession, sides_swapped,
                  created_at, updated_at`;
 
 export interface GameInput {
@@ -83,6 +85,7 @@ export async function listGames(
        ORDER BY g.date DESC`,
       params,
     ),
+    BOOLEAN_COLUMNS.games,
   );
 }
 
@@ -91,7 +94,7 @@ export async function getGame(db: Database, id: number): Promise<Game | undefine
     `SELECT ${COLUMNS} FROM games WHERE id = ?`,
     [id],
   );
-  return row && toDomain<Game>(row);
+  return row && toDomain<Game>(row, BOOLEAN_COLUMNS.games);
 }
 
 /**
@@ -107,6 +110,7 @@ export async function getGameContext(
             g.field_condition, g.team_score, g.opponent_score, g.notes,
             g.current_quarter, g.current_down, g.current_distance,
             g.current_ball_position, g.current_situation,
+            g.current_possession, g.sides_swapped,
             g.created_at, g.updated_at,
             s.id AS s_id, s.year AS s_year, s.team_id AS s_team_id,
             s.created_at AS s_created_at, s.updated_at AS s_updated_at,
@@ -133,7 +137,7 @@ export async function getGameContext(
   }
 
   return {
-    game: toDomain<Game>(game),
+    game: toDomain<Game>(game, BOOLEAN_COLUMNS.games),
     season: toDomain<Season>(split('s_')),
     team: toDomain<Team>(split('t_')),
   };
@@ -276,9 +280,10 @@ export async function readGameCursor(
     current_distance: number | null;
     current_ball_position: number;
     current_situation: Situation;
+    current_possession: 'us' | 'them';
   }>(
     `SELECT current_quarter, current_down, current_distance,
-            current_ball_position, current_situation
+            current_ball_position, current_situation, current_possession
      FROM games WHERE id = ?`,
     [gameId],
   );
@@ -289,6 +294,7 @@ export async function readGameCursor(
     distance: row.current_distance,
     ballPosition: row.current_ball_position,
     situation: row.current_situation,
+    possession: row.current_possession,
   };
 }
 
@@ -301,7 +307,7 @@ export async function writeGameCursor(
     `UPDATE games
      SET current_quarter = ?, current_down = ?, current_distance = ?,
          current_ball_position = ?, current_situation = ?,
-         updated_at = datetime('now')
+         current_possession = ?, updated_at = datetime('now')
      WHERE id = ?`,
     [
       cursor.quarter,
@@ -309,7 +315,23 @@ export async function writeGameCursor(
       cursor.distance,
       cursor.ballPosition,
       cursor.situation,
+      cursor.possession,
       gameId,
     ],
+  );
+}
+
+/**
+ * Which way round to draw the field. Teams change ends at halftime; this is
+ * presentation only and changes no stored coordinate.
+ */
+export async function setSidesSwapped(
+  db: Database,
+  gameId: number,
+  swapped: boolean,
+): Promise<void> {
+  await db.run(
+    `UPDATE games SET sides_swapped = ?, updated_at = datetime('now') WHERE id = ?`,
+    [swapped ? 1 : 0, gameId],
   );
 }

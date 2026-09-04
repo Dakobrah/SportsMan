@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getDb } from '../lib/db/context';
-  import { setScores, writeGameCursor } from '../lib/db/repositories/games';
+  import { setScores, setSidesSwapped, writeGameCursor } from '../lib/db/repositories/games';
   import type { Player } from '../lib/db/repositories/types';
   import {
     loadTracker, recordPlay, undoLastPlay,
@@ -47,6 +47,7 @@
   let opponentScore = $state(0);
   let feed = $state<FeedEntry[]>([]);
   let roster = $state<Player[]>([]);
+  let sidesSwapped = $state(false);
 
   let panel = $state<Panel>('grid');
   let form = $state<PlayForm | null>(null);
@@ -68,6 +69,7 @@
       cursor = loaded.cursor;
       teamScore = loaded.game.teamScore;
       opponentScore = loaded.game.opponentScore;
+      sidesSwapped = loaded.game.sidesSwapped;
       feed = loaded.feed;
       roster = loaded.roster;
       openChainedForm(loaded.cursor);
@@ -163,6 +165,19 @@
     }
   }
 
+  /** Teams change ends at halftime. Presentation only -- no coordinate moves. */
+  async function swapSides() {
+    if (gameId === null) return;
+    sidesSwapped = !sidesSwapped;
+    try {
+      await setSidesSwapped(getDb(), gameId, sidesSwapped);
+      push(sidesSwapped ? 'Ends swapped' : 'Ends restored');
+    } catch (error) {
+      sidesSwapped = !sidesSwapped;
+      push(describeError(error), 'error');
+    }
+  }
+
   const clock = () =>
     new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
@@ -188,8 +203,9 @@
     <Scoreboard
       teamAbbr={team.abbreviation}
       opponent={game.opponent}
-      {teamScore} {opponentScore} {cursor} {savedLabel}
+      {teamScore} {opponentScore} {cursor} {savedLabel} {sidesSwapped}
       onback={() => navigate(`/games/${game.id}`)}
+      onswapsides={swapSides}
       oneditTeamScore={() => (editing = 'team')}
       oneditOpponentScore={() => (editing = 'opponent')}
       oneditQuarter={() => (editing = 'quarter')}

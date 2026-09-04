@@ -24,6 +24,9 @@ export const POSITIONS: readonly Position[] = [
   'K', 'P', 'LS',
 ] as const;
 
+/** Who has the ball. Re-exported from the coordinate authority. */
+export type { Possession } from '../../game/field';
+
 export type Location = 'home' | 'away' | 'neutral';
 export type Weather = 'clear' | 'rainy' | 'snowy' | 'windy' | 'hot' | 'cold';
 export type FieldCondition = 'turf' | 'grass' | 'wet';
@@ -91,6 +94,9 @@ export interface Game {
   currentDistance: number | null;
   currentBallPosition: number;
   currentSituation: Situation;
+  currentPossession: 'us' | 'them';
+  /** Presentation only: mirrors how the field is drawn after halftime. */
+  sidesSwapped: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -126,6 +132,8 @@ export interface Snap {
 
   sequenceNumber: number;
   quarter: number;
+  /** Which side ran the play. */
+  possession: 'us' | 'them';
   gameClockSeconds: number | null;
   down: number | null;
   distance: number | null;
@@ -206,6 +214,7 @@ export interface Snap {
 /** Boolean columns, by table. Anything listed here is 0/1 in SQLite. */
 export const BOOLEAN_COLUMNS = {
   players: new Set(['is_active']),
+  games: new Set(['sides_swapped']),
   snaps: new Set([
     'is_touchdown', 'is_first_down', 'fumbled', 'fumble_lost',
     'is_complete', 'is_interception', 'is_thrown_away',

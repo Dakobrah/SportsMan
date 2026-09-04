@@ -131,16 +131,26 @@ describe('games repository', () => {
     const { gameId } = await seedGame(db);
 
     expect(await readGameCursor(db, gameId)).toEqual({
-      quarter: 1, down: 1, distance: 10, ballPosition: -25, situation: 'normal',
+      quarter: 1, down: 1, distance: 10, ballPosition: -25,
+      situation: 'normal', possession: 'us',
     });
 
     // A dead ball has no down or distance.
     await writeGameCursor(db, gameId, {
-      quarter: 3, down: null, distance: null, ballPosition: 47, situation: 'extra_point',
+      quarter: 3, down: null, distance: null, ballPosition: 47,
+      situation: 'extra_point', possession: 'us',
     });
     expect(await readGameCursor(db, gameId)).toEqual({
-      quarter: 3, down: null, distance: null, ballPosition: 47, situation: 'extra_point',
+      quarter: 3, down: null, distance: null, ballPosition: 47,
+      situation: 'extra_point', possession: 'us',
     });
+
+    // A turnover changes only who is driving.
+    await writeGameCursor(db, gameId, {
+      quarter: 3, down: 1, distance: 10, ballPosition: 47,
+      situation: 'turnover', possession: 'them',
+    });
+    expect((await readGameCursor(db, gameId))?.possession).toBe('them');
   });
 
   it('upserts quarter scores rather than duplicating them', async () => {
