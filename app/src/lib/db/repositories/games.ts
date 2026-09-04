@@ -1,5 +1,6 @@
 /** Games, their quarter scores, and the live tracker cursor. */
 import type { Database } from '../driver';
+import type { GameCursor } from '../../game/cursor';
 import {
   type FieldCondition,
   type Game,
@@ -39,17 +40,10 @@ export interface GameFilter {
   location?: Location;
 }
 
+export type { GameCursor };
+
 export interface GameListItem extends Game {
   snapCount: number;
-}
-
-/** The tracker's durable position in a game. */
-export interface GameCursor {
-  quarter: number;
-  down: number | null;
-  distance: number | null;
-  ballPosition: number;
-  situation: Situation;
 }
 
 const RESULT_PREDICATE: Record<GameResult, string> = {
