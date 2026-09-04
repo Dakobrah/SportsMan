@@ -33,7 +33,13 @@ function bareDb(): Database {
 
 describe('migrate', () => {
   it('reports the latest defined version', () => {
-    expect(latestVersion(testMigrations)).toBe(1);
+    // A fixture rather than the real list, so this tests the function and not
+    // how many migrations happen to exist. Deliberately out of order.
+    const fixture = [
+      { version: 3, name: 'third', sql: '' },
+      { version: 1, name: 'first', sql: '' },
+    ];
+    expect(latestVersion(fixture)).toBe(3);
     expect(latestVersion([])).toBe(0);
   });
 
@@ -45,8 +51,9 @@ describe('migrate', () => {
 
   it('applies pending migrations and records the version', async () => {
     const db = bareDb();
-    expect(await migrate(db, testMigrations)).toBe(1);
-    expect(await currentVersion(db)).toBe(1);
+    const latest = latestVersion(testMigrations);
+    expect(await migrate(db, testMigrations)).toBe(latest);
+    expect(await currentVersion(db)).toBe(latest);
     await db.close();
   });
 
@@ -55,7 +62,8 @@ describe('migrate', () => {
     await migrate(db, testMigrations);
     await migrate(db, testMigrations);
     const applied = await db.all<{ version: number }>('SELECT version FROM schema_version');
-    expect(applied.map((r) => r.version)).toEqual([1]);
+    // Each migration recorded exactly once, no matter how many there are.
+    expect(applied.map((r) => r.version)).toEqual(testMigrations.map((m) => m.version));
     await db.close();
   });
 

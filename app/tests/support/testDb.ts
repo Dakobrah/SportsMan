@@ -15,14 +15,16 @@ import { migrate, type Migration } from '../../src/lib/db/migrate';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** schema.sql, read from disk so it stays the single source of truth. */
-export const schemaSql = readFileSync(
-  join(here, '..', '..', 'src', 'lib', 'db', 'schema.sql'),
-  'utf8',
-);
+/** Read from disk so the .sql files stay the single source of truth. */
+const readSql = (name: string) =>
+  readFileSync(join(here, '..', '..', 'src', 'lib', 'db', name), 'utf8');
 
+export const schemaSql = readSql('schema.sql');
+
+/** Mirrors src/lib/db/migrations.ts, which loads the same files via `?raw`. */
 export const testMigrations: Migration[] = [
   { version: 1, name: 'initial schema', sql: schemaSql },
+  { version: 2, name: 'game cursor', sql: readSql('002_game_cursor.sql') },
 ];
 
 class NodeDatabase implements Database {
