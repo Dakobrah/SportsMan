@@ -22,13 +22,17 @@
       }
     ],
     "security": {
-      "comment": "The app is local-only. `default-src 'self'` also constrains connect-src, so the webview cannot reach the network at all -- this is what makes the Play Data Safety 'no data collected' declaration a runtime guarantee rather than a promise. 'unsafe-inline' for styles is required by Vite's dev-time style injection.",
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis", "deb", "appimage"],
+    "targets": [
+      "msi",
+      "nsis",
+      "deb",
+      "appimage"
+    ],
     "category": "Sports",
     "shortDescription": "Football play-by-play tracker",
     "longDescription": "A local-only football play-by-play tracker. All data stays on the device: no accounts, no network, no analytics.",

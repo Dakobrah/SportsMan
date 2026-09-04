@@ -1,49 +1,74 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { openDatabase } from './lib/db/tauri';
+  import { setDb } from './lib/db/context';
+  import { start } from './lib/router.svelte';
+  import { router } from './lib/router.svelte';
+  import { routes } from './routes/routes';
+  import Nav from './lib/components/ui/Nav.svelte';
 
-  let status = $state('opening database…');
-  let counts = $state<{ teams: number; games: number; snaps: number } | null>(null);
+  type Phase = 'opening' | 'ready' | 'failed';
 
-  onMount(async () => {
-    try {
-      const db = await openDatabase();
-      const row = await db.get<{ teams: number; games: number; snaps: number }>(`
-        SELECT (SELECT COUNT(*) FROM teams) AS teams,
-               (SELECT COUNT(*) FROM games) AS games,
-               (SELECT COUNT(*) FROM snaps) AS snaps
-      `);
-      counts = row ?? null;
-      status = 'ready';
-    } catch (error) {
-      status = `database unavailable: ${error instanceof Error ? error.message : error}`;
-    }
+  let phase = $state<Phase>('opening');
+  let failure = $state('');
+
+  onMount(() => {
+    let stop: (() => void) | undefined;
+
+    // Routing starts immediately so a deep link is not lost while the
+    // database opens.
+    stop = start(routes);
+
+    openDatabase()
+      .then((db) => {
+        setDb(db);
+        phase = 'ready';
+      })
+      .catch((error: unknown) => {
+        failure = error instanceof Error ? error.message : String(error);
+        phase = 'failed';
+      });
+
+    return () => stop?.();
   });
+
+  const chrome = $derived(router.match?.route.chrome !== false);
+  const Route = $derived(router.match?.route.component);
 </script>
 
-<main>
-  <h1>Sportsman</h1>
-  <p class="status">{status}</p>
-  {#if counts}
-    <dl>
-      <div><dt>Teams</dt><dd>{counts.teams}</dd></div>
-      <div><dt>Games</dt><dd>{counts.games}</dd></div>
-      <div><dt>Snaps</dt><dd>{counts.snaps}</dd></div>
-    </dl>
-  {/if}
-</main>
+{#if phase === 'opening'}
+  <div class="boot"><p>Opening database…</p></div>
+{:else if phase === 'failed'}
+  <div class="boot">
+    <h1>Sportsman could not start</h1>
+    <p class="detail">{failure}</p>
+    <p class="detail">Your games are still on this device. Restarting the app is safe.</p>
+  </div>
+{:else}
+  {#if chrome}<Nav />{/if}
+  <main class:chrome>
+    {#if Route}
+      <Route />
+    {:else}
+      <p>No route matched {router.path}.</p>
+    {/if}
+  </main>
+{/if}
 
 <style>
-  main {
-    padding: 2rem 1rem;
-    max-width: 32rem;
-    margin: 0 auto;
-    font-family: system-ui, sans-serif;
+  .boot {
+    display: grid;
+    place-content: center;
+    gap: 0.5rem;
+    min-height: 100dvh;
+    padding: 2rem;
+    text-align: center;
   }
-  h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
-  .status { color: #888; margin: 0 0 1.5rem; }
-  dl { display: grid; gap: 0.5rem; margin: 0; }
-  dl div { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 0.25rem; }
-  dt { font-weight: 600; }
-  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .detail { color: var(--t-text-muted); max-width: 32rem; margin: 0; }
+
+  main.chrome {
+    padding: var(--gap);
+    max-width: 60rem;
+    margin: 0 auto;
+  }
 </style>
