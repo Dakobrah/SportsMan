@@ -120,6 +120,8 @@ function toForm(play: Play): PlayForm | null {
         puntYards: 40,
         isTouchback: play.touchback,
         isBlocked: play.punt_blocked,
+        fumbled: play.fumble_lost,
+        fumbleLost: play.fumble_lost,
       };
 
     case 'field_goal':
@@ -145,6 +147,9 @@ function toForm(play: Play): PlayForm | null {
         kickerNumber: a.kicker ?? null,
         kickYards: 60,
         isTouchback: play.touchback,
+        // A muffed kick is recordable now, which it was not before returns.
+        fumbled: play.fumble_lost,
+        fumbleLost: play.fumble_lost,
       };
 
     case 'no_play':

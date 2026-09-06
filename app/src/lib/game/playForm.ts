@@ -89,6 +89,12 @@ export interface KickoffForm {
   isTouchback: boolean;
   isOnsideKick: boolean;
   outOfBounds: boolean;
+  /** The return rides on this row; see 006_returns.sql. */
+  returnerNumber: number | null;
+  returnYards: number;
+  /** A muffed kick: the returning team lost it, so we keep the ball. */
+  fumbled: boolean;
+  fumbleLost: boolean;
   notes: string;
 }
 
@@ -99,6 +105,11 @@ export interface PuntForm {
   isTouchback: boolean;
   isBlocked: boolean;
   outOfBounds: boolean;
+  returnerNumber: number | null;
+  returnYards: number;
+  isFairCatch: boolean;
+  fumbled: boolean;
+  fumbleLost: boolean;
   notes: string;
 }
 
@@ -197,12 +208,18 @@ export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { 
     case 'kickoff':
       return {
         type: 'kickoff', kickerNumber: null, kickYards: 60,
-        isTouchback: false, isOnsideKick: false, outOfBounds: false, notes: '',
+        isTouchback: false, isOnsideKick: false, outOfBounds: false,
+        // 60 yards from the 35 comes down on their 5; a 20-yard return puts
+        // them on their 25, which is where the flat default used to land.
+        returnerNumber: null, returnYards: 20,
+        fumbled: false, fumbleLost: false, notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'punt':
       return {
         type: 'punt', punterNumber: null, puntYards: 40,
-        isTouchback: false, isBlocked: false, outOfBounds: false, notes: '',
+        isTouchback: false, isBlocked: false, outOfBounds: false,
+        returnerNumber: null, returnYards: 0, isFairCatch: false,
+        fumbled: false, fumbleLost: false, notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'field_goal':
       return {

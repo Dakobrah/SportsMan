@@ -109,28 +109,25 @@ describe('report SQL against a real game', () => {
     const giveaways = ours.interceptions + ours.fumblesLost;
     const takeaways = theirs.interceptions + theirs.fumblesLost;
 
-    // Scrimmage turnovers only. The run, pass and penalty forms carry fumble
-    // controls; the kickoff and punt forms do not, so a muffed kick cannot be
-    // recorded as a turnover at all. That is a gap in the TRACKER, not in the
-    // report, and this test names it rather than hiding it.
-    const scrimmage = (p: Play) => isRush(p) || isPass(p);
+    // EVERY turnover, not just the scrimmage ones. This game contains a
+    // lost fumble on a kickoff, which the tracker could not record at all
+    // until the kicking forms gained a Muffed control -- that limitation
+    // used to be asserted here as a known gap.
     const realGiveaways = sidePlays(US)
-      .filter((p) => scrimmage(p) && (p.interception || p.fumble_lost)).length;
+      .filter((p) => p.interception || p.fumble_lost).length;
     const realTakeaways = sidePlays(THEM_TEAM)
-      .filter((p) => scrimmage(p) && (p.interception || p.fumble_lost)).length;
+      .filter((p) => p.interception || p.fumble_lost).length;
 
     expect(giveaways).toBe(realGiveaways);
     expect(takeaways).toBe(realTakeaways);
-
-    // The gap, asserted so it cannot drift unnoticed: this game contains one
-    // lost fumble on a kickoff that the tracker has no way to record. If a
-    // fumble control is ever added to the kicking forms, this flips and the
-    // test above should widen to every play.
-    const unrecordable = fixture.plays.filter(
-      (p) => !scrimmage(p) && (p.interception || p.fumble_lost),
+    expect(giveaways + takeaways).toBe(
+      fixture.plays.filter((p) => p.interception || p.fumble_lost).length,
     );
-    expect(unrecordable).toHaveLength(1);
-    expect(unrecordable[0].play_type).toBe('kickoff');
+
+    // The kickoff muff specifically: recorded, and credited to the side that
+    // lost it rather than the side that kicked.
+    const muff = fixture.plays.find((p) => p.play_type === 'kickoff' && p.fumble_lost);
+    expect(muff).toBeDefined();
   });
 
   it('counts downs and conversions the same way the source data does', async () => {

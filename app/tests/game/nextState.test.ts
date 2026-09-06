@@ -85,6 +85,74 @@ describe('computeNextState', () => {
       expect(result.possession).toBe('us');
     });
 
+    it('fields a kickoff where it lands and runs it back', () => {
+      // We kick 60 from our own 35, so it comes down on their 5; a 20-yard
+      // return puts them on their 25 -- the same answer the flat default
+      // gives, which is why that default was a reasonable approximation.
+      const result = computeNextState(
+        { down: null, distance: null, ballPosition: -15, possession: 'us' },
+        'kickoff',
+        { kickYards: 60, returnYards: 20 },
+      );
+      expect(result.ballPosition).toBe(25);
+      expect(result.possession).toBe('them');
+
+      // A longer return goes further, which the flat default could not express.
+      const long = computeNextState(
+        { down: null, distance: null, ballPosition: -15, possession: 'us' },
+        'kickoff',
+        { kickYards: 60, returnYards: 45 },
+      );
+      expect(long.ballPosition).toBe(0);
+    });
+
+    it('keeps possession with the kicking team on a muffed kick', () => {
+      // The one lost fumble that does not change hands: the ball was already
+      // travelling to the other team, so their muff gives it back to us.
+      const result = computeNextState(
+        { down: null, distance: null, ballPosition: -15, possession: 'us' },
+        'kickoff',
+        { kickYards: 60 },
+        { fumbleLost: true },
+      );
+      expect(result.possession).toBe('us');
+      expect(result.situation).toBe('turnover');
+      expect(result.ballPosition).toBe(45);
+    });
+
+    it('keeps possession with the punting team on a muffed punt', () => {
+      const result = computeNextState(
+        { down: 4, distance: 8, ballPosition: -35, possession: 'us' },
+        'punt',
+        { puntYards: 45 },
+        { fumbleLost: true },
+      );
+      expect(result.possession).toBe('us');
+      expect(result.ballPosition).toBe(10);
+    });
+
+    it('treats a fair catch as a return of zero', () => {
+      const result = computeNextState(
+        { down: 4, distance: 8, ballPosition: -35, possession: 'us' },
+        'punt',
+        { puntYards: 45, returnYards: 30, isFairCatch: true },
+      );
+      // Fielded on their 40 and stopped there, the 30 ignored.
+      expect(result.ballPosition).toBe(10);
+      expect(result.possession).toBe('them');
+    });
+
+    it('runs a punt back toward the punting team', () => {
+      const result = computeNextState(
+        { down: 4, distance: 8, ballPosition: -35, possession: 'us' },
+        'punt',
+        { puntYards: 45, returnYards: 12 },
+      );
+      // Fielded on their 40, returned 12 back toward our end zone.
+      expect(result.ballPosition).toBe(-2);
+      expect(result.possession).toBe('them');
+    });
+
     it('leaves a punt where it landed and changes possession', () => {
       const result = computeNextState(
         { down: 4, distance: 8, ballPosition: -35, possession: 'us' },

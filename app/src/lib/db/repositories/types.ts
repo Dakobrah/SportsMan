@@ -187,6 +187,12 @@ export interface Snap {
 
   punterId: number | null;
   punterNumber: number | null;
+
+  /** Returns ride on the kick's own row; see 006_returns.sql. */
+  returnerId: number | null;
+  returnerNumber: number | null;
+  returnYards: number;
+  isFairCatch: boolean;
   puntYards: number;
   hangTimeSeconds: number | null;
   isBlocked: boolean;
@@ -227,7 +233,7 @@ export const BOOLEAN_COLUMNS = {
     'was_under_pressure', 'was_sacked',
     'tackle_for_loss', 'applied_pressure', 'forced_incompletion',
     'is_defensive_touchdown',
-    'is_touchback', 'out_of_bounds', 'is_blocked',
+    'is_touchback', 'out_of_bounds', 'is_blocked', 'is_fair_catch',
     'is_onside_kick', 'onside_recovered',
     'had_penalty', 'penalty_on_offense', 'penalty_accepted',
   ]),

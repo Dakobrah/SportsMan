@@ -83,6 +83,9 @@ export const snapToGameState = (snap: Snap): GameState => ({
 
 export const snapToPlayData = (snap: Snap): PlayData => ({
   puntYards: snap.puntYards,
+  kickYards: snap.kickYards,
+  returnYards: snap.returnYards,
+  isFairCatch: snap.isFairCatch,
   isTouchback: snap.isTouchback,
   result: snap.result ?? undefined,
   penaltyYards: snap.penaltyYards ?? undefined,

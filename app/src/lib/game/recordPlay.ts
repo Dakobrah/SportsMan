@@ -212,6 +212,13 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
         isTouchback: form.isTouchback,
         isOnsideKick: form.isOnsideKick,
         outOfBounds: form.outOfBounds,
+        // The returner belongs to the RECEIVING team, which is the side we
+        // do not have possession of on a kick -- so `link` is inverted here.
+        returnerNumber: form.returnerNumber,
+        returnerId: cursor.possession === 'us' ? null : linkOurs(form.returnerNumber),
+        returnYards: form.returnYards,
+        fumbled: form.fumbled,
+        fumbleLost: form.fumbleLost,
       };
 
     case 'punt':
@@ -223,6 +230,12 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
         isTouchback: form.isTouchback,
         isBlocked: form.isBlocked,
         outOfBounds: form.outOfBounds,
+        returnerNumber: form.returnerNumber,
+        returnerId: cursor.possession === 'us' ? null : linkOurs(form.returnerNumber),
+        returnYards: form.returnYards,
+        isFairCatch: form.isFairCatch,
+        fumbled: form.fumbled,
+        fumbleLost: form.fumbleLost,
       };
 
     case 'field_goal':

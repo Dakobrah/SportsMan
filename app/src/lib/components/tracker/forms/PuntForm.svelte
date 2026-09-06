@@ -16,6 +16,9 @@
     oncancel: () => void;
   }
   let { form = $bindable(), roster, possession, defaults, busy, onsave, oncancel }: Props = $props();
+
+  // The returner is on the receiving team, which is whoever is NOT punting.
+  const otherSide = $derived(possession === 'us' ? 'them' : 'us');
 </script>
 
 <FormShell type="punt" {busy} {onsave} {oncancel}>
@@ -27,9 +30,25 @@
     <input type="number" inputmode="numeric" value={form.puntYards}
            oninput={(e) => (form.puntYards = Number((e.currentTarget as HTMLInputElement).value) || 0)} />
   </label>
+  {#if !form.isTouchback && !form.isBlocked}
+    <JerseyInput label="Returner" {roster} possession={otherSide} value={form.returnerNumber}
+                 onchange={(v) => (form.returnerNumber = v)} />
+    {#if !form.isFairCatch}
+      <label class="field">
+        <span>Return yards</span>
+        <input type="number" inputmode="numeric" value={form.returnYards}
+               oninput={(e) => (form.returnYards = Number((e.currentTarget as HTMLInputElement).value) || 0)} />
+      </label>
+    {/if}
+  {/if}
+
   <div class="toggles">
     <ToggleButton label="Touchback" variant="blue" pressed={form.isTouchback}
                   onpress={() => (form.isTouchback = !form.isTouchback)} />
+    <ToggleButton label="Fair catch" variant="blue" pressed={form.isFairCatch}
+                  onpress={() => { form.isFairCatch = !form.isFairCatch; if (form.isFairCatch) form.returnYards = 0; }} />
+    <ToggleButton label="Muffed" variant="red" pressed={form.fumbleLost}
+                  onpress={() => { form.fumbleLost = !form.fumbleLost; form.fumbled = form.fumbleLost; }} />
     <ToggleButton label="Blocked" variant="red" pressed={form.isBlocked}
                   onpress={() => (form.isBlocked = !form.isBlocked)} />
     <ToggleButton label="Out of bounds" variant="amber" pressed={form.outOfBounds}

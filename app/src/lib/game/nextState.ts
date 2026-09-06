@@ -71,6 +71,10 @@ export interface NextState {
 /** Fields the client submits with a play. */
 export interface PlayData {
   puntYards?: number;
+  kickYards?: number;
+  /** Yards the return advanced the ball, from where it was fielded. */
+  returnYards?: number;
+  isFairCatch?: boolean;
   isTouchback?: boolean;
   result?: string;
   penaltyYards?: number;
@@ -90,6 +94,24 @@ export interface PlayResult {
 }
 
 const FINAL_DOWN = 4;
+
+/**
+ * Where a kick came down, before any return.
+ *
+ * A punt travels from the line of scrimmage; a kickoff from the kicking
+ * team's own 35, whatever the cursor happened to say. Clamped, so a kick
+ * into the end zone fields on the goal line rather than beyond it.
+ */
+function fieldedSpot(
+  ballPosition: number,
+  playType: 'punt' | 'kickoff',
+  kicker: Possession,
+  playData: PlayData,
+): number {
+  const from = playType === 'punt' ? ballPosition : kickoffSpotFor(kicker);
+  const distance = playType === 'punt' ? (playData.puntYards ?? 0) : (playData.kickYards ?? 0);
+  return advanceBy(from, distance, kicker);
+}
 
 /** A fresh set of downs at `ballPosition` for `team`, respecting goal-to-go. */
 function firstAndTen(
@@ -151,17 +173,35 @@ export function computeNextState(
     return deadBall(extraPointSpotFor(offense), offense, 'extra_point');
   }
   if (result.isInterception || result.fumbleLost) {
-    // Where the play ended, then possession changes. The spot is unchanged
-    // by the change itself.
+    // A muffed kick is the one lost fumble that does NOT change hands: on a
+    // punt or kickoff the ball is already travelling to the other team, so
+    // the returning team losing it means the KICKING team keeps possession.
+    // Handled here rather than in the kick branches because the turnover
+    // short-circuit runs first.
+    if (playType === 'punt' || playType === 'kickoff') {
+      return firstAndTen(fieldedSpot(ballPosition, playType, offense, playData), offense, 'turnover');
+    }
+    // Otherwise: where the play ended, then possession changes. The spot is
+    // unchanged by the change itself.
     return turnover(advanceBy(ballPosition, yards, offense), offense, 'turnover');
   }
 
   switch (playType) {
     case 'kickoff': {
-      // A returned kick is recorded as its own play, so every kickoff lands
-      // the receiving team on their own 25.
       const receiver = otherTeam(offense);
-      return firstAndTen(kickoffTouchbackSpotFor(receiver), receiver, 'normal');
+      if (playData.isTouchback) {
+        return firstAndTen(kickoffTouchbackSpotFor(receiver), receiver, 'normal');
+      }
+      // Without a kick distance there is no landing spot to compute, so
+      // fall back to the touchback spot -- the same answer this gave before
+      // returns existed.
+      if (!playData.kickYards) {
+        return firstAndTen(kickoffTouchbackSpotFor(receiver), receiver, 'normal');
+      }
+      // Fielded where the kick came down, then run back the other way.
+      const fielded = fieldedSpot(ballPosition, 'kickoff', offense, playData);
+      const returned = advanceBy(fielded, playData.returnYards ?? 0, receiver);
+      return firstAndTen(returned, receiver, 'normal');
     }
 
     case 'punt': {
@@ -169,10 +209,12 @@ export function computeNextState(
       if (playData.isTouchback) {
         return firstAndTen(puntTouchbackSpotFor(receiver), receiver, 'opponent_ball');
       }
-      // The ball travels downfield in the punting team's direction, then the
-      // receiving team takes over on that spot.
-      const landed = advanceBy(ballPosition, playData.puntYards ?? 0, offense);
-      return firstAndTen(landed, receiver, 'opponent_ball');
+      const fielded = fieldedSpot(ballPosition, 'punt', offense, playData);
+      // A fair catch is a return of zero by definition.
+      const returned = playData.isFairCatch
+        ? fielded
+        : advanceBy(fielded, playData.returnYards ?? 0, receiver);
+      return firstAndTen(returned, receiver, 'opponent_ball');
     }
 
     case 'field_goal':
