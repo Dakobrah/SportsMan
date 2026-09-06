@@ -101,6 +101,10 @@ button, input, select, textarea {
 .btn-danger:hover { background: color-mix(in srgb, var(--t-red) 15%, transparent); }
 .btn-go { background: var(--t-green); border-color: var(--t-green); color: #06240f; font-weight: 700; }
 
+.btn.small { min-height: 34px; padding: 0 0.7rem; font-size: 0.85rem; }
+/* A small button in its selected state -- filter pills and the like. */
+.btn.on { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
+
 .card {
   background: var(--t-surface);
   border: 1px solid var(--t-border);

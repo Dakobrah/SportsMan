@@ -6,6 +6,10 @@
  * `apps/core/helpers.py`. Those repeated the same count-and-pluralise
  * construction a dozen times; `unit()` below does it once.
  *
+ * The input types are named *BlufInput rather than *Totals: they describe
+ * what a sentence needs, and `FieldGoalTotals`/`PuntTotals` now name real
+ * aggregates over in db/reports.
+ *
  * The input keys were snake_case on arrival, matching the Python. They are
  * camelCase here like every other domain type in the app -- `toDomain` in
  * db/repositories/types.ts exists precisely so snake_case stops at the
@@ -20,13 +24,13 @@ export function unit(count: number, singular: string, plural = `${singular}s`): 
 /** Join the non-empty parts of a summary. */
 const sentence = (parts: string[]): string => parts.filter(Boolean).join(', ');
 
-export interface RushingTotals {
+export interface RushingBlufInput {
   attempts?: number;
   yards?: number;
   touchdowns?: number;
 }
 
-export function rushingBluf(data: RushingTotals): string {
+export function rushingBluf(data: RushingBlufInput): string {
   if (!data.attempts) return 'No rushing attempts.';
   return sentence([
     `${data.yards ?? 0} rushing yards`,
@@ -34,14 +38,14 @@ export function rushingBluf(data: RushingTotals): string {
   ]);
 }
 
-export interface PassingTotals {
+export interface PassingBlufInput {
   attempts?: number;
   yards?: number;
   touchdowns?: number;
   interceptions?: number;
 }
 
-export function passingBluf(data: PassingTotals): string {
+export function passingBluf(data: PassingBlufInput): string {
   if (!data.attempts) return 'No passing attempts.';
   return sentence([
     `${data.yards ?? 0} passing yards`,
@@ -50,7 +54,7 @@ export function passingBluf(data: PassingTotals): string {
   ]);
 }
 
-export interface DefenseTotals {
+export interface DefenseBlufInput {
   totalTackles?: number;
   totalTfl?: number;
   totalSacks?: number;
@@ -58,7 +62,7 @@ export interface DefenseTotals {
   defensiveTouchdowns?: number;
 }
 
-export function defenseBluf(data: DefenseTotals): string {
+export function defenseBluf(data: DefenseBlufInput): string {
   const tackles = data.totalTackles ?? 0;
   const tfl = data.totalTfl ?? 0;
   const sacks = data.totalSacks ?? 0;
@@ -79,14 +83,14 @@ export function defenseBluf(data: DefenseTotals): string {
   return highlights || `${tackles} total tackles`;
 }
 
-export interface FieldGoalTotals {
+export interface FieldGoalBlufInput {
   attempts?: number;
   made?: number;
   longest?: number | null;
   percentage?: number;
 }
 
-export function fieldGoalBluf(data: FieldGoalTotals): string {
+export function fieldGoalBluf(data: FieldGoalBlufInput): string {
   if (!data.attempts) return 'No field goal attempts.';
   return sentence([
     `${data.made ?? 0}/${data.attempts} on field goals`,
@@ -95,13 +99,13 @@ export function fieldGoalBluf(data: FieldGoalTotals): string {
   ]);
 }
 
-export interface PuntTotals {
+export interface PuntBlufInput {
   punts?: number;
   avgYards?: number;
   longest?: number;
 }
 
-export function puntBluf(data: PuntTotals): string {
+export function puntBluf(data: PuntBlufInput): string {
   if (!data.punts) return 'No punts.';
   return `${data.punts} punts, ${(data.avgYards ?? 0).toFixed(1)} avg, longest ${data.longest ?? 0}`;
 }

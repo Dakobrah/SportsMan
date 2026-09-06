@@ -18,6 +18,8 @@ import { createTestDb } from '../support/testDb';
 import { US, fixture, replayGame, type Play } from '../support/replayFixture';
 import { downEfficiency, fieldZones, teamTotals } from '../../src/lib/db/reports/team';
 import { rushingByPlayer } from '../../src/lib/db/reports/players';
+import { reportSnaps } from '../../src/lib/db/reports/snaps';
+import { pointsByQuarter } from '../../src/lib/reports/scoring';
 
 /** Plays run by one side, excluding conversions and nflverse admin rows. */
 const sidePlays = (team: string) => fixture.plays.filter((p) => p.posteam === team);
@@ -170,6 +172,49 @@ describe('report SQL against a real game', () => {
       ).length;
       expect(red, `${side} red zone`).toBe(realRed);
     }
+  });
+
+  it('reproduces the quarter-by-quarter scoring exactly', async () => {
+    const db = await createTestDb();
+    const { gameId } = await replayGame(db);
+
+    const snaps = await reportSnaps(db, { gameIds: [gameId] });
+    const quarters = pointsByQuarter(snaps);
+
+    // The real cumulative score at the end of each quarter, straight off the
+    // source rows: 7-21, 14-21, 14-27, 36-33.
+    const last = new Map<number, { home: number; away: number }>();
+    for (const play of fixture.plays) {
+      last.set(play.qtr, { home: play.home_score, away: play.away_score });
+    }
+    let previous = { home: 0, away: 0 };
+    const real = [...last.keys()].sort().map((qtr) => {
+      const cumulative = last.get(qtr)!;
+      const delta = {
+        quarter: qtr,
+        us: cumulative.home - previous.home,
+        them: cumulative.away - previous.away,
+      };
+      previous = cumulative;
+      return delta;
+    });
+
+    // Derived from the plays, because quarter_scores is never written --
+    // and it matches the real box score in every quarter, both sides.
+    expect(quarters).toEqual(real);
+    expect(quarters).toEqual([
+      { quarter: 1, us: 7, them: 21 },
+      { quarter: 2, us: 7, them: 0 },
+      { quarter: 3, us: 0, them: 6 },
+      { quarter: 4, us: 22, them: 6 },
+    ]);
+
+    // And the running total is the final score.
+    const totals = quarters.reduce(
+      (t, q) => ({ us: t.us + q.us, them: t.them + q.them }),
+      { us: 0, them: 0 },
+    );
+    expect(totals).toEqual({ us: 36, them: 33 });
   });
 
   it('names real players in the leader board, and only ours', async () => {

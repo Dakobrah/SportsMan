@@ -81,8 +81,6 @@
 
 <style>
   .pills { margin-bottom: var(--gap); }
-  .btn.small { min-height: 34px; padding: 0 0.7rem; font-size: 0.85rem; }
-  .btn.on { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
   .what { white-space: normal; min-width: 14rem; }
   .gain { color: var(--t-green); }
   .loss { color: var(--t-red); }

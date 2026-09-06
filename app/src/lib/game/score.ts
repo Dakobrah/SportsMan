@@ -12,6 +12,12 @@
 import type { Snap } from '../db/repositories/types';
 import type { PlayForm } from './playForm';
 
+/**
+ * The only fields scoring reads. Widened from `Snap` so a caller can score a
+ * partial row without constructing all sixty columns.
+ */
+export type ScoringFacts = Pick<Snap, 'kind' | 'isTouchdown' | 'result' | 'attemptType'>;
+
 const TOUCHDOWN = 6;
 const FIELD_GOAL = 3;
 const PAT_KICK = 1;
@@ -41,7 +47,7 @@ export function pointsFor(form: PlayForm): number {
  * `result` CHECK also admits 'FAIL' (Django's ExtraPointSnap.Result.FAILED),
  * which its undo never considered.
  */
-export function pointsForSnap(snap: Snap): number {
+export function pointsForSnap(snap: ScoringFacts): number {
   switch (snap.kind) {
     case 'RUN':
     case 'PASS':

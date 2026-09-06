@@ -12,34 +12,22 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createTestDb } from '../support/testDb';
-import { seedGame, seedPlayer } from '../support/seed';
+import { seedRoster } from '../support/seed';
 import { loadTracker, recordPlay, undoLastPlay } from '../../src/lib/game/recordPlay';
 import { OPENING_CURSOR, rebuildCursor } from '../../src/lib/game/cursor';
 import { blankForm, type PlayForm } from '../../src/lib/game/playForm';
 import { EXTRA_POINT_SPOT } from '../../src/lib/game/field';
 import { readGameCursor, writeGameCursor } from '../../src/lib/db/repositories/games';
-import { getPlayer } from '../../src/lib/db/repositories/players';
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
 const RB = 22;
 const QB = 7;
 const K = 3;
 
-async function setup() {
-  const db = await createTestDb();
-  const { teamId, gameId } = await seedGame(db);
-  const rb = await seedPlayer(db, teamId, { position: 'RB', number: 22 });
-  const qb = await seedPlayer(db, teamId, { position: 'QB', number: 7 });
-  const k = await seedPlayer(db, teamId, { position: 'K', number: 3 });
-  const roster = (await Promise.all([rb, qb, k].map((id) => getPlayer(db, id)))).filter(
-    (p): p is NonNullable<typeof p> => p != null,
-  );
-  return { db, gameId, rb, qb, k, roster };
-}
 
 describe('tracker durability', () => {
   it('does not rewind a play across a reload', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     // 1st & 10 on our own 25, twelve-yard gain.
     const out = await recordPlay(
@@ -56,7 +44,7 @@ describe('tracker durability', () => {
   });
 
   it('returns the cursor a reload would rebuild, for every kind of play', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const forms: PlayForm[] = [
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 6 },
@@ -83,7 +71,7 @@ describe('tracker durability', () => {
   });
 
   it('keeps a quarter change that no play follows', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
@@ -99,7 +87,7 @@ describe('tracker durability', () => {
   });
 
   it('carries the quarter forward through later plays', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const first = await recordPlay(db, gameId, OPENING_CURSOR,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 3 }, roster);
@@ -114,7 +102,7 @@ describe('tracker durability', () => {
   });
 
   it('reopens the extra point after a reload mid-chain', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     await recordPlay(db, gameId, OPENING_CURSOR,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 40, isTouchdown: true }, roster);
@@ -127,7 +115,7 @@ describe('tracker durability', () => {
   });
 
   it('leaves the stored cursor consistent after an undo', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     let cursor = OPENING_CURSOR;
     for (const yards of [4, 9, 15]) {
@@ -141,7 +129,7 @@ describe('tracker durability', () => {
   });
 
   it('rebuilds a usable cursor for a game whose cursor was never written', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     await recordPlay(db, gameId, OPENING_CURSOR,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 7, isFirstDown: false }, roster);

@@ -1,8 +1,11 @@
 <script lang="ts">
   import { getDb } from '../lib/db/context';
-  import { getGameContext, listQuarterScores } from '../lib/db/repositories/games';
-  import { listSnaps } from '../lib/db/repositories/snaps';
+  import { getGameContext } from '../lib/db/repositories/games';
   import { rosterForGame } from '../lib/db/repositories/players';
+  import { teamTotals } from '../lib/db/reports/team';
+  import { reportSnaps } from '../lib/db/reports/snaps';
+  import { deriveOffense, turnoverMargin } from '../lib/reports/metrics';
+  import { pointsByQuarter } from '../lib/reports/scoring';
   import { playerLookup, summarize } from '../lib/game/summary';
   import { toDisplay } from '../lib/game/field';
   import { href, numericParam } from '../lib/router';
@@ -17,29 +20,24 @@
     const db = getDb();
     const context = await getGameContext(db, id);
     if (!context) return null;
-    const [quarters, snaps, roster] = await Promise.all([
-      listQuarterScores(db, id),
-      listSnaps(db, id),
+    // Both sides, because either can score and only one of them is our
+    // offense. This screen used to aggregate the snaps inline without
+    // filtering by possession, so "Offense" was really both teams added
+    // together.
+    const [us, them, snaps, roster] = await Promise.all([
+      teamTotals(db, { gameIds: [id], possession: 'us' }),
+      teamTotals(db, { gameIds: [id], possession: 'them' }),
+      reportSnaps(db, { gameIds: [id] }),
       rosterForGame(db, id),
     ]);
-    return { ...context, quarters, snaps, players: playerLookup(roster) };
+    return { ...context, us, them, snaps, players: playerLookup(roster) };
   });
 
-  const totals = $derived.by(() => {
-    const snaps = view.data?.snaps ?? [];
-    const runs = snaps.filter((s) => s.kind === 'RUN');
-    const passes = snaps.filter((s) => s.kind === 'PASS');
-    const completions = passes.filter((s) => s.isComplete);
-    return {
-      plays: snaps.length,
-      rushYards: runs.reduce((sum, s) => sum + s.yardsGained, 0),
-      rushAttempts: runs.length,
-      passYards: completions.reduce((sum, s) => sum + s.yardsGained, 0),
-      completions: completions.length,
-      attempts: passes.filter((s) => !s.wasSacked).length,
-      turnovers: snaps.filter((s) => s.isInterception || s.fumbleLost).length,
-    };
-  });
+  const offense = $derived(view.data ? deriveOffense(view.data.us) : null);
+  const margin = $derived(view.data ? turnoverMargin(view.data.us, view.data.them) : null);
+  // Derived from the plays: quarter_scores is never written, so reading it
+  // showed "No quarter scores recorded" on every game ever played.
+  const quarters = $derived(view.data ? pointsByQuarter(view.data.snaps) : []);
 </script>
 
 <Loader loading={view.loading} error={view.error} empty={view.data === null}
@@ -63,7 +61,7 @@
       <div class="meta">
         <span class="muted">{game.date}</span>
         <span class="muted">{game.location} · {game.weather} · {game.fieldCondition}</span>
-        {#if totals.plays > 0}
+        {#if view.data.snaps.length > 0}
           <span class="muted">Q{game.currentQuarter} · ball at {toDisplay(game.currentBallPosition)}</span>
         {/if}
       </div>
@@ -76,23 +74,23 @@
     <div class="grid-2">
       <div class="card">
         <h2>Scoring by quarter</h2>
-        {#if view.data.quarters.length === 0}
-          <p class="muted">No quarter scores recorded.</p>
+        {#if quarters.length === 0}
+          <p class="muted">No plays recorded yet.</p>
         {:else}
           <div class="scroll-x">
             <table class="data">
               <thead>
-                <tr><th></th>{#each view.data.quarters as q (q.id)}<th>Q{q.quarter}</th>{/each}<th>T</th></tr>
+                <tr><th></th>{#each quarters as q (q.quarter)}<th>Q{q.quarter}</th>{/each}<th>T</th></tr>
               </thead>
               <tbody>
                 <tr>
                   <td>{view.data.team.abbreviation}</td>
-                  {#each view.data.quarters as q (q.id)}<td class="tabular">{q.teamScore}</td>{/each}
+                  {#each quarters as q (q.quarter)}<td class="tabular">{q.us}</td>{/each}
                   <td class="tabular">{game.teamScore}</td>
                 </tr>
                 <tr>
                   <td>{game.opponent}</td>
-                  {#each view.data.quarters as q (q.id)}<td class="tabular">{q.opponentScore}</td>{/each}
+                  {#each quarters as q (q.quarter)}<td class="tabular">{q.them}</td>{/each}
                   <td class="tabular">{game.opponentScore}</td>
                 </tr>
               </tbody>
@@ -102,13 +100,30 @@
       </div>
 
       <div class="card">
-        <h2>Offense</h2>
+        <h2>Our offense</h2>
         <dl>
-          <div><dt>Total plays</dt><dd class="tabular">{totals.plays}</dd></div>
-          <div><dt>Rushing</dt><dd class="tabular">{totals.rushYards} yds on {totals.rushAttempts}</dd></div>
-          <div><dt>Passing</dt><dd class="tabular">{totals.passYards} yds, {totals.completions}/{totals.attempts}</dd></div>
-          <div><dt>Total yards</dt><dd class="tabular">{totals.rushYards + totals.passYards}</dd></div>
-          <div><dt>Turnovers</dt><dd class="tabular">{totals.turnovers}</dd></div>
+          <div><dt>Offensive plays</dt><dd class="tabular">{view.data.us.scrimmagePlays}</dd></div>
+          <div><dt>Rushing</dt><dd class="tabular">{view.data.us.rushYards} yds on {view.data.us.rushAttempts}</dd></div>
+          <div><dt>Passing</dt><dd class="tabular">{view.data.us.passYards} yds, {view.data.us.completions}/{view.data.us.passAttempts}</dd></div>
+          <div><dt>Total yards</dt><dd class="tabular">{offense?.totalYards ?? 0}</dd></div>
+          <div><dt>Yards per play</dt><dd class="tabular">{(offense?.yardsPerPlay ?? 0).toFixed(1)}</dd></div>
+          <div><dt>Turnovers</dt><dd class="tabular">{offense?.turnovers ?? 0}</dd></div>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2>Their offense</h2>
+        <p class="muted note">
+          No defensive play form exists, so this is what they did against us —
+          their yards are yards allowed, their turnovers are our takeaways.
+        </p>
+        <dl>
+          <div><dt>Offensive plays</dt><dd class="tabular">{view.data.them.scrimmagePlays}</dd></div>
+          <div><dt>Rushing allowed</dt><dd class="tabular">{view.data.them.rushYards} yds on {view.data.them.rushAttempts}</dd></div>
+          <div><dt>Passing allowed</dt><dd class="tabular">{view.data.them.passYards} yds, {view.data.them.completions}/{view.data.them.passAttempts}</dd></div>
+          <div><dt>Sacks by us</dt><dd class="tabular">{view.data.them.sacks}</dd></div>
+          <div><dt>Takeaways</dt><dd class="tabular">{margin?.takeaways ?? 0}</dd></div>
+          <div><dt>Turnover margin</dt><dd class="tabular">{(margin?.margin ?? 0) > 0 ? '+' : ''}{margin?.margin ?? 0}</dd></div>
         </dl>
       </div>
     </div>
@@ -120,7 +135,7 @@
     <div class="card">
       <div class="row-between">
         <h2>Last plays</h2>
-        <a href={href(`/games/${game.id}/plays`)}>All {totals.plays}</a>
+        <a href={href(`/games/${game.id}/plays`)}>All {view.data.snaps.length}</a>
       </div>
       {#if view.data.snaps.length === 0}
         <p class="muted">No plays recorded yet.</p>
@@ -148,6 +163,7 @@
   dl { display: grid; gap: 0.35rem; margin: 0; }
   dl div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--t-border); padding-bottom: 0.25rem; }
   dt { color: var(--t-text-muted); }
+  .note { font-size: 0.8rem; margin: 0 0 0.5rem; }
   dd { margin: 0; }
   .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
   .feed li { display: flex; gap: 0.6rem; align-items: baseline; border-bottom: 1px solid var(--t-border); padding-bottom: 0.3rem; }

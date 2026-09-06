@@ -12,36 +12,24 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createTestDb } from '../support/testDb';
-import { seedGame, seedPlayer } from '../support/seed';
+import { seedRoster } from '../support/seed';
 import { loadTracker, recordPlay, undoLastPlay } from '../../src/lib/game/recordPlay';
 import { OPENING_CURSOR, rebuildCursor } from '../../src/lib/game/cursor';
 import { blankForm } from '../../src/lib/game/playForm';
 import { toDisplay } from '../../src/lib/game/field';
-import { getPlayer } from '../../src/lib/db/repositories/players';
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
 const RB = 22;
 const QB = 7;
 const K = 3;
 
-async function setup() {
-  const db = await createTestDb();
-  const { teamId, gameId } = await seedGame(db);
-  const rb = await seedPlayer(db, teamId, { position: 'RB', number: 22 });
-  const qb = await seedPlayer(db, teamId, { position: 'QB', number: 7 });
-  const k = await seedPlayer(db, teamId, { position: 'K', number: 3 });
-  const roster = (await Promise.all([rb, qb, k].map((id) => getPlayer(db, id)))).filter(
-    (p): p is NonNullable<typeof p> => p != null,
-  );
-  return { db, gameId, rb, qb, k, roster };
-}
 
 /** 2nd & 7 at our own 20. */
 const OUR_20 = { ...OPENING_CURSOR, down: 2, distance: 7, ballPosition: -30 };
 
 describe('turnovers keep the ball where it is', () => {
   it('an interception changes possession and nothing else about the spot', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId, OUR_20,
       { ...blankForm('pass'), quarterbackNumber: QB, isInterception: true }, roster);
@@ -55,7 +43,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('a lost fumble hands over at the spot the play ended', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId, OUR_20,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 4, fumbled: true, fumbleLost: true },
@@ -68,7 +56,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('a turnover on downs leaves the ball where it stopped', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId,
       { ...OPENING_CURSOR, down: 4, distance: 3, ballPosition: -25 },
@@ -80,7 +68,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('a missed field goal hands over at the spot of the kick', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId,
       { ...OPENING_CURSOR, down: 4, distance: 3, ballPosition: 15 },
@@ -91,7 +79,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('a punt lands downfield rather than mirroring', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId,
       { ...OPENING_CURSOR, down: 4, distance: 8, ballPosition: -35 },
@@ -104,7 +92,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('a kickoff gives the receiving team their own 25, not ours', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId,
       { ...OPENING_CURSOR, down: null, distance: null, ballPosition: -15, situation: 'kickoff' },
@@ -116,7 +104,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('survives a reload with the ball and possession intact', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId, OUR_20,
       { ...blankForm('pass'), quarterbackNumber: QB, isInterception: true }, roster);
@@ -127,7 +115,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('gives the ball back when the turnover is undone', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const before = await recordPlay(db, gameId, OPENING_CURSOR,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 5 }, roster);
@@ -140,7 +128,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('drives the other way once they have it', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const turnover = await recordPlay(db, gameId, OUR_20,
       { ...blankForm('pass'), quarterbackNumber: QB, isInterception: true }, roster);
@@ -158,7 +146,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('moves the ball backwards on a sack and grows the distance', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     // 1st & 10 at our own 30, sacked for eight.
     const out = await recordPlay(db, gameId,
@@ -177,7 +165,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('moves a sack the other way when they have the ball', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId,
       { ...OPENING_CURSOR, down: 2, distance: 7, ballPosition: 10, possession: 'them' },
@@ -191,7 +179,7 @@ describe('turnovers keep the ball where it is', () => {
   });
 
   it('measures their goal-to-go against our end zone', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     // They intercept at our own 6.
     const out = await recordPlay(db, gameId,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createTestDb } from '../support/testDb';
-import { seedGame, seedPlayer } from '../support/seed';
+import { seedGame, seedPlayer, seedRoster } from '../support/seed';
 import { makePlayer } from '../support/snapFixture';
 import {
   loadTracker,
@@ -14,28 +14,16 @@ import { pointsFor, pointsForSnap } from '../../src/lib/game/score';
 import { EXTRA_POINT_SPOT, KICKOFF_SPOT } from '../../src/lib/game/field';
 import { countSnaps, getSnap } from '../../src/lib/db/repositories/snaps';
 import { getGame } from '../../src/lib/db/repositories/games';
-import { getPlayer } from '../../src/lib/db/repositories/players';
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
 const RB = 22;
 const QB = 7;
 const K = 3;
 
-async function setup() {
-  const db = await createTestDb();
-  const { teamId, gameId } = await seedGame(db);
-  const rb = await seedPlayer(db, teamId, { lastName: 'Danforth', position: 'RB', number: 22 });
-  const qb = await seedPlayer(db, teamId, { lastName: 'Okafor', position: 'QB', number: 7 });
-  const k = await seedPlayer(db, teamId, { lastName: 'Bell', position: 'K', number: 3 });
-  const roster = (await Promise.all([rb, qb, k].map((id) => getPlayer(db, id)))).filter(
-    (p): p is NonNullable<typeof p> => p != null,
-  );
-  return { db, gameId, rb, qb, k, roster };
-}
 
 describe('recordPlay', () => {
   it('writes the play, scores it and advances the cursor', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
@@ -51,7 +39,7 @@ describe('recordPlay', () => {
   });
 
   it('scores a touchdown and opens the extra point', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
@@ -67,7 +55,7 @@ describe('recordPlay', () => {
   });
 
   it('runs the touchdown, extra point and kickoff chain', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const td = await recordPlay(
       db, gameId, OPENING_CURSOR,
@@ -94,7 +82,7 @@ describe('recordPlay', () => {
   });
 
   it('scores two for a conversion and three for a field goal', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const two = await recordPlay(
       db, gameId, { ...OPENING_CURSOR, situation: 'extra_point', ballPosition: EXTRA_POINT_SPOT },
@@ -113,7 +101,7 @@ describe('recordPlay', () => {
   });
 
   it('stores a sack as a loss rather than a gain', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
@@ -129,7 +117,7 @@ describe('recordPlay', () => {
   });
 
   it('zeroes the yardage of a declined penalty', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
@@ -143,7 +131,7 @@ describe('recordPlay', () => {
   });
 
   it('puts a kickoff at the kickoff spot, not the opponent’s 15', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(
       db, gameId, OPENING_CURSOR,
@@ -159,7 +147,7 @@ describe('recordPlay', () => {
   });
 
   it('rejects an invalid play before writing anything', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     await expect(
       recordPlay(db, gameId, OPENING_CURSOR,
@@ -170,7 +158,7 @@ describe('recordPlay', () => {
   });
 
   it('records an unrostered number without a player link', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     // The opponent's offence is never on our roster. Their #40 still has to
     // be recordable, and must not be attributed to one of our players.
@@ -186,7 +174,7 @@ describe('recordPlay', () => {
   });
 
   it('never resolves an opponent number against our roster', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     // We have a #22. Their #22 is a different person entirely.
     const out = await recordPlay(
@@ -201,7 +189,7 @@ describe('recordPlay', () => {
   });
 
   it('links our own number to the roster player', async () => {
-    const { db, gameId, rb, roster } = await setup();
+    const { db, gameId, rb, roster } = await seedRoster(await createTestDb());
 
     const out = await recordPlay(db, gameId, OPENING_CURSOR,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 5 }, roster);
@@ -213,7 +201,7 @@ describe('recordPlay', () => {
   });
 
   it('rolls the whole play back when the write fails', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     // On the roster we hold, but not in the database -- a foreign key
     // violation partway through the transaction.
@@ -231,7 +219,7 @@ describe('recordPlay', () => {
   });
 
   it('keeps pointsFor and pointsForSnap in agreement for every form', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const forms: PlayForm[] = [
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 30, isTouchdown: true },
@@ -270,12 +258,12 @@ describe('recordPlay', () => {
 
 describe('undoLastPlay', () => {
   it('refuses when there is nothing to undo', async () => {
-    const { db, gameId } = await setup();
+    const { db, gameId } = await seedRoster(await createTestDb());
     await expect(undoLastPlay(db, gameId)).rejects.toThrow(/no play to undo/);
   });
 
   it('takes the points back off with the play', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     await recordPlay(db, gameId, OPENING_CURSOR,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 30, isTouchdown: true }, roster);
@@ -288,7 +276,7 @@ describe('undoLastPlay', () => {
   });
 
   it('restores the touchdown state when undoing the extra point', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const td = await recordPlay(db, gameId, OPENING_CURSOR,
       { ...blankForm('run'), ballCarrierNumber: RB, yardsGained: 30, isTouchdown: true }, roster);
@@ -305,7 +293,7 @@ describe('undoLastPlay', () => {
   });
 
   it('unwinds a whole drive one play at a time', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     let cursor = OPENING_CURSOR;
     for (const yards of [4, 3, 5, 12]) {
@@ -324,7 +312,7 @@ describe('undoLastPlay', () => {
 
 describe('loadTracker', () => {
   it('gathers the game, roster, cursor and recent plays', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     let cursor = OPENING_CURSOR;
     for (const yards of [4, 8]) {
@@ -335,7 +323,7 @@ describe('loadTracker', () => {
     const snapshot = await loadTracker(db, gameId);
     expect(snapshot.team.abbreviation).toBe('NSR');
     expect(snapshot.game.opponent).toBe('Westfield');
-    expect(snapshot.roster).toHaveLength(3);
+    expect(snapshot.roster).toHaveLength(4);
     expect(snapshot.cursor).toEqual(cursor);
     // Newest play first, matching the live feed.
     expect(snapshot.feed.map((f) => f.sequenceNumber)).toEqual([2, 1]);
@@ -343,7 +331,7 @@ describe('loadTracker', () => {
   });
 
   it('caps the feed at fifteen plays', async () => {
-    const { db, gameId, roster } = await setup();
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     let cursor = OPENING_CURSOR;
     for (let i = 0; i < 20; i++) {
@@ -357,7 +345,7 @@ describe('loadTracker', () => {
   });
 
   it('refuses a game that does not exist', async () => {
-    const { db } = await setup();
+    const { db } = await seedRoster(await createTestDb());
     await expect(loadTracker(db, 999)).rejects.toThrow(/does not exist/);
   });
 

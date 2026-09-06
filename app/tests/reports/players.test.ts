@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createTestDb } from '../support/testDb';
-import { seedGame, seedPlayer } from '../support/seed';
+import { seedRoster } from '../support/seed';
 import { insertSnap } from '../../src/lib/db/repositories/snaps';
 import { setPlayerActive } from '../../src/lib/db/repositories/players';
 import {
@@ -8,19 +8,10 @@ import {
   receivingByPlayer, rushingByPlayer,
 } from '../../src/lib/db/reports/players';
 
-async function setup() {
-  const db = await createTestDb();
-  const { teamId, gameId } = await seedGame(db);
-  const rb = await seedPlayer(db, teamId, { lastName: 'Danforth', position: 'RB', number: 22 });
-  const qb = await seedPlayer(db, teamId, { lastName: 'Okafor', position: 'QB', number: 7 });
-  const wr = await seedPlayer(db, teamId, { lastName: 'Vance', position: 'WR', number: 81 });
-  const k = await seedPlayer(db, teamId, { lastName: 'Bell', position: 'K', number: 3 });
-  return { db, teamId, gameId, rb, qb, wr, k };
-}
 
 describe('per-player lines', () => {
   it('groups rushing by carrier, best first', async () => {
-    const { db, gameId, rb, qb } = await setup();
+    const { db, gameId, rb, qb } = await seedRoster(await createTestDb());
     await insertSnap(db, gameId, { kind: 'RUN', quarter: 1, ballCarrierId: rb, yardsGained: 12, isFirstDown: true });
     await insertSnap(db, gameId, { kind: 'RUN', quarter: 1, ballCarrierId: rb, yardsGained: 3, isTouchdown: true });
     await insertSnap(db, gameId, { kind: 'RUN', quarter: 2, ballCarrierId: qb, yardsGained: 5 });
@@ -33,7 +24,7 @@ describe('per-player lines', () => {
   });
 
   it('counts targets on incompletions but receptions only on catches', async () => {
-    const { db, gameId, qb, wr } = await setup();
+    const { db, gameId, qb, wr } = await seedRoster(await createTestDb());
     await insertSnap(db, gameId, { kind: 'PASS', quarter: 1, quarterbackId: qb, receiverId: wr, isComplete: true, yardsGained: 18 });
     await insertSnap(db, gameId, { kind: 'PASS', quarter: 1, quarterbackId: qb, receiverId: wr, isComplete: false });
 
@@ -42,7 +33,7 @@ describe('per-player lines', () => {
   });
 
   it('excludes a sack from a quarterback’s attempts', async () => {
-    const { db, gameId, qb } = await setup();
+    const { db, gameId, qb } = await seedRoster(await createTestDb());
     await insertSnap(db, gameId, { kind: 'PASS', quarter: 1, quarterbackId: qb, isComplete: true, yardsGained: 9 });
     await insertSnap(db, gameId, { kind: 'PASS', quarter: 1, quarterbackId: qb, wasSacked: true, sackYards: -6 });
 
@@ -52,7 +43,7 @@ describe('per-player lines', () => {
   });
 
   it('reports kicking and punting per player', async () => {
-    const { db, gameId, k } = await setup();
+    const { db, gameId, k } = await seedRoster(await createTestDb());
     await insertSnap(db, gameId, { kind: 'FG', quarter: 1, kickerId: k, kickDistance: 38, result: 'GOOD' });
     await insertSnap(db, gameId, { kind: 'FG', quarter: 2, kickerId: k, kickDistance: 51, result: 'MISS' });
     await insertSnap(db, gameId, { kind: 'PUNT', quarter: 3, punterId: k, puntYards: 46 });
@@ -62,7 +53,7 @@ describe('per-player lines', () => {
   });
 
   it('never lets an opponent play reach a player line', async () => {
-    const { db, gameId, rb } = await setup();
+    const { db, gameId, rb } = await seedRoster(await createTestDb());
     await insertSnap(db, gameId, { kind: 'RUN', quarter: 1, ballCarrierId: rb, yardsGained: 5, possession: 'us' });
     // Their #22 is a different person: the row carries a number and no id, so
     // the join excludes it by construction rather than by a filter.
@@ -74,7 +65,7 @@ describe('per-player lines', () => {
   });
 
   it('still reports a retired player’s past production', async () => {
-    const { db, gameId, rb } = await setup();
+    const { db, gameId, rb } = await seedRoster(await createTestDb());
     await insertSnap(db, gameId, { kind: 'RUN', quarter: 1, ballCarrierId: rb, yardsGained: 7 });
     await setPlayerActive(db, rb, false);
 

@@ -102,6 +102,5 @@
 
 <style>
   .actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
-  .btn.small { min-height: 32px; padding: 0 0.6rem; font-size: 0.85rem; }
   tr.retired td { opacity: 0.55; }
 </style>

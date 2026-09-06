@@ -97,5 +97,4 @@
 <style>
   .filters { align-items: end; margin-bottom: var(--gap); }
   .actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
-  .btn.small { min-height: 32px; padding: 0 0.6rem; font-size: 0.85rem; }
 </style>
