@@ -66,9 +66,21 @@ export interface PassForm extends DefensiveDetail {
   playId: number | null;
   formation: string;
   quarterbackNumber: number | null;
+  /** Who the ball was thrown at. Set on every attempt, caught or not. */
+  targetNumber: number | null;
+  /** Who caught it. Only meaningful on a completion. */
   receiverNumber: number | null;
   isComplete: boolean;
   wasSacked: boolean;
+  /**
+   * How far the ball travelled in the air. Yards after the catch are
+   * DERIVED as `yardsGained - airYards` rather than entered, so the two
+   * cannot contradict the total.
+   */
+  airYards: number;
+  isThrownAway: boolean;
+  /** Our passer was pressured. The defensive mirror is `appliedPressure`. */
+  wasUnderPressure: boolean;
   yardsGained: number;
   isTouchdown: boolean;
   isFirstDown: boolean;
@@ -202,8 +214,10 @@ export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { 
       return {
         ...noDefense(),
         type: 'pass', playId: null, formation: '',
-        quarterbackNumber: null, receiverNumber: null,
-        isComplete: false, wasSacked: false, yardsGained: 0,
+        quarterbackNumber: null, targetNumber: null, receiverNumber: null,
+        isComplete: false, wasSacked: false,
+        airYards: 0, isThrownAway: false, wasUnderPressure: false,
+        yardsGained: 0,
         isTouchdown: false, isFirstDown: false, isInterception: false,
         fumbled: false, fumbleLost: false, notes: '',
       } as Extract<PlayForm, { type: T }>;

@@ -180,11 +180,22 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
         playId: form.playId, formation: form.formation,
         quarterbackNumber: form.quarterbackNumber,
         quarterbackId: link(form.quarterbackNumber),
-        receiverNumber: form.receiverNumber,
-        receiverId: link(form.receiverNumber),
-        // Django set target and receiver to the same player (tracker.py:523).
-        targetId: link(form.receiverNumber),
+        // The target is who the ball was thrown at, so it is set whether or
+        // not the pass was caught. The receiver is only who caught it --
+        // Django wrote the same player to both (tracker.py:523), which made
+        // a drop indistinguishable from a completion at the row level, and
+        // made catch rate impossible.
+        targetNumber: form.targetNumber,
+        targetId: link(form.targetNumber),
+        receiverNumber: form.isComplete ? form.targetNumber : null,
+        receiverId: form.isComplete ? link(form.targetNumber) : null,
         isComplete: form.isComplete,
+        isThrownAway: form.isThrownAway,
+        wasUnderPressure: form.wasUnderPressure,
+        // Air yards are entered; yards after the catch are what is left of
+        // the gain, so the two can never contradict the total.
+        airYards: form.isComplete ? form.airYards : 0,
+        yardsAfterCatch: form.isComplete ? form.yardsGained - form.airYards : 0,
         // A sack's loss lives in sackYards, so the gain is zero.
         yardsGained: form.wasSacked ? 0 : form.yardsGained,
         sackYards: form.wasSacked ? -Math.abs(form.yardsGained) : 0,

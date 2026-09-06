@@ -123,12 +123,12 @@ describe('jersey validation', () => {
 
   it('rejects a number outside 0-99 and says which field', () => {
     try {
-      validateJerseys({ ...blankForm('pass'), quarterbackNumber: 7, receiverNumber: 100 });
+      validateJerseys({ ...blankForm('pass'), quarterbackNumber: 7, targetNumber: 100 });
       expect.unreachable('should have thrown');
     } catch (error) {
       const failure = error as ValidationError;
       expect(failure.code).toBe('out_of_range');
-      expect(failure.field).toBe('receiverNumber');
+      expect(failure.field).toBe('targetNumber');
     }
     expect(() => validateJerseys({ ...blankForm('run'), ballCarrierNumber: -1 })).toThrow();
   });

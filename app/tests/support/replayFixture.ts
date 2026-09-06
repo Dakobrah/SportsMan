@@ -101,7 +101,9 @@ function toForm(play: Play): PlayForm | null {
       return {
         ...blankForm('pass'),
         quarterbackNumber: a.passer ?? null,
-        receiverNumber: a.receiver ?? null,
+        // nflverse names the intended receiver on every attempt, caught or
+        // not, which is exactly the target.
+        targetNumber: a.receiver ?? null,
         isComplete: play.complete_pass,
         wasSacked: play.sack,
         yardsGained: play.sack ? Math.abs(play.yards_gained) : play.yards_gained,

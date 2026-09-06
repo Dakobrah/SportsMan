@@ -16,6 +16,7 @@ import jerseyNumbersV4 from './004_jersey_numbers.sql?raw';
 import defenseV5 from './005_defense.sql?raw';
 import returnsV6 from './006_returns.sql?raw';
 import playbookV7 from './007_playbook.sql?raw';
+import passDetailV8 from './008_pass_detail.sql?raw';
 import type { Migration } from './migrate';
 
 export const migrations: Migration[] = [
@@ -26,4 +27,5 @@ export const migrations: Migration[] = [
   { version: 5, name: 'defense', sql: defenseV5 },
   { version: 6, name: 'returns', sql: returnsV6 },
   { version: 7, name: 'playbook', sql: playbookV7 },
+  { version: 8, name: 'pass detail', sql: passDetailV8 },
 ];

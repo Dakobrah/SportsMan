@@ -99,7 +99,10 @@ export interface ReceivingLine extends PlayerLine {
  * rate are computable here -- something the Django reports never exposed.
  */
 export const receivingByPlayer = (db: Database, filters: ReportFilters) =>
-  byRole<ReceivingLine>(db, filters, 'receiver_id', `
+  // Grouped on the TARGET, so a receiver appears for every ball thrown their
+  // way and not only the ones they caught -- which is what makes catch rate
+  // meaningful.
+  byRole<ReceivingLine>(db, filters, 'target_id', `
   COUNT(*) FILTER (WHERE s.was_sacked = 0)    AS targets,
   COUNT(*) FILTER (WHERE s.is_complete = 1)   AS receptions,
   COALESCE(SUM(s.yards_gained) FILTER (WHERE s.is_complete = 1), 0)

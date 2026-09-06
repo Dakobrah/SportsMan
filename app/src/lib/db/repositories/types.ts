@@ -157,6 +157,7 @@ export interface Snap {
   quarterbackId: number | null;
   quarterbackNumber: number | null;
   targetId: number | null;
+  targetNumber: number | null;
   receiverId: number | null;
   receiverNumber: number | null;
   isComplete: boolean;

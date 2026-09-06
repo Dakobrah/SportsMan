@@ -30,6 +30,7 @@ export const NUMERIC_FIELDS: Record<string, FieldRange> = {
   distance: { min: 0, max: 99, label: 'Distance' },
   ballPosition: { min: -50, max: 50, label: 'Ball position' },
   yardsGained: { min: -99, max: 99, label: 'Yards gained' },
+  airYards: { min: -99, max: 99, label: 'Air yards' },
   sackYards: { min: -99, max: 0, label: 'Sack yards' },
   puntYards: { min: 0, max: 99, label: 'Punt yards' },
   kickYards: { min: 0, max: 120, label: 'Kick yards' },
@@ -99,6 +100,14 @@ export function validateForm(form: PlayForm): void {
           'isInterception',
         );
       }
+      if (form.isComplete) checkNumber('airYards', form.airYards);
+      if (form.isComplete && form.isThrownAway) {
+        throw new ValidationError(
+          'A throwaway cannot also be a completion.',
+          'contradictory',
+          'isThrownAway',
+        );
+      }
       if (form.isTouchdown && !form.isComplete) {
         throw new ValidationError(
           'A touchdown pass has to be complete.',
@@ -139,7 +148,7 @@ export function jerseyFields(form: PlayForm): [string, number | null][] {
     case 'pass':
       return [
         ['quarterbackNumber', form.quarterbackNumber],
-        ['receiverNumber', form.receiverNumber],
+        ['targetNumber', form.targetNumber],
       ];
     case 'kickoff':
       return [['kickerNumber', form.kickerNumber]];

@@ -30,6 +30,7 @@ export const testMigrations: Migration[] = [
   { version: 5, name: 'defense', sql: readSql('005_defense.sql') },
   { version: 6, name: 'returns', sql: readSql('006_returns.sql') },
   { version: 7, name: 'playbook', sql: readSql('007_playbook.sql') },
+  { version: 8, name: 'pass detail', sql: readSql('008_pass_detail.sql') },
 ];
 
 class NodeDatabase implements Database {

@@ -25,8 +25,16 @@ describe('per-player lines', () => {
 
   it('counts targets on incompletions but receptions only on catches', async () => {
     const { db, gameId, qb, wr } = await seedRoster(await createTestDb());
-    await insertSnap(db, gameId, { kind: 'PASS', quarter: 1, quarterbackId: qb, receiverId: wr, isComplete: true, yardsGained: 18 });
-    await insertSnap(db, gameId, { kind: 'PASS', quarter: 1, quarterbackId: qb, receiverId: wr, isComplete: false });
+    // The target is set on every attempt; the receiver only on a catch --
+    // which is exactly what toSnapRow writes.
+    await insertSnap(db, gameId, {
+      kind: 'PASS', quarter: 1, quarterbackId: qb,
+      targetId: wr, receiverId: wr, isComplete: true, yardsGained: 18,
+    });
+    await insertSnap(db, gameId, {
+      kind: 'PASS', quarter: 1, quarterbackId: qb,
+      targetId: wr, receiverId: null, isComplete: false,
+    });
 
     const rows = await receivingByPlayer(db, {});
     expect(rows[0]).toMatchObject({ targets: 2, receptions: 1, yards: 18, lastName: 'Vance' });
