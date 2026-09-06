@@ -6,8 +6,8 @@
  * changing.
  */
 import type { Database } from '../driver';
-import { toDomain, toDomainAll } from '../repositories/types';
-import { type ReportFilters, snapWhere } from './filters';
+import type { ReportFilters } from './filters';
+import { aggregateRow, aggregateRows } from './query';
 
 export interface PenaltyTotals {
   penalties: number;
@@ -18,23 +18,16 @@ export interface PenaltyTotals {
   onDefense: number;
 }
 
-export async function penaltyTotals(
-  db: Database,
-  filters: ReportFilters,
-): Promise<PenaltyTotals> {
-  const where = snapWhere(filters, ['had_penalty = 1']);
-  const row = await db.get<Record<string, unknown>>(
-    `SELECT COUNT(*)                                            AS penalties,
-            COALESCE(SUM(penalty_yards), 0)                     AS yards,
-            COUNT(*) FILTER (WHERE penalty_accepted = 1)        AS accepted,
-            COUNT(*) FILTER (WHERE penalty_accepted = 0)        AS declined,
-            COUNT(*) FILTER (WHERE penalty_on_offense = 1)      AS on_offense,
-            COUNT(*) FILTER (WHERE penalty_on_offense = 0)      AS on_defense
-     FROM snaps WHERE ${where.sql}`,
-    where.params,
-  );
-  return toDomain<PenaltyTotals>(row ?? {});
-}
+const PENALTIES = `
+  COUNT(*)                                       AS penalties,
+  COALESCE(SUM(penalty_yards), 0)                AS yards,
+  COUNT(*) FILTER (WHERE penalty_accepted = 1)   AS accepted,
+  COUNT(*) FILTER (WHERE penalty_accepted = 0)   AS declined,
+  COUNT(*) FILTER (WHERE penalty_on_offense = 1) AS on_offense,
+  COUNT(*) FILTER (WHERE penalty_on_offense = 0) AS on_defense`;
+
+export const penaltyTotals = (db: Database, filters: ReportFilters) =>
+  aggregateRow<PenaltyTotals>(db, filters, PENALTIES, ['had_penalty = 1']);
 
 export interface PenaltyRow {
   name: string;
@@ -42,20 +35,14 @@ export interface PenaltyRow {
   yards: number;
 }
 
-export async function penaltiesByName(
-  db: Database,
-  filters: ReportFilters,
-): Promise<PenaltyRow[]> {
-  const where = snapWhere(filters, ['had_penalty = 1', "penalty_description <> ''"]);
-  return toDomainAll<PenaltyRow>(
-    await db.all(
-      `SELECT penalty_description             AS name,
-              COUNT(*)                        AS count,
-              COALESCE(SUM(penalty_yards), 0) AS yards
-       FROM snaps WHERE ${where.sql}
-       GROUP BY penalty_description
-       ORDER BY count DESC, yards DESC, name`,
-      where.params,
-    ),
+const BY_NAME = `
+  penalty_description             AS name,
+  COUNT(*)                        AS count,
+  COALESCE(SUM(penalty_yards), 0) AS yards`;
+
+export const penaltiesByName = (db: Database, filters: ReportFilters) =>
+  aggregateRows<PenaltyRow>(
+    db, filters, BY_NAME,
+    ['had_penalty = 1', "penalty_description <> ''"],
+    'GROUP BY penalty_description ORDER BY count DESC, yards DESC, name',
   );
-}

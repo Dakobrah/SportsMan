@@ -9,7 +9,7 @@
  * rules, and rules live in lib/reports.
  */
 import type { Database } from '../driver';
-import { toDomain, toDomainAll } from '../repositories/types';
+import { aggregateRow, aggregateRows, joinedRows } from './query';
 import {
   EXPLOSIVE_PASS_YARDS,
   EXPLOSIVE_RUN_YARDS,
@@ -17,7 +17,6 @@ import {
   TO_GOAL_SQL,
   gainSql,
   type ReportFilters,
-  snapWhere,
 } from './filters';
 
 export interface TeamTotals {
@@ -46,49 +45,42 @@ export interface TeamTotals {
   penaltyYards: number;
 }
 
-export async function teamTotals(
-  db: Database,
-  filters: ReportFilters,
-): Promise<TeamTotals> {
-  const where = snapWhere(filters);
-  const row = await db.get<Record<string, unknown>>(
-    `SELECT
-       COUNT(*) FILTER (WHERE kind IN ('RUN', 'PASS'))                              AS scrimmage_plays,
+const TEAM_TOTALS = `
+  COUNT(*) FILTER (WHERE kind IN ('RUN', 'PASS'))                              AS scrimmage_plays,
 
-       COUNT(*) FILTER (WHERE kind = 'RUN')                                         AS rush_attempts,
-       COALESCE(SUM(yards_gained) FILTER (WHERE kind = 'RUN'), 0)                    AS rush_yards,
-       COUNT(*) FILTER (WHERE kind = 'RUN' AND is_touchdown = 1)                     AS rush_touchdowns,
-       COUNT(*) FILTER (WHERE kind = 'RUN' AND is_first_down = 1)                    AS rush_first_downs,
-       MAX(yards_gained) FILTER (WHERE kind = 'RUN')                                 AS rush_longest,
+  COUNT(*) FILTER (WHERE kind = 'RUN')                                         AS rush_attempts,
+  COALESCE(SUM(yards_gained) FILTER (WHERE kind = 'RUN'), 0)                   AS rush_yards,
+  COUNT(*) FILTER (WHERE kind = 'RUN' AND is_touchdown = 1)                    AS rush_touchdowns,
+  COUNT(*) FILTER (WHERE kind = 'RUN' AND is_first_down = 1)                   AS rush_first_downs,
+  MAX(yards_gained) FILTER (WHERE kind = 'RUN')                                AS rush_longest,
 
-       -- A sack is a PASS row but NOT a pass attempt. Counting it inflates the
-       -- denominator of completion %, yards per attempt and every passer-rating
-       -- component -- the same correction offense.py::get_passing_totals carries.
-       COUNT(*) FILTER (WHERE kind = 'PASS' AND was_sacked = 0)                      AS pass_attempts,
-       COUNT(*) FILTER (WHERE kind = 'PASS' AND is_complete = 1)                     AS completions,
-       COALESCE(SUM(yards_gained) FILTER (WHERE kind = 'PASS' AND is_complete = 1), 0) AS pass_yards,
-       COUNT(*) FILTER (WHERE kind = 'PASS' AND is_touchdown = 1)                    AS pass_touchdowns,
-       COUNT(*) FILTER (WHERE kind = 'PASS' AND is_first_down = 1)                   AS pass_first_downs,
-       MAX(yards_gained) FILTER (WHERE kind = 'PASS' AND is_complete = 1)            AS pass_longest,
-       COUNT(*) FILTER (WHERE kind = 'PASS' AND is_interception = 1)                 AS interceptions,
-       COUNT(*) FILTER (WHERE kind = 'PASS' AND was_sacked = 1)                      AS sacks,
-       COALESCE(SUM(sack_yards) FILTER (WHERE kind = 'PASS' AND was_sacked = 1), 0)  AS sack_yards,
+  -- A sack is a PASS row but NOT a pass attempt. Counting it inflates the
+  -- denominator of completion %, yards per attempt and every passer-rating
+  -- component -- the same correction offense.py::get_passing_totals carries.
+  COUNT(*) FILTER (WHERE kind = 'PASS' AND was_sacked = 0)                     AS pass_attempts,
+  COUNT(*) FILTER (WHERE kind = 'PASS' AND is_complete = 1)                    AS completions,
+  COALESCE(SUM(yards_gained) FILTER (WHERE kind = 'PASS' AND is_complete = 1), 0)
+                                                                               AS pass_yards,
+  COUNT(*) FILTER (WHERE kind = 'PASS' AND is_touchdown = 1)                   AS pass_touchdowns,
+  COUNT(*) FILTER (WHERE kind = 'PASS' AND is_first_down = 1)                  AS pass_first_downs,
+  MAX(yards_gained) FILTER (WHERE kind = 'PASS' AND is_complete = 1)           AS pass_longest,
+  COUNT(*) FILTER (WHERE kind = 'PASS' AND is_interception = 1)                AS interceptions,
+  COUNT(*) FILTER (WHERE kind = 'PASS' AND was_sacked = 1)                     AS sacks,
+  COALESCE(SUM(sack_yards) FILTER (WHERE kind = 'PASS' AND was_sacked = 1), 0) AS sack_yards,
 
-       COUNT(*) FILTER (WHERE fumbled = 1)                                           AS fumbles,
-       COUNT(*) FILTER (WHERE fumble_lost = 1)                                       AS fumbles_lost,
+  COUNT(*) FILTER (WHERE fumbled = 1)                                          AS fumbles,
+  COUNT(*) FILTER (WHERE fumble_lost = 1)                                      AS fumbles_lost,
 
-       COUNT(*) FILTER (WHERE kind = 'RUN' AND yards_gained >= ${EXPLOSIVE_RUN_YARDS})  AS explosive_runs,
-       COUNT(*) FILTER (WHERE kind = 'PASS' AND is_complete = 1
-                          AND yards_gained >= ${EXPLOSIVE_PASS_YARDS})                AS explosive_passes,
+  COUNT(*) FILTER (WHERE kind = 'RUN' AND yards_gained >= ${EXPLOSIVE_RUN_YARDS})
+                                                                               AS explosive_runs,
+  COUNT(*) FILTER (WHERE kind = 'PASS' AND is_complete = 1
+                     AND yards_gained >= ${EXPLOSIVE_PASS_YARDS})              AS explosive_passes,
 
-       COUNT(*) FILTER (WHERE had_penalty = 1)                                       AS penalties,
-       COALESCE(SUM(penalty_yards) FILTER (WHERE had_penalty = 1), 0)                AS penalty_yards
-     FROM snaps
-     WHERE ${where.sql}`,
-    where.params,
-  );
-  return toDomain<TeamTotals>(row ?? {});
-}
+  COUNT(*) FILTER (WHERE had_penalty = 1)                                      AS penalties,
+  COALESCE(SUM(penalty_yards) FILTER (WHERE had_penalty = 1), 0)               AS penalty_yards`;
+
+export const teamTotals = (db: Database, filters: ReportFilters) =>
+  aggregateRow<TeamTotals>(db, filters, TEAM_TOTALS);
 
 export interface DownRow {
   down: number;
@@ -107,31 +99,20 @@ export interface DownRow {
  * snap at 1st and 0 counting as an automatic conversion; there, only a
  * touchdown converts.
  */
-export async function downEfficiency(
-  db: Database,
-  filters: ReportFilters,
-): Promise<DownRow[]> {
-  const where = snapWhere(filters, [
-    "kind IN ('RUN', 'PASS')",
-    'down IS NOT NULL',
-    'distance IS NOT NULL',
-  ]);
-  return toDomainAll<DownRow>(
-    await db.all(
-      `SELECT down,
-              COUNT(*)                      AS plays,
-              COALESCE(SUM(${GAIN_SQL}), 0) AS yards,
-              COUNT(*) FILTER (WHERE is_touchdown = 1
-                                  OR is_first_down = 1
-                                  OR (distance > 0 AND ${GAIN_SQL} >= distance)) AS converted
-       FROM snaps
-       WHERE ${where.sql}
-       GROUP BY down
-       ORDER BY down`,
-      where.params,
-    ),
+const DOWN_EFFICIENCY = `
+  down,
+  COUNT(*)                      AS plays,
+  COALESCE(SUM(${GAIN_SQL}), 0) AS yards,
+  COUNT(*) FILTER (WHERE is_touchdown = 1
+                     OR is_first_down = 1
+                     OR (distance > 0 AND ${GAIN_SQL} >= distance)) AS converted`;
+
+export const downEfficiency = (db: Database, filters: ReportFilters) =>
+  aggregateRows<DownRow>(
+    db, filters, DOWN_EFFICIENCY,
+    ["kind IN ('RUN', 'PASS')", 'down IS NOT NULL', 'distance IS NOT NULL'],
+    'GROUP BY down ORDER BY down',
   );
-}
 
 export type FieldZone = 'red' | 'fringe' | 'midfield' | 'own';
 
@@ -142,31 +123,27 @@ export interface ZoneRow {
   touchdowns: number;
 }
 
+const FIELD_ZONES = `
+  CASE
+    WHEN ${TO_GOAL_SQL} <= 20 THEN 'red'
+    WHEN ${TO_GOAL_SQL} <= 40 THEN 'fringe'
+    WHEN ${TO_GOAL_SQL} <= 60 THEN 'midfield'
+    ELSE 'own'
+  END                                      AS zone,
+  COUNT(*)                                 AS plays,
+  COALESCE(SUM(${GAIN_SQL}), 0)            AS yards,
+  COUNT(*) FILTER (WHERE is_touchdown = 1) AS touchdowns`;
+
 /** Snaps bucketed by how far the possessing team was from the goal. */
 export async function fieldZones(
   db: Database,
   filters: ReportFilters,
 ): Promise<ZoneRow[]> {
-  const where = snapWhere(filters, ["kind IN ('RUN', 'PASS')", 'ball_position IS NOT NULL']);
-  const rows = await toDomainAll<ZoneRow>(
-    await db.all(
-      // 20 matches field.isRedZoneFor.
-      `SELECT CASE
-                WHEN ${TO_GOAL_SQL} <= 20 THEN 'red'
-                WHEN ${TO_GOAL_SQL} <= 40 THEN 'fringe'
-                WHEN ${TO_GOAL_SQL} <= 60 THEN 'midfield'
-                ELSE 'own'
-              END                           AS zone,
-              COUNT(*)                      AS plays,
-              COALESCE(SUM(${GAIN_SQL}), 0) AS yards,
-              COUNT(*) FILTER (WHERE is_touchdown = 1) AS touchdowns
-       FROM snaps
-       WHERE ${where.sql}
-       GROUP BY zone`,
-      where.params,
-    ),
+  const rows = await aggregateRows<ZoneRow>(
+    db, filters, FIELD_ZONES,
+    ["kind IN ('RUN', 'PASS')", 'ball_position IS NOT NULL'],
+    'GROUP BY zone',
   );
-
   // A fixed order, so a chart's x-axis does not reorder itself by which
   // zones happen to have plays.
   const order: FieldZone[] = ['own', 'midfield', 'fringe', 'red'];
@@ -181,32 +158,27 @@ export interface YardageBucketRow {
   passes: number;
 }
 
+const YARDAGE_BUCKETS = `
+  CASE
+    WHEN ${GAIN_SQL} < 0  THEN 'loss'
+    WHEN ${GAIN_SQL} = 0  THEN 'none'
+    WHEN ${GAIN_SQL} < 5  THEN '1-4'
+    WHEN ${GAIN_SQL} < 10 THEN '5-9'
+    WHEN ${GAIN_SQL} < 20 THEN '10-19'
+    ELSE '20+'
+  END                                   AS bucket,
+  COUNT(*) FILTER (WHERE kind = 'RUN')  AS runs,
+  COUNT(*) FILTER (WHERE kind = 'PASS') AS passes`;
+
 /** How gains were distributed. Buckets are named, not computed, so the
  *  chart's axis is stable across games. */
 export async function yardageBuckets(
   db: Database,
   filters: ReportFilters,
 ): Promise<YardageBucketRow[]> {
-  const where = snapWhere(filters, ["kind IN ('RUN', 'PASS')"]);
-  const rows = await toDomainAll<YardageBucketRow>(
-    await db.all(
-      `SELECT CASE
-                WHEN ${GAIN_SQL} < 0  THEN 'loss'
-                WHEN ${GAIN_SQL} = 0  THEN 'none'
-                WHEN ${GAIN_SQL} < 5  THEN '1-4'
-                WHEN ${GAIN_SQL} < 10 THEN '5-9'
-                WHEN ${GAIN_SQL} < 20 THEN '10-19'
-                ELSE '20+'
-              END AS bucket,
-              COUNT(*) FILTER (WHERE kind = 'RUN')  AS runs,
-              COUNT(*) FILTER (WHERE kind = 'PASS') AS passes
-       FROM snaps
-       WHERE ${where.sql}
-       GROUP BY bucket`,
-      where.params,
-    ),
+  const rows = await aggregateRows<YardageBucketRow>(
+    db, filters, YARDAGE_BUCKETS, ["kind IN ('RUN', 'PASS')"], 'GROUP BY bucket',
   );
-
   const order = ['loss', 'none', '1-4', '5-9', '10-19', '20+'];
   return order.map(
     (bucket) => rows.find((r) => r.bucket === bucket) ?? { bucket, runs: 0, passes: 0 },
@@ -231,23 +203,21 @@ export interface TendencyRow {
  * Grouped on the formation TEXT stored on the snap rather than joined to the
  * playbook, so editing or reimporting a playbook cannot rewrite history.
  */
+const TENDENCIES = `
+  formation,
+  COUNT(*)                              AS plays,
+  COUNT(*) FILTER (WHERE kind = 'RUN')  AS runs,
+  COUNT(*) FILTER (WHERE kind = 'PASS') AS passes,
+  COALESCE(SUM(${GAIN_SQL}), 0)         AS yards`;
+
 export async function tendencies(
   db: Database,
   filters: ReportFilters,
 ): Promise<TendencyRow[]> {
-  const where = snapWhere(filters, ["kind IN ('RUN', 'PASS')", "formation <> ''"]);
-  const rows = await toDomainAll<Omit<TendencyRow, 'runPct'>>(
-    await db.all(
-      `SELECT formation,
-              COUNT(*)                              AS plays,
-              COUNT(*) FILTER (WHERE kind = 'RUN')  AS runs,
-              COUNT(*) FILTER (WHERE kind = 'PASS') AS passes,
-              COALESCE(SUM(${GAIN_SQL}), 0)         AS yards
-       FROM snaps WHERE ${where.sql}
-       GROUP BY formation
-       ORDER BY plays DESC, formation`,
-      where.params,
-    ),
+  const rows = await aggregateRows<Omit<TendencyRow, 'runPct'>>(
+    db, filters, TENDENCIES,
+    ["kind IN ('RUN', 'PASS')", "formation <> ''"],
+    'GROUP BY formation ORDER BY plays DESC, formation',
   );
   return rows.map((row) => ({
     ...row,
@@ -262,22 +232,16 @@ export interface PlayCallRow {
   yards: number;
 }
 
+const PLAY_CALLS = `
+  p.formation, p.name,
+  COUNT(*)                          AS calls,
+  COALESCE(SUM(${gainSql('s.')}), 0) AS yards`;
+
 /** The individual calls, most used first. */
-export async function playCalls(
-  db: Database,
-  filters: ReportFilters,
-): Promise<PlayCallRow[]> {
-  const where = snapWhere(filters, ["s.kind IN ('RUN', 'PASS')", 's.play_id IS NOT NULL'], 's.');
-  return toDomainAll<PlayCallRow>(
-    await db.all(
-      `SELECT p.formation, p.name,
-              COUNT(*)                        AS calls,
-              COALESCE(SUM(${gainSql('s.')}), 0)  AS yards
-       FROM snaps s JOIN plays p ON p.id = s.play_id
-       WHERE ${where.sql}
-       GROUP BY p.id
-       ORDER BY calls DESC, yards DESC`,
-      where.params,
-    ),
+export const playCalls = (db: Database, filters: ReportFilters) =>
+  joinedRows<PlayCallRow>(
+    db, filters, PLAY_CALLS,
+    'snaps s JOIN plays p ON p.id = s.play_id',
+    ["s.kind IN ('RUN', 'PASS')", 's.play_id IS NOT NULL'],
+    'GROUP BY p.id ORDER BY calls DESC, yards DESC',
   );
-}

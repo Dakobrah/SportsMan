@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Play, Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type PassForm , type PlayDefaults } from '../../../game/playForm';
+  import { SELECT_POSITIONS, type PassForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
@@ -9,16 +9,7 @@
   import DefenseSection from '../DefenseSection.svelte';
   import PlayPicker from '../PlayPicker.svelte';
 
-  interface Props {
-    form: PassForm;
-    roster: Player[];
-    possession: Possession;
-    playbook: Play[];
-    defaults: PlayDefaults;
-    busy: boolean;
-    onsave: () => void;
-    oncancel: () => void;
-  }
+  type Props = PlayFormProps<PassForm>;
   let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
 
   /** A sack is not a completion, and an interception is not either. */
@@ -109,7 +100,3 @@
 
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />
 </FormShell>
-
-<style>
-  .toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
-</style>

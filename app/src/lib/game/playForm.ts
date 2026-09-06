@@ -9,7 +9,7 @@
  * once, so exclusivity is a property of the type rather than something a
  * click handler has to maintain.
  */
-import type { Player, Position } from '../db/repositories/types';
+import type { Play, Player, Position } from '../db/repositories/types';
 
 export type PlayFormType =
   | 'run'
@@ -332,4 +332,21 @@ export function rememberPlayers(defaults: PlayDefaults, form: PlayForm): PlayDef
     default:
       return defaults;
   }
+}
+
+/**
+ * What every play form is handed.
+ *
+ * All seven declared this separately. `T` is the form's own variant, so a
+ * component still gets its exact shape rather than the whole union.
+ */
+export interface PlayFormProps<T extends PlayForm> {
+  form: T;
+  roster: Player[];
+  possession: 'us' | 'them';
+  playbook: Play[];
+  defaults: PlayDefaults;
+  busy: boolean;
+  onsave: () => void;
+  oncancel: () => void;
 }

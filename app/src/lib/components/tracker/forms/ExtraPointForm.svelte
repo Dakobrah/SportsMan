@@ -1,21 +1,13 @@
 <script lang="ts">
   import type { Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type ExtraPointForm , type PlayDefaults } from '../../../game/playForm';
+  import { SELECT_POSITIONS, type ExtraPointForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
 
-  interface Props {
-    form: ExtraPointForm;
-    roster: Player[];
-    possession: Possession;
-    defaults: PlayDefaults;
-    busy: boolean;
-    onsave: () => void;
-    oncancel: () => void;
-  }
-  let { form = $bindable(), roster, possession, defaults, busy, onsave, oncancel }: Props = $props();
+  type Props = PlayFormProps<ExtraPointForm>;
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
 
   const ATTEMPTS = [
     { value: 'KICK', label: 'PAT Kick' },
@@ -47,8 +39,3 @@
   </div>
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />
 </FormShell>
-
-<style>
-  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .toggles.three { grid-template-columns: repeat(3, 1fr); }
-</style>

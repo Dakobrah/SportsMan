@@ -1,21 +1,14 @@
 <script lang="ts">
   import type { Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type KickoffForm , type PlayDefaults } from '../../../game/playForm';
+  import { SELECT_POSITIONS, type KickoffForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
+  import NumberField from '../NumberField.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
 
-  interface Props {
-    form: KickoffForm;
-    roster: Player[];
-    possession: Possession;
-    defaults: PlayDefaults;
-    busy: boolean;
-    onsave: () => void;
-    oncancel: () => void;
-  }
-  let { form = $bindable(), roster, possession, defaults, busy, onsave, oncancel }: Props = $props();
+  type Props = PlayFormProps<KickoffForm>;
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
 
   // The returner is on the receiving team, which is whoever is NOT kicking.
   const otherSide = $derived(possession === 'us' ? 'them' : 'us');
@@ -25,19 +18,13 @@
   <JerseyInput label="Kicker" {roster} {possession} positions={SELECT_POSITIONS.kicker}
                carried={form.kickerNumber !== null && form.kickerNumber === defaults.kickerNumber}
     value={form.kickerNumber} onchange={(v) => (form.kickerNumber = v)} />
-  <label class="field">
-    <span>Kick distance</span>
-    <input type="number" inputmode="numeric" value={form.kickYards}
-           oninput={(e) => (form.kickYards = Number((e.currentTarget as HTMLInputElement).value) || 0)} />
-  </label>
+  <NumberField label="Kick distance" value={form.kickYards}
+               onchange={(v) => (form.kickYards = v)} />
   {#if !form.isTouchback}
     <JerseyInput label="Returner" {roster} possession={otherSide} value={form.returnerNumber}
                  onchange={(v) => (form.returnerNumber = v)} />
-    <label class="field">
-      <span>Return yards</span>
-      <input type="number" inputmode="numeric" value={form.returnYards}
-             oninput={(e) => (form.returnYards = Number((e.currentTarget as HTMLInputElement).value) || 0)} />
-    </label>
+    <NumberField label="Return yards" value={form.returnYards}
+               onchange={(v) => (form.returnYards = v)} />
   {/if}
 
   <div class="toggles">
@@ -52,8 +39,3 @@
   </div>
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />
 </FormShell>
-
-<style>
-  .toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
-  input { min-height: 52px; }
-</style>

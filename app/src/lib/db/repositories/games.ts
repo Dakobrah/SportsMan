@@ -1,6 +1,8 @@
 /** Games, their quarter scores, and the live tracker cursor. */
 import type { Database } from '../driver';
 import type { GameCursor } from '../../game/cursor';
+import { getSeason } from './seasons';
+import { getTeam } from './teams';
 import type { Possession } from '../../game/field';
 import {
   BOOLEAN_COLUMNS,
@@ -102,46 +104,30 @@ export async function getGame(db: Database, id: number): Promise<Game | undefine
  * A game with the season and team it belongs to — the tracker needs all
  * three to render its scoreboard. Replaces Django's `select_related`.
  */
+/**
+ * A game with the season and team it belongs to -- the tracker needs all
+ * three to render its scoreboard.
+ *
+ * Three reads rather than one join. The join version needed thirty lines of
+ * prefix-aliased columns and hand-rolled string splitting to take apart, to
+ * save two SQLite round trips against a local file. It reuses the three
+ * functions that already know how to read each row, and each of those is
+ * already tested.
+ */
 export async function getGameContext(
   db: Database,
   id: number,
 ): Promise<{ game: Game; season: Season; team: Team } | undefined> {
-  const row = await db.get<Record<string, unknown>>(
-    `SELECT g.id, g.season_id, g.date, g.opponent, g.location, g.weather,
-            g.field_condition, g.team_score, g.opponent_score, g.notes,
-            g.current_quarter, g.current_down, g.current_distance,
-            g.current_ball_position, g.current_situation,
-            g.current_possession, g.sides_swapped,
-            g.created_at, g.updated_at,
-            s.id AS s_id, s.year AS s_year, s.team_id AS s_team_id,
-            s.created_at AS s_created_at, s.updated_at AS s_updated_at,
-            t.id AS t_id, t.name AS t_name, t.abbreviation AS t_abbreviation,
-            t.created_at AS t_created_at, t.updated_at AS t_updated_at
-     FROM games g
-     JOIN seasons s ON s.id = g.season_id
-     JOIN teams   t ON t.id = s.team_id
-     WHERE g.id = ?`,
-    [id],
-  );
-  if (!row) return undefined;
+  const game = await getGame(db, id);
+  if (!game) return undefined;
 
-  const split = (prefix: string) => {
-    const out: Record<string, unknown> = {};
-    for (const key in row) {
-      if (key.startsWith(prefix)) out[key.slice(prefix.length)] = row[key];
-    }
-    return out;
-  };
-  const game: Record<string, unknown> = {};
-  for (const key in row) {
-    if (!key.startsWith('s_') && !key.startsWith('t_')) game[key] = row[key];
-  }
+  const season = await getSeason(db, game.seasonId);
+  if (!season) return undefined;
 
-  return {
-    game: toDomain<Game>(game, BOOLEAN_COLUMNS.games),
-    season: toDomain<Season>(split('s_')),
-    team: toDomain<Team>(split('t_')),
-  };
+  const team = await getTeam(db, season.teamId);
+  if (!team) return undefined;
+
+  return { game, season, team };
 }
 
 export async function createGame(db: Database, input: GameInput): Promise<number> {

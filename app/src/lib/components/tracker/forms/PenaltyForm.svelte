@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { PlayFormProps } from '../../../game/playForm';
   import type { PenaltyForm } from '../../../game/playForm';
   import type { Penalty } from '../../../game/penalties';
   import FormShell from '../FormShell.svelte';
@@ -6,13 +7,8 @@
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
 
-  interface Props {
-    form: PenaltyForm;
-    busy: boolean;
-    onsave: () => void;
-    oncancel: () => void;
-  }
-  let { form = $bindable(), busy, onsave, oncancel }: Props = $props();
+  type Props = PlayFormProps<PenaltyForm>;
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
 
   /** Picking a penalty fills in its standard enforcement; the coach can
    *  still override the yardage for a spot foul. */
@@ -56,8 +52,3 @@
     <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />
   {/if}
 </FormShell>
-
-<style>
-  .toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
-  input { min-height: 52px; }
-</style>

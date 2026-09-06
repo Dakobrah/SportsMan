@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Play, Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type RunForm } from '../../../game/playForm';
+  import { SELECT_POSITIONS, type RunForm, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
@@ -9,16 +9,8 @@
   import DefenseSection from '../DefenseSection.svelte';
   import PlayPicker from '../PlayPicker.svelte';
 
-  interface Props {
-    form: RunForm;
-    roster: Player[];
-    possession: Possession;
-    playbook: Play[];
-    busy: boolean;
-    onsave: () => void;
-    oncancel: () => void;
-  }
-  let { form = $bindable(), roster, possession, playbook, busy, onsave, oncancel }: Props = $props();
+  type Props = PlayFormProps<RunForm>;
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
 </script>
 
 <FormShell type="run" {busy} {onsave} {oncancel}>
@@ -51,7 +43,3 @@
 
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />
 </FormShell>
-
-<style>
-  .toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
-</style>

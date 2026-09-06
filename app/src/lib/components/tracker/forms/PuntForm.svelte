@@ -1,21 +1,14 @@
 <script lang="ts">
   import type { Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type PuntForm , type PlayDefaults } from '../../../game/playForm';
+  import { SELECT_POSITIONS, type PuntForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
+  import NumberField from '../NumberField.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
 
-  interface Props {
-    form: PuntForm;
-    roster: Player[];
-    possession: Possession;
-    defaults: PlayDefaults;
-    busy: boolean;
-    onsave: () => void;
-    oncancel: () => void;
-  }
-  let { form = $bindable(), roster, possession, defaults, busy, onsave, oncancel }: Props = $props();
+  type Props = PlayFormProps<PuntForm>;
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
 
   // The returner is on the receiving team, which is whoever is NOT punting.
   const otherSide = $derived(possession === 'us' ? 'them' : 'us');
@@ -25,20 +18,14 @@
   <JerseyInput label="Punter" {roster} {possession} positions={SELECT_POSITIONS.punter}
                carried={form.punterNumber !== null && form.punterNumber === defaults.punterNumber}
     value={form.punterNumber} onchange={(v) => (form.punterNumber = v)} />
-  <label class="field">
-    <span>Punt distance</span>
-    <input type="number" inputmode="numeric" value={form.puntYards}
-           oninput={(e) => (form.puntYards = Number((e.currentTarget as HTMLInputElement).value) || 0)} />
-  </label>
+  <NumberField label="Punt distance" value={form.puntYards}
+               onchange={(v) => (form.puntYards = v)} />
   {#if !form.isTouchback && !form.isBlocked}
     <JerseyInput label="Returner" {roster} possession={otherSide} value={form.returnerNumber}
                  onchange={(v) => (form.returnerNumber = v)} />
     {#if !form.isFairCatch}
-      <label class="field">
-        <span>Return yards</span>
-        <input type="number" inputmode="numeric" value={form.returnYards}
-               oninput={(e) => (form.returnYards = Number((e.currentTarget as HTMLInputElement).value) || 0)} />
-      </label>
+      <NumberField label="Return yards" value={form.returnYards}
+               onchange={(v) => (form.returnYards = v)} />
     {/if}
   {/if}
 
@@ -56,8 +43,3 @@
   </div>
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />
 </FormShell>
-
-<style>
-  .toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
-  input { min-height: 52px; }
-</style>
