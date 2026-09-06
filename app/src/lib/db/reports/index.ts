@@ -4,3 +4,4 @@ export * from './specialTeams';
 export * from './penalties';
 export * from './snaps';
 export * from './players';
+export * from './defense';

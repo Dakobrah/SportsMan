@@ -13,7 +13,7 @@ export function makeSnap(overrides: Partial<Snap> = {}): Snap {
     receiverId: null, receiverNumber: null, isComplete: false,
     airYards: 0, yardsAfterCatch: 0, isInterception: false, isThrownAway: false,
     wasUnderPressure: false, wasSacked: false, sackYards: 0,
-    defenseResult: null, secondaryFormation: '', primaryPlayerId: null,
+    defenseResult: null, secondaryFormation: '', primaryPlayerId: null, primaryPlayerNumber: null,
     tackleYards: null, tackleForLoss: false, appliedPressure: false,
     forcedIncompletion: false, interceptionReturnYards: null,
     fumbleReturnYards: null, isDefensiveTouchdown: false,

@@ -13,6 +13,7 @@ import schemaV1 from './schema.sql?raw';
 import gameCursorV2 from './002_game_cursor.sql?raw';
 import possessionV3 from './003_possession.sql?raw';
 import jerseyNumbersV4 from './004_jersey_numbers.sql?raw';
+import defenseV5 from './005_defense.sql?raw';
 import type { Migration } from './migrate';
 
 export const migrations: Migration[] = [
@@ -20,4 +21,5 @@ export const migrations: Migration[] = [
   { version: 2, name: 'game cursor', sql: gameCursorV2 },
   { version: 3, name: 'possession', sql: possessionV3 },
   { version: 4, name: 'jersey numbers', sql: jerseyNumbersV4 },
+  { version: 5, name: 'defense', sql: defenseV5 },
 ];

@@ -6,6 +6,7 @@
   import YardsInput from '../YardsInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
+  import DefenseSection from '../DefenseSection.svelte';
 
   interface Props {
     form: RunForm;
@@ -36,6 +37,10 @@
                     onpress={() => (form.fumbleLost = !form.fumbleLost)} />
     {/if}
   </div>
+  {#if possession === 'them'}
+    <DefenseSection detail={form} {roster} passing={false} />
+  {/if}
+
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />
 </FormShell>
 

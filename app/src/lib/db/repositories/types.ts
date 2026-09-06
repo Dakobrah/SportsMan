@@ -169,6 +169,7 @@ export interface Snap {
   defenseResult: DefenseResult | null;
   secondaryFormation: string;
   primaryPlayerId: number | null;
+  primaryPlayerNumber: number | null;
   tackleYards: number | null;
   tackleForLoss: boolean;
   appliedPressure: boolean;

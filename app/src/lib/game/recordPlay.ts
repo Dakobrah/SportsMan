@@ -13,7 +13,9 @@
 import type { Database } from '../db/driver';
 import { addScore, getGameContext, readGameCursor, readScores, writeGameCursor } from '../db/repositories/games';
 import { rosterForGame } from '../db/repositories/players';
-import { deleteSnap, getSnap, insertSnap, lastSnap, listSnaps, type NewSnap } from '../db/repositories/snaps';
+import {
+  addAssist, deleteSnap, getSnap, insertSnap, lastSnap, listSnaps, type NewSnap,
+} from '../db/repositories/snaps';
 import type { Game, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
 import { extraPointSpotFor, kickoffSpotFor } from './field';
@@ -127,6 +129,24 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
   const link = (number: number | null): number | null =>
     cursor.possession === 'us' ? (playerByNumber(number, roster)?.id ?? null) : null;
 
+  /**
+   * A defender is one of OURS even when the opponent has the ball, so unlike
+   * `link` this resolves against our roster whatever the possession is.
+   */
+  const linkOurs = (number: number | null): number | null =>
+    playerByNumber(number, roster)?.id ?? null;
+
+  const defense = (form: { tacklerNumber: number | null; tackleForLoss: boolean;
+                           appliedPressure: boolean; forcedIncompletion: boolean;
+                           isDefensiveTouchdown: boolean }) => ({
+    primaryPlayerNumber: form.tacklerNumber,
+    primaryPlayerId: linkOurs(form.tacklerNumber),
+    tackleForLoss: form.tackleForLoss,
+    appliedPressure: form.appliedPressure,
+    forcedIncompletion: form.forcedIncompletion,
+    isDefensiveTouchdown: form.isDefensiveTouchdown,
+  });
+
   const header = {
     quarter: cursor.quarter,
     down: cursor.down,
@@ -140,7 +160,7 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
   switch (form.type) {
     case 'run':
       return {
-        ...header, kind: 'RUN',
+        ...header, kind: 'RUN', ...defense(form),
         ballCarrierNumber: form.ballCarrierNumber,
         ballCarrierId: link(form.ballCarrierNumber),
         yardsGained: form.yardsGained,
@@ -152,7 +172,7 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
 
     case 'pass':
       return {
-        ...header, kind: 'PASS',
+        ...header, kind: 'PASS', ...defense(form),
         quarterbackNumber: form.quarterbackNumber,
         quarterbackId: link(form.quarterbackNumber),
         receiverNumber: form.receiverNumber,
@@ -254,6 +274,16 @@ export async function recordPlay(
 
   return db.transaction(async () => {
     const { id, sequenceNumber } = await insertSnap(db, gameId, toSnapRow(form, cursor, roster));
+
+    // Assists are their own rows. Same transaction, so a play never lands
+    // with half its tacklers.
+    if (form.type === 'run' || form.type === 'pass') {
+      const assistType = form.type === 'pass' && form.wasSacked ? 'SACK' : 'TACKLE';
+      for (const number of form.assistNumbers) {
+        const player = playerByNumber(number, roster);
+        if (player) await addAssist(db, id, player.id, assistType);
+      }
+    }
 
     // Points go to whoever had the ball. Applying them to us regardless is
     // how a 36-33 game replayed as 69-0.

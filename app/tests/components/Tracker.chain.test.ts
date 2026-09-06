@@ -18,7 +18,7 @@ import { setDb } from '../../src/lib/db/context';
 import { router } from '../../src/lib/router.svelte';
 import { clear as clearToasts } from '../../src/lib/ui/toasts.svelte';
 import { getGame } from '../../src/lib/db/repositories/games';
-import { countSnaps } from '../../src/lib/db/repositories/snaps';
+import { countSnaps, listSnaps } from '../../src/lib/db/repositories/snaps';
 import type { Database } from '../../src/lib/db/driver';
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
@@ -227,9 +227,13 @@ describe('tracker', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: 'Run' }));
-    // No chips now: our roster is meaningless for their offence.
-    expect(screen.queryByRole('button', { name: '22' })).not.toBeInTheDocument();
-    expect(screen.getByText('opponent')).toBeInTheDocument();
+    // The ball carrier is theirs, so it is labelled as such and offers no
+    // roster shortcut. The defence section below it DOES offer chips, because
+    // the tackler is one of ours -- so the assertion is scoped to the field.
+    const carrier = screen.getByLabelText(/Ball carrier/);
+    const carrierField = carrier.closest('.jersey') as HTMLElement;
+    expect(within(carrierField).getByText('opponent')).toBeInTheDocument();
+    expect(within(carrierField).queryByRole('button', { name: '22' })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/Ball carrier/), '40');
     await user.type(screen.getByLabelText('Yards gained'), '8');
@@ -308,6 +312,59 @@ describe('tracker', () => {
       expect(screen.getByRole('button', { name: /Save Kickoff/ })).toBeInTheDocument(),
     );
     expect(screen.getByLabelText(/Kicker/)).toHaveValue(K);
+  });
+
+  it('offers the defense section only when the opponent has the ball', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    // Our ball: nobody to tackle.
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    expect(screen.queryByText('Our defense')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Give them the ball.
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.click(screen.getByRole('button', { name: 'INT' }));
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    expect(screen.getByText('Our defense')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tackler/)).toBeInTheDocument();
+  });
+
+  it('records a tackler and an assist on their run', async () => {
+    const user = userEvent.setup();
+    await mounted();
+
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.click(screen.getByRole('button', { name: 'INT' }));
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    // Their carrier is a bare number; our tackler comes off the roster.
+    await user.type(screen.getByLabelText(/Ball carrier/), '30');
+    await user.type(screen.getByLabelText(/Tackler/), '22');
+
+    // Assist chips appear once a tackler is named, and exclude them.
+    const assists = await screen.findByText('Assisted by');
+    const chips = within(assists.parentElement as HTMLElement).getAllByRole('button');
+    expect(chips.map((c) => c.textContent?.trim())).not.toContain('22');
+
+    await user.click(screen.getByRole('button', { name: 'TFL' }));
+    await user.click(screen.getByRole('button', { name: /Save Run Play/ }));
+
+    await waitFor(async () => {
+      const snaps = await listSnaps(db, gameId);
+      const theirRun = snaps.find((s) => s.kind === 'RUN' && s.possession === 'them');
+      expect(theirRun?.primaryPlayerNumber).toBe(22);
+      expect(theirRun?.tackleForLoss).toBe(true);
+      // Theirs has a number and no link; ours has both.
+      expect(theirRun?.ballCarrierId).toBeNull();
+      expect(theirRun?.primaryPlayerId).not.toBeNull();
+    });
   });
 
   it('does not move the ball on screen when it is intercepted', async () => {

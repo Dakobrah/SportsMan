@@ -20,7 +20,31 @@ export type PlayFormType =
   | 'field_goal'
   | 'extra_point';
 
-export interface RunForm {
+/**
+ * Who on our defense made the play.
+ *
+ * Carried on the OPPONENT'S offensive forms rather than on a form of its
+ * own: one play happened, so one row records it. A separate defensive snap
+ * per play would double every play count and break sequence numbering,
+ * which the cursor and drive segmentation both read as one row per play.
+ *
+ * These are our players even though the opponent has the ball, so they
+ * resolve against our roster regardless of possession -- see `toSnapRow`.
+ */
+export interface DefensiveDetail {
+  /** The primary tackler, sacker, interceptor or defender. */
+  tacklerNumber: number | null;
+  /** Everyone else in on it. */
+  assistNumbers: number[];
+  tackleForLoss: boolean;
+  /** Pass plays only: pressure that did not become a sack. */
+  appliedPressure: boolean;
+  /** Pass plays only: a pass broken up. */
+  forcedIncompletion: boolean;
+  isDefensiveTouchdown: boolean;
+}
+
+export interface RunForm extends DefensiveDetail {
   type: 'run';
   /** The jersey number the coach typed. Resolved to a roster player only
    *  when we have the ball -- their #22 is not our #22. */
@@ -33,7 +57,7 @@ export interface RunForm {
   notes: string;
 }
 
-export interface PassForm {
+export interface PassForm extends DefensiveDetail {
   type: 'pass';
   quarterbackNumber: number | null;
   receiverNumber: number | null;
@@ -138,16 +162,28 @@ export const PLAY_FORM_META: Record<PlayFormType, PlayFormMeta> = {
   extra_point: { title: 'Extra Point / 2-Point', accent: 'var(--t-purple)' },
 };
 
+/** No defender recorded. */
+const noDefense = (): DefensiveDetail => ({
+  tacklerNumber: null,
+  assistNumbers: [],
+  tackleForLoss: false,
+  appliedPressure: false,
+  forcedIncompletion: false,
+  isDefensiveTouchdown: false,
+});
+
 /** Defaults that used to live inside the HTML-string builders. */
 export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { type: T }> {
   switch (type) {
     case 'run':
       return {
+        ...noDefense(),
         type: 'run', ballCarrierNumber: null, yardsGained: 0,
         isTouchdown: false, isFirstDown: false, fumbled: false, fumbleLost: false, notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'pass':
       return {
+        ...noDefense(),
         type: 'pass', quarterbackNumber: null, receiverNumber: null,
         isComplete: false, wasSacked: false, yardsGained: 0,
         isTouchdown: false, isFirstDown: false, isInterception: false,
