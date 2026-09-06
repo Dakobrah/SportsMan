@@ -9,6 +9,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/svelte';
 import ScoringByQuarter from '../../src/lib/components/charts/ScoringByQuarter.svelte';
+import DriveChart from '../../src/lib/components/charts/DriveChart.svelte';
+import PointsTrend from '../../src/lib/components/charts/PointsTrend.svelte';
+import DownEfficiency from '../../src/lib/components/charts/DownEfficiency.svelte';
+import FieldZones from '../../src/lib/components/charts/FieldZones.svelte';
 
 afterEach(cleanup);
 
@@ -61,5 +65,66 @@ describe('a chart', () => {
     });
     // A zero gets no direct label, and the axis still has a scale.
     expect(screen.getByRole('img')).toHaveAccessibleDescription(/NSR 0, PHI 0/);
+  });
+});
+
+describe('every chart keeps the same contract', () => {
+  it('gives a drive chart a table with a row per drive', () => {
+    render(DriveChart, {
+      drives: [
+        { index: 1, gameId: 1, possession: 'us' as const, quarter: 1,
+          startSequence: 1, endSequence: 4, plays: 4, startPosition: -25,
+          endPosition: 50, yards: 75, yardsToGoalAtStart: 75,
+          reachedRedZone: true, outcome: 'touchdown' as const, points: 6 },
+        { index: 2, gameId: 1, possession: 'them' as const, quarter: 1,
+          startSequence: 5, endSequence: 7, plays: 3, startPosition: 25,
+          endPosition: 10, yards: -15, yardsToGoalAtStart: 75,
+          reachedRedZone: false, outcome: 'punt' as const, points: 0 },
+      ],
+      us: 'NSR', them: 'PHI',
+    });
+    const rows = within(screen.getByRole('table')).getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    // The outcome is a word, never a colour alone.
+    expect(screen.getAllByText('TD').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole('img')).toHaveAccessibleDescription(/2 drives, 1 of which/);
+  });
+
+  it('labels only the last point of a trend, not every one', () => {
+    render(PointsTrend, {
+      data: [
+        { label: 'W1', us: 21, them: 14 },
+        { label: 'W2', us: 7, them: 28 },
+        { label: 'W3', us: 35, them: 3 },
+      ],
+      us: 'NSR', them: 'Opp',
+    });
+    // 35 and 3 are the final values, drawn on the plot and in the table.
+    expect(screen.getAllByText('35')).toHaveLength(2);
+    // 21 appears only in the table.
+    expect(screen.getAllByText('21')).toHaveLength(1);
+  });
+
+  it('shows a conversion rate as a fraction, not only a bar', () => {
+    render(DownEfficiency, {
+      data: [
+        { down: 1, attempts: 20, converted: 9, pct: 45 },
+        { down: 3, attempts: 13, converted: 7, pct: 53.84 },
+      ],
+    });
+    expect(screen.getAllByText('7/13').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('img')).toHaveAccessibleDescription(/Best on 3rd down/);
+  });
+
+  it('has no legend for a single-series chart', () => {
+    render(FieldZones, {
+      data: [
+        { zone: 'own' as const, plays: 12, yards: 40, touchdowns: 0 },
+        { zone: 'red' as const, plays: 5, yards: 18, touchdowns: 2 },
+      ],
+    });
+    // The title names what it shows, so a one-series legend is noise.
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });
