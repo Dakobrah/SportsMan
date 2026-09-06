@@ -19,6 +19,7 @@ import { router } from '../../src/lib/router.svelte';
 import { clear as clearToasts } from '../../src/lib/ui/toasts.svelte';
 import { getGame } from '../../src/lib/db/repositories/games';
 import { countSnaps, listSnaps } from '../../src/lib/db/repositories/snaps';
+import { createPlay } from '../../src/lib/db/repositories/plays';
 import type { Database } from '../../src/lib/db/driver';
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
@@ -312,6 +313,36 @@ describe('tracker', () => {
       expect(screen.getByRole('button', { name: /Save Kickoff/ })).toBeInTheDocument(),
     );
     expect(screen.getByLabelText(/Kicker/)).toHaveValue(K);
+  });
+
+  it('records the play call, and switches unit with possession', async () => {
+    const user = userEvent.setup();
+    await createPlay(db, { unitType: 'OFF', formation: 'Shotgun', name: 'Zone Read' });
+    await createPlay(db, { unitType: 'DEF', formation: '4-3', name: 'Cover 2' });
+    await mounted();
+
+    // Our ball: the picker offers offensive formations.
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await user.click(screen.getByRole('button', { name: 'Shotgun' }));
+    await user.click(screen.getByRole('button', { name: 'Zone Read' }));
+    await user.type(screen.getByLabelText('Yards gained'), '5');
+    await user.click(screen.getByRole('button', { name: /Save Run Play/ }));
+
+    await waitFor(async () => {
+      const snap = (await listSnaps(db, gameId))[0];
+      expect(snap.formation).toBe('Shotgun');
+      expect(snap.playId).not.toBeNull();
+    });
+
+    // Hand it over, and the picker follows to the defensive book.
+    await user.click(screen.getByRole('button', { name: 'Pass' }));
+    await user.click(screen.getByRole('button', { name: 'INT' }));
+    await user.click(screen.getByRole('button', { name: /Save Pass Play/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    expect(screen.getByRole('button', { name: '4-3' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Shotgun' })).not.toBeInTheDocument();
   });
 
   it('offers the defense section only when the opponent has the ball', async () => {

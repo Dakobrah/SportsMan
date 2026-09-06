@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Player, Possession } from '../../../db/repositories/types';
+  import type { Play, Player, Possession } from '../../../db/repositories/types';
   import { SELECT_POSITIONS, type PassForm , type PlayDefaults } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
@@ -7,17 +7,19 @@
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
   import DefenseSection from '../DefenseSection.svelte';
+  import PlayPicker from '../PlayPicker.svelte';
 
   interface Props {
     form: PassForm;
     roster: Player[];
     possession: Possession;
+    playbook: Play[];
     defaults: PlayDefaults;
     busy: boolean;
     onsave: () => void;
     oncancel: () => void;
   }
-  let { form = $bindable(), roster, possession, defaults, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
 
   /** A sack is not a completion, and an interception is not either. */
   function toggleSack() {
@@ -59,6 +61,12 @@
 </script>
 
 <FormShell type="pass" {busy} {onsave} {oncancel}>
+  <PlayPicker
+    {playbook} unitType={possession === 'us' ? 'OFF' : 'DEF'}
+    playId={form.playId} formation={form.formation}
+    onchange={(id, formation) => { form.playId = id; form.formation = formation; }}
+  />
+
   <JerseyInput
     label="Quarterback" {roster} {possession} positions={SELECT_POSITIONS.quarterback}
     carried={form.quarterbackNumber !== null && form.quarterbackNumber === defaults.quarterbackNumber}

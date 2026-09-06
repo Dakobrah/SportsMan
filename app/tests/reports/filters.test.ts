@@ -4,7 +4,7 @@ import { seedGame, seedPlayer } from '../support/seed';
 import { createGame } from '../../src/lib/db/repositories/games';
 import { createSeason } from '../../src/lib/db/repositories/seasons';
 import { insertSnap } from '../../src/lib/db/repositories/snaps';
-import { GAIN_SQL, TO_GOAL_SQL, snapWhere } from '../../src/lib/db/reports/filters';
+import { GAIN_SQL, TO_GOAL_SQL, gainSql, snapWhere } from '../../src/lib/db/reports/filters';
 import { snapYardage } from '../../src/lib/game/summary';
 import { yardsToGoalFor, type Possession } from '../../src/lib/game/field';
 import { makeSnap } from '../support/snapFixture';
@@ -130,6 +130,13 @@ describe('SQL pushdowns stay in step with their TypeScript twins', () => {
     );
     const expected = cases.map((c) => snapYardage(makeSnap(c)));
     expect(rows.map((r) => r.gain)).toEqual(expected);
+
+    // The aliased form has to agree with the plain one, or a joined query
+    // silently measures something different.
+    const aliased = await db.all<{ gain: number }>(
+      `SELECT ${gainSql('s.')} AS gain FROM snaps s ORDER BY s.sequence_number`,
+    );
+    expect(aliased.map((r) => r.gain)).toEqual(expected);
   });
 
   it('TO_GOAL_SQL matches yardsToGoalFor at every position, both sides', async () => {

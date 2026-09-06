@@ -21,6 +21,7 @@ import GameForm from './GameForm.svelte';
 import Game from './Game.svelte';
 import Plays from './Plays.svelte';
 import Tracker from './Tracker.svelte';
+import Playbook from './Playbook.svelte';
 import Backup from './Backup.svelte';
 import NotFound from './NotFound.svelte';
 
@@ -44,6 +45,7 @@ export const routes: RouteDef[] = [
   { pattern: '/games/:id/tracker', component: Tracker, chrome: false },
   { pattern: '/games/:id', component: Game },
 
+  { pattern: '/playbook', component: Playbook },
   { pattern: '/backup', component: Backup },
 
   { pattern: '*', component: NotFound },

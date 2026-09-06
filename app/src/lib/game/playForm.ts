@@ -46,6 +46,10 @@ export interface DefensiveDetail {
 
 export interface RunForm extends DefensiveDetail {
   type: 'run';
+  /** The call. `formation` is stored alongside so a game survives a
+   *  playbook edit -- the same reasoning as the jersey numbers. */
+  playId: number | null;
+  formation: string;
   /** The jersey number the coach typed. Resolved to a roster player only
    *  when we have the ball -- their #22 is not our #22. */
   ballCarrierNumber: number | null;
@@ -59,6 +63,8 @@ export interface RunForm extends DefensiveDetail {
 
 export interface PassForm extends DefensiveDetail {
   type: 'pass';
+  playId: number | null;
+  formation: string;
   quarterbackNumber: number | null;
   receiverNumber: number | null;
   isComplete: boolean;
@@ -189,13 +195,14 @@ export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { 
     case 'run':
       return {
         ...noDefense(),
-        type: 'run', ballCarrierNumber: null, yardsGained: 0,
+        type: 'run', playId: null, formation: '', ballCarrierNumber: null, yardsGained: 0,
         isTouchdown: false, isFirstDown: false, fumbled: false, fumbleLost: false, notes: '',
       } as Extract<PlayForm, { type: T }>;
     case 'pass':
       return {
         ...noDefense(),
-        type: 'pass', quarterbackNumber: null, receiverNumber: null,
+        type: 'pass', playId: null, formation: '',
+        quarterbackNumber: null, receiverNumber: null,
         isComplete: false, wasSacked: false, yardsGained: 0,
         isTouchdown: false, isFirstDown: false, isInterception: false,
         fumbled: false, fumbleLost: false, notes: '',

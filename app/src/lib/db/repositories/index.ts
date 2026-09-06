@@ -4,3 +4,4 @@ export * from './seasons';
 export * from './players';
 export * from './games';
 export * from './snaps';
+export * from './plays';

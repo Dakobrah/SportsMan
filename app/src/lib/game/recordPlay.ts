@@ -13,10 +13,11 @@
 import type { Database } from '../db/driver';
 import { addScore, getGameContext, readGameCursor, readScores, writeGameCursor } from '../db/repositories/games';
 import { rosterForGame } from '../db/repositories/players';
+import { listPlays } from '../db/repositories/plays';
 import {
   addAssist, deleteSnap, getSnap, insertSnap, lastSnap, listSnaps, type NewSnap,
 } from '../db/repositories/snaps';
-import type { Game, Player, Season, Snap, Team } from '../db/repositories/types';
+import type { Game, Play, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
 import { extraPointSpotFor, kickoffSpotFor } from './field';
 import { type GameCursor, advance, cursorAfter, playTypeOf, rebuildCursor,
@@ -70,6 +71,8 @@ export interface TrackerSnapshot {
   season: Season;
   team: Team;
   roster: Player[];
+  /** The whole playbook, loaded once so a form need not query per play. */
+  playbook: Play[];
   cursor: GameCursor;
   feed: FeedEntry[];
   /** Who last filled each role, per side. */
@@ -161,6 +164,7 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
     case 'run':
       return {
         ...header, kind: 'RUN', ...defense(form),
+        playId: form.playId, formation: form.formation,
         ballCarrierNumber: form.ballCarrierNumber,
         ballCarrierId: link(form.ballCarrierNumber),
         yardsGained: form.yardsGained,
@@ -173,6 +177,7 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
     case 'pass':
       return {
         ...header, kind: 'PASS', ...defense(form),
+        playId: form.playId, formation: form.formation,
         quarterbackNumber: form.quarterbackNumber,
         quarterbackId: link(form.quarterbackNumber),
         receiverNumber: form.receiverNumber,
@@ -377,12 +382,14 @@ export async function loadTracker(
   // database that predates it or came in through an import.
   const cursor = (await readGameCursor(db, gameId)) ?? (await rebuildCursor(db, gameId));
   const recent = await listSnaps(db, gameId, { order: 'desc', limit: FEED_LIMIT });
+  const playbook = await listPlays(db);
   const defaults = await recentPlayers(db, gameId);
   const players = playerLookup(roster);
 
   return {
     ...context,
     roster,
+    playbook,
     cursor,
     defaults,
     feed: recent.map((snap) => toFeedEntry(snap, players)),

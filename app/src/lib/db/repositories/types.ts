@@ -113,6 +113,8 @@ export interface Play {
   id: number;
   name: string;
   unitType: UnitType;
+  /** The alignment it is run from. Part of the play's identity. */
+  formation: string;
   description: string;
 }
 

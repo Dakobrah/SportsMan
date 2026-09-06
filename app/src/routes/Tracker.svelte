@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { getDb } from '../lib/db/context';
   import { setScores, setSidesSwapped, writeGameCursor } from '../lib/db/repositories/games';
-  import type { Player } from '../lib/db/repositories/types';
+  import type { Play, Player } from '../lib/db/repositories/types';
   import {
     loadTracker, recentPlayers, recordPlay, undoLastPlay,
     type FeedEntry, type TrackerSnapshot,
@@ -50,6 +50,7 @@
   let opponentScore = $state(0);
   let feed = $state<FeedEntry[]>([]);
   let roster = $state<Player[]>([]);
+  let playbook = $state<Play[]>([]);
   let sidesSwapped = $state(false);
   // Who last filled each role, per side, so the quarterback and kicker do not
   // have to be re-entered every play. Loaded from the plays already recorded,
@@ -80,6 +81,7 @@
       defaults = loaded.defaults;
       feed = loaded.feed;
       roster = loaded.roster;
+      playbook = loaded.playbook;
       openChainedForm(loaded.cursor);
     } catch (error) {
       loadError = describeError(error);
@@ -241,9 +243,9 @@
       <SpecialTeamsMenu onselect={openForm} onback={() => (panel = 'grid')} />
     {:else if form}
       {#if form.type === 'run'}
-        <RunFormView bind:form {roster} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
+        <RunFormView bind:form {roster} {playbook} possession={cursor.possession} {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'pass'}
-        <PassFormView bind:form {roster} possession={cursor.possession}
+        <PassFormView bind:form {roster} {playbook} possession={cursor.possession}
                        defaults={defaults[cursor.possession]} {busy} onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'penalty'}
         <PenaltyFormView bind:form {busy} onsave={save} oncancel={cancelForm} />

@@ -32,11 +32,12 @@ describe('play forms', () => {
     for (const type of ALL_TYPES) {
       const form = blankForm(type) as unknown as Record<string, unknown>;
       expect(form.notes).toBe('');
-      // Players are identified by the jersey number the coach types, so
-      // there are no id fields on a form at all.
+      // Players are identified by the jersey number the coach types, so no
+      // form carries a PLAYER id. `playId` is the one id here and it points
+      // at the playbook, not at a person.
       for (const key of Object.keys(form)) {
         if (key.endsWith('Number') && key !== 'kickYards') expect(form[key]).toBeNull();
-        expect(key.endsWith('Id')).toBe(false);
+        if (key.endsWith('Id')) expect(key).toBe('playId');
       }
     }
   });

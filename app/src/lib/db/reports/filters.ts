@@ -28,9 +28,18 @@ export interface Where {
  * the two unable to drift.
  */
 
-/** Yards a snap actually moved the ball. SQL twin of `summary.snapYardage`. */
-export const GAIN_SQL =
-  "(CASE WHEN kind = 'PASS' AND was_sacked = 1 THEN sack_yards ELSE yards_gained END)";
+/**
+ * Yards a snap actually moved the ball. SQL twin of `summary.snapYardage`.
+ *
+ * `alias` is '' for a plain `FROM snaps` and 's.' when joined, so the two
+ * forms cannot drift apart the way string-substituting one into the other
+ * would allow.
+ */
+export const gainSql = (alias = ''): string =>
+  `(CASE WHEN ${alias}kind = 'PASS' AND ${alias}was_sacked = 1` +
+  ` THEN ${alias}sack_yards ELSE ${alias}yards_gained END)`;
+
+export const GAIN_SQL = gainSql();
 
 /** Distance to the goal the possessing team attacks. Twin of `field.yardsToGoalFor`. */
 export const TO_GOAL_SQL =

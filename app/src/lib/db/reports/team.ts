@@ -15,6 +15,7 @@ import {
   EXPLOSIVE_RUN_YARDS,
   GAIN_SQL,
   TO_GOAL_SQL,
+  gainSql,
   type ReportFilters,
   snapWhere,
 } from './filters';
@@ -209,5 +210,74 @@ export async function yardageBuckets(
   const order = ['loss', 'none', '1-4', '5-9', '10-19', '20+'];
   return order.map(
     (bucket) => rows.find((r) => r.bucket === bucket) ?? { bucket, runs: 0, passes: 0 },
+  );
+}
+
+export interface TendencyRow {
+  formation: string;
+  plays: number;
+  runs: number;
+  passes: number;
+  yards: number;
+  /** Share of plays from this formation that were runs, 0-100. */
+  runPct: number;
+}
+
+/**
+ * What we do from each formation.
+ *
+ * The report the whole play-call feature exists for: a coach wants to know
+ * they run 80% of the time from I Formation before an opponent works it out.
+ * Grouped on the formation TEXT stored on the snap rather than joined to the
+ * playbook, so editing or reimporting a playbook cannot rewrite history.
+ */
+export async function tendencies(
+  db: Database,
+  filters: ReportFilters,
+): Promise<TendencyRow[]> {
+  const where = snapWhere(filters, ["kind IN ('RUN', 'PASS')", "formation <> ''"]);
+  const rows = await toDomainAll<Omit<TendencyRow, 'runPct'>>(
+    await db.all(
+      `SELECT formation,
+              COUNT(*)                              AS plays,
+              COUNT(*) FILTER (WHERE kind = 'RUN')  AS runs,
+              COUNT(*) FILTER (WHERE kind = 'PASS') AS passes,
+              COALESCE(SUM(${GAIN_SQL}), 0)         AS yards
+       FROM snaps WHERE ${where.sql}
+       GROUP BY formation
+       ORDER BY plays DESC, formation`,
+      where.params,
+    ),
+  );
+  return rows.map((row) => ({
+    ...row,
+    runPct: row.plays === 0 ? 0 : (row.runs / row.plays) * 100,
+  }));
+}
+
+export interface PlayCallRow {
+  formation: string;
+  name: string;
+  calls: number;
+  yards: number;
+}
+
+/** The individual calls, most used first. */
+export async function playCalls(
+  db: Database,
+  filters: ReportFilters,
+): Promise<PlayCallRow[]> {
+  const where = snapWhere(filters, ["s.kind IN ('RUN', 'PASS')", 's.play_id IS NOT NULL'], 's.');
+  return toDomainAll<PlayCallRow>(
+    await db.all(
+      `SELECT p.formation, p.name,
+              COUNT(*)                        AS calls,
+              COALESCE(SUM(${gainSql('s.')}), 0)  AS yards
+       FROM snaps s JOIN plays p ON p.id = s.play_id
+       WHERE ${where.sql}
+       GROUP BY p.id
+       ORDER BY calls DESC, yards DESC`,
+      where.params,
+    ),
   );
 }
