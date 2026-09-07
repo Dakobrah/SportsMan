@@ -4,9 +4,8 @@
  * Order matters: `matchRoute` takes the first pattern that matches, so a
  * literal like '/games/new' must be declared before '/games/:id'.
  *
- * The report routes are deliberately absent for v1. They are the one part of
- * the Django app not being ported yet, and leaving them unrouted means a
- * stale bookmark lands on Not Found rather than a broken screen.
+ * Report scope rides the query string (#/reports/post-game?game=3), which
+ * the router already parses, so a report is linkable and survives a reload.
  */
 import type { RouteDef } from '../lib/router';
 
@@ -21,6 +20,8 @@ import GameForm from './GameForm.svelte';
 import Game from './Game.svelte';
 import Plays from './Plays.svelte';
 import Tracker from './Tracker.svelte';
+import Reports from './Reports.svelte';
+import Report from './Report.svelte';
 import Playbook from './Playbook.svelte';
 import Backup from './Backup.svelte';
 import NotFound from './NotFound.svelte';
@@ -44,6 +45,10 @@ export const routes: RouteDef[] = [
   // Full screen: no nav, the only way out is the back chevron.
   { pattern: '/games/:id/tracker', component: Tracker, chrome: false },
   { pattern: '/games/:id', component: Game },
+
+  // A literal before its parameterised sibling: first match wins.
+  { pattern: '/reports', component: Reports },
+  { pattern: '/reports/:templateId', component: Report },
 
   { pattern: '/playbook', component: Playbook },
   { pattern: '/backup', component: Backup },

@@ -9,12 +9,7 @@
   import { AXIS_TEXT, GRID, SIDE_COLOR } from './theme';
   import { linear, niceTicks, path } from './scale';
   import Chart from './Chart.svelte';
-
-  export interface TrendPoint {
-    label: string;
-    us: number;
-    them: number;
-  }
+  import type { TrendPoint } from '../../reports/model';
 
   interface Props {
     data: TrendPoint[];

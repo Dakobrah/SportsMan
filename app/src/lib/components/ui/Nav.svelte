@@ -7,6 +7,7 @@
     { path: '/games', label: 'Games' },
     { path: '/teams', label: 'Teams' },
     { path: '/seasons', label: 'Seasons' },
+    { path: '/reports', label: 'Reports' },
     { path: '/playbook', label: 'Playbook' },
     { path: '/backup', label: 'Backup' },
   ];

@@ -7,7 +7,12 @@
  * series, and a table carrying the same numbers.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/svelte';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/svelte';
+import Report from '../../src/routes/Report.svelte';
+import { createTestDb } from '../support/testDb';
+import { replayGame } from '../support/replayFixture';
+import { setDb } from '../../src/lib/db/context';
+import { router } from '../../src/lib/router.svelte';
 import ScoringByQuarter from '../../src/lib/components/charts/ScoringByQuarter.svelte';
 import DriveChart from '../../src/lib/components/charts/DriveChart.svelte';
 import PointsTrend from '../../src/lib/components/charts/PointsTrend.svelte';
@@ -126,5 +131,43 @@ describe('every chart keeps the same contract', () => {
     // The title names what it shows, so a one-series legend is noise.
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+});
+
+describe('a whole report renders', () => {
+  it('draws every block type from a model', async () => {
+    const db = await createTestDb();
+    const { gameId } = await replayGame(db);
+    setDb(db);
+    router.params = { templateId: 'post-game' };
+    router.query = new URLSearchParams(`game=${gameId}`);
+
+    render(Report);
+
+    // The headline is the result of the real game.
+    await waitFor(() => expect(screen.getByText('36–33')).toBeInTheDocument());
+
+    // Sections, charts and their tables all present.
+    expect(screen.getByRole('heading', { name: 'WAS vs PHI' })).toBeInTheDocument();
+    const figures = screen.getAllByRole('img');
+    expect(figures.length).toBeGreaterThan(3);
+    for (const figure of figures) {
+      expect(figure).toHaveAccessibleName(/\S/);
+    }
+    // Every chart carries a table twin, so no value is hover-only.
+    expect(screen.getAllByRole('table').length).toBeGreaterThanOrEqual(figures.length);
+  });
+
+  it('offers a way back when the link is malformed', async () => {
+    const db = await createTestDb();
+    setDb(db);
+    router.params = { templateId: 'post-game' };
+    router.query = new URLSearchParams('game=nonsense');
+
+    render(Report);
+    await waitFor(() =>
+      expect(screen.getByText(/does not exist, or its link is missing/)).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('link', { name: 'Back to reports' })).toBeInTheDocument();
   });
 });
