@@ -1,9 +1,9 @@
 <script lang="ts">
   import { getDb } from '../lib/db/context';
   import { buildBackup, restoreBackup } from '../lib/backup/backup';
-  import { openBackup, saveBackup } from '../lib/backup/files';
   import { BACKUP_TABLES, BackupFormatError, type BackupDocument } from '../lib/backup/format';
   import { describeError, resource } from '../lib/data.svelte';
+  import { IS_DEMO } from '../lib/env';
   import { push } from '../lib/ui/toasts.svelte';
   import Loader from '../lib/components/ui/Loader.svelte';
   import ConfirmDialog from '../lib/components/ui/ConfirmDialog.svelte';
@@ -39,12 +39,16 @@
 
   const exportNow = () =>
     run(async () => {
+      // Imported here rather than at the top so the Tauri file plugins sit
+      // in a chunk the browser demo never fetches.
+      const { saveBackup } = await import('../lib/backup/files');
       const { path } = await saveBackup(getDb(), APP_VERSION);
       return path ? `Saved to ${path}` : 'Export cancelled.';
     });
 
   const chooseFile = () =>
     run(async () => {
+      const { openBackup } = await import('../lib/backup/files');
       const doc = await openBackup();
       if (!doc) return 'Restore cancelled.';
       pending = doc;
@@ -95,6 +99,13 @@
     {/if}
   </div>
 
+  {#if IS_DEMO}
+    <p class="muted note">
+      Saving and restoring need a file dialog, which a browser demo does not
+      have. In the app these write and read a single JSON file you keep
+      wherever you like.
+    </p>
+  {:else}
   <div class="grid-2">
     <div class="card stack">
       <h2>Save a backup</h2>
@@ -118,6 +129,7 @@
       </button>
     </div>
   </div>
+  {/if}
 </Loader>
 
 <ConfirmDialog
@@ -144,6 +156,7 @@
 <style>
   .lead { max-width: 44rem; }
   .small { font-size: 0.85rem; }
+  .note { max-width: 44rem; }
   .right { text-align: right; }
   .total td { font-weight: 700; border-top: 2px solid var(--t-border); }
   h2 { margin-top: 0; }

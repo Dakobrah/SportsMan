@@ -5,8 +5,8 @@
   } from '../lib/db/repositories/plays';
   import type { UnitType } from '../lib/db/repositories/types';
   import { DEFAULT_PLAYBOOK } from '../lib/playbook/defaultPlaybook';
-  import { openPlaybook, savePlaybook } from '../lib/playbook/io';
   import { describeError, resource } from '../lib/data.svelte';
+  import { IS_DEMO } from '../lib/env';
   import { push } from '../lib/ui/toasts.svelte';
   import Loader from '../lib/components/ui/Loader.svelte';
   import ConfirmDialog from '../lib/components/ui/ConfirmDialog.svelte';
@@ -55,6 +55,7 @@
 
   const importFile = () =>
     run(async () => {
+      const { openPlaybook } = await import('../lib/playbook/io');
       const doc = await openPlaybook();
       if (!doc) return 'Import cancelled.';
       const { added, skipped } = await importPlays(getDb(), doc.plays);
@@ -65,6 +66,7 @@
 
   const exportFile = () =>
     run(async () => {
+      const { savePlaybook } = await import('../lib/playbook/io');
       const { path } = await savePlaybook('Playbook', shown);
       return path ? `Saved to ${path}` : 'Export cancelled.';
     });
@@ -96,10 +98,12 @@
 
 <div class="row-between">
   <h1>Playbook</h1>
-  <div class="row">
-    <button class="btn" onclick={importFile} disabled={busy}>Import…</button>
-    <button class="btn" onclick={exportFile} disabled={busy || shown.length === 0}>Export…</button>
-  </div>
+  {#if !IS_DEMO}
+    <div class="row">
+      <button class="btn" onclick={importFile} disabled={busy}>Import…</button>
+      <button class="btn" onclick={exportFile} disabled={busy || shown.length === 0}>Export…</button>
+    </div>
+  {/if}
 </div>
 
 <Loader loading={view.loading} error={view.error} empty={shown.length === 0}

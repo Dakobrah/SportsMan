@@ -1,11 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { openDatabase } from './lib/db/tauri';
+  import type { Database } from './lib/db/driver';
   import { setDb } from './lib/db/context';
   import { start } from './lib/router.svelte';
   import { router } from './lib/router.svelte';
   import { routes } from './routes/routes';
   import Nav from './lib/components/ui/Nav.svelte';
+
+  interface Props {
+    /** Opens and prepares the database. Supplied by the entry point, so the
+     *  desktop build never references the browser driver and vice versa. */
+    boot: () => Promise<Database>;
+  }
+  let { boot }: Props = $props();
 
   type Phase = 'opening' | 'ready' | 'failed';
 
@@ -19,7 +26,7 @@
     // database opens.
     stop = start(routes);
 
-    openDatabase()
+    boot()
       .then((db) => {
         setDb(db);
         phase = 'ready';

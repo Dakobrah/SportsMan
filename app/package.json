@@ -13,7 +13,8 @@
     "coverage": "vitest run --coverage",
     "tauri": "tauri",
     "app": "tauri dev",
-    "app:build": "tauri build"
+    "app:build": "tauri build",
+    "build:demo": "VITE_DEMO=true vite build --config vite.config.demo.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
@@ -23,8 +24,10 @@
     "@testing-library/user-event": "^14.6.7",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.3",
+    "@types/sql.js": "^1.4.11",
     "@vitest/coverage-v8": "^4.1.11",
     "jsdom": "^30.0.1",
+    "sql.js": "^1.14.2",
     "svelte": "^5.56.10",
     "svelte-check": "^4.7.6",
     "typescript": "~6.0.2",
