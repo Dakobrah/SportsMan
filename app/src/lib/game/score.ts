@@ -16,7 +16,7 @@ import type { PlayForm } from './playForm';
  * The only fields scoring reads. Widened from `Snap` so a caller can score a
  * partial row without constructing all sixty columns.
  */
-export type ScoringFacts = Pick<Snap, 'kind' | 'isTouchdown' | 'result' | 'attemptType'>;
+export type ScoringFacts = Pick<Snap, 'kind' | 'isTouchdown' | 'isDefensiveTouchdown' | 'result' | 'attemptType'>;
 
 const TOUCHDOWN = 6;
 const FIELD_GOAL = 3;
@@ -27,6 +27,7 @@ export function pointsFor(form: PlayForm): number {
   switch (form.type) {
     case 'run':
     case 'pass':
+      if (form.isDefensiveTouchdown) return TOUCHDOWN;
       return form.isTouchdown ? TOUCHDOWN : 0;
     case 'field_goal':
       return form.result === 'GOOD' ? FIELD_GOAL : 0;
@@ -51,6 +52,7 @@ export function pointsForSnap(snap: ScoringFacts): number {
   switch (snap.kind) {
     case 'RUN':
     case 'PASS':
+      if (snap.isDefensiveTouchdown) return TOUCHDOWN;
       return snap.isTouchdown ? TOUCHDOWN : 0;
     case 'FG':
       return snap.result === 'GOOD' ? FIELD_GOAL : 0;

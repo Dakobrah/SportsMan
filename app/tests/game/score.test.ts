@@ -48,4 +48,14 @@ describe('scoring', () => {
   it('never scores a touchdown that was not marked', () => {
     expect(pointsForSnap(makeSnap({ kind: 'RUN', yardsGained: 80 }))).toBe(0);
   });
+
+  it('scores six for a defensive touchdown on run or pass', () => {
+    expect(pointsFor({ ...blankForm('run'), isDefensiveTouchdown: true })).toBe(6);
+    expect(pointsFor({ ...blankForm('pass'), isDefensiveTouchdown: true })).toBe(6);
+  });
+
+  it('reads a defensive touchdown back off a stored snap', () => {
+    expect(pointsForSnap(makeSnap({ kind: 'RUN', isDefensiveTouchdown: true }))).toBe(6);
+    expect(pointsForSnap(makeSnap({ kind: 'PASS', isDefensiveTouchdown: true }))).toBe(6);
+  });
 });

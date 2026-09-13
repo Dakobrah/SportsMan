@@ -33,6 +33,21 @@ describe('computeNextState', () => {
       expect(result.ballPosition).toBe(EXTRA_POINT_SPOT);
     });
 
+    it('sends a defensive touchdown to the extra point from our side', () => {
+      const result = computeNextState(
+        { down: 3, distance: 2, ballPosition: -10, possession: 'them' },
+        'pass',
+        {},
+        { isDefensiveTouchdown: true },
+      );
+      expect(result.situation).toBe('extra_point');
+      expect(result.down).toBeNull();
+      expect(result.distance).toBeNull();
+      // Our defense scored, so the PAT is from our own 3.
+      expect(result.ballPosition).toBe(EXTRA_POINT_SPOT);
+      expect(result.possession).toBe('us');
+    });
+
     it('hands the ball over on the spot after an interception', () => {
       const result = computeNextState(
         { down: 2, distance: 7, ballPosition: -30, possession: 'us' },

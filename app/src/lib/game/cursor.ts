@@ -104,6 +104,7 @@ export const snapToPlayResult = (snap: Snap): PlayResult => ({
    */
   yardsGained: snapYardage(snap),
   isTouchdown: snap.isTouchdown,
+  isDefensiveTouchdown: snap.isDefensiveTouchdown,
   isFirstDown: snap.isFirstDown,
   isInterception: snap.isInterception,
   fumbleLost: snap.fumbleLost,

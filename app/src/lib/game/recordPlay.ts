@@ -313,11 +313,13 @@ export async function recordPlay(
       }
     }
 
-    // Points go to whoever had the ball. Applying them to us regardless is
-    // how a 36-33 game replayed as 69-0.
+    // Points go to whoever had the ball — except on a defensive touchdown,
+    // where our defense scores regardless of who was driving. Applying them
+    // to us regardless is how a 36-33 game replayed as 69-0.
     const points = pointsFor(form);
+    const scoringSide = 'isDefensiveTouchdown' in form && form.isDefensiveTouchdown ? 'us' : cursor.possession;
     const scores = points
-      ? await addScore(db, gameId, points, cursor.possession)
+      ? await addScore(db, gameId, points, scoringSide)
       : await readScores(db, gameId);
 
     // Read the stored row back and advance from that, rather than from the
@@ -363,8 +365,9 @@ export async function undoLastPlay(db: Database, gameId: number): Promise<UndoOu
     // Take the points off the side that scored them, which the snap records.
     const points = pointsForSnap(snap);
     await deleteSnap(db, snap.id);
+    const scoringSide = snap.isDefensiveTouchdown ? 'us' : snap.possession;
     const scores = points
-      ? await addScore(db, gameId, -points, snap.possession)
+      ? await addScore(db, gameId, -points, scoringSide)
       : await readScores(db, gameId);
 
     const cursor = await rebuildCursor(db, gameId);

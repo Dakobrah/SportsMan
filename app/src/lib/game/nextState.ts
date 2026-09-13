@@ -88,6 +88,7 @@ export interface PlayData {
 export interface PlayResult {
   yardsGained?: number;
   isTouchdown?: boolean;
+  isDefensiveTouchdown?: boolean;
   isFirstDown?: boolean;
   isInterception?: boolean;
   fumbleLost?: boolean;
@@ -171,6 +172,11 @@ export function computeNextState(
     // The scoring team keeps the ball for the try, snapped from the
     // defending team's 3.
     return deadBall(extraPointSpotFor(offense), offense, 'extra_point');
+  }
+  if (result.isDefensiveTouchdown) {
+    // Our defense scored: we keep the ball for the try, snapped from our
+    // own 3 (the opponent's end zone is behind them).
+    return deadBall(extraPointSpotFor('us'), 'us', 'extra_point');
   }
   if (result.isInterception || result.fumbleLost) {
     // A muffed kick is the one lost fumble that does NOT change hands: on a

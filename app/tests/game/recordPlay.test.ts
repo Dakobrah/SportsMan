@@ -81,6 +81,44 @@ describe('recordPlay', () => {
     expect(kick.cursor.down).toBe(1);
   });
 
+  it('scores a defensive touchdown and opens the extra point', async () => {
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
+
+    const defTd = await recordPlay(
+      db, gameId, { ...OPENING_CURSOR, possession: 'them' },
+      { ...blankForm('pass'), isDefensiveTouchdown: true },
+      roster,
+    );
+
+    expect(defTd.teamScore).toBe(6);
+    expect(defTd.cursor.situation).toBe('extra_point');
+    expect(defTd.cursor.possession).toBe('us');
+    expect(defTd.cursor.ballPosition).toBe(EXTRA_POINT_SPOT);
+    expect((await getGame(db, gameId))?.teamScore).toBe(6);
+  });
+
+  it('runs the defensive touchdown, extra point and kickoff chain', async () => {
+    const { db, gameId, roster } = await seedRoster(await createTestDb());
+
+    const defTd = await recordPlay(
+      db, gameId, { ...OPENING_CURSOR, possession: 'them' },
+      { ...blankForm('run'), isDefensiveTouchdown: true },
+      roster,
+    );
+    expect(defTd.teamScore).toBe(6);
+    expect(defTd.cursor.situation).toBe('extra_point');
+
+    const pat = await recordPlay(
+      db, gameId, defTd.cursor,
+      { ...blankForm('extra_point'), attemptType: 'KICK', result: 'GOOD', kickerNumber: K },
+      roster,
+    );
+
+    expect(pat.teamScore).toBe(7);
+    expect(pat.cursor.situation).toBe('kickoff');
+    expect(pat.cursor.ballPosition).toBe(KICKOFF_SPOT);
+  });
+
   it('scores two for a conversion and three for a field goal', async () => {
     const { db, gameId, roster } = await seedRoster(await createTestDb());
 
