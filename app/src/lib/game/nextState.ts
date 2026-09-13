@@ -174,8 +174,8 @@ export function computeNextState(
     return deadBall(extraPointSpotFor(offense), offense, 'extra_point');
   }
   if (result.isDefensiveTouchdown) {
-    // Our defense scored: we keep the ball for the try, snapped from our
-    // own 3 (the opponent's end zone is behind them).
+    // Our defense scored, so we attempt the try: snapped from the
+    // opponent's 3, the same spot as after our own touchdown.
     return deadBall(extraPointSpotFor('us'), 'us', 'extra_point');
   }
   if (result.isInterception || result.fumbleLost) {
