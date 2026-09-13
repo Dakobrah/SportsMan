@@ -98,10 +98,3 @@ export async function openDatabase(): Promise<Database> {
   opened = db;
   return db;
 }
-
-/** Release the handle. Mainly for tests and teardown. */
-export async function closeDatabase(): Promise<void> {
-  if (!opened) return;
-  await opened.close();
-  opened = null;
-}

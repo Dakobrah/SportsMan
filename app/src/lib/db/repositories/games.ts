@@ -175,10 +175,6 @@ export async function updateGame(
   );
 }
 
-export async function deleteGame(db: Database, id: number): Promise<void> {
-  await db.run('DELETE FROM games WHERE id = ?', [id]);
-}
-
 /** Set either score outright — the scoreboard's tap-to-edit. */
 export async function setScores(
   db: Database,

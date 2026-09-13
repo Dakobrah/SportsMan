@@ -5,7 +5,7 @@
  * three is what makes an import idempotent.
  */
 import type { Database } from '../driver';
-import { type Play, type UnitType, toDomain, toDomainAll } from './types';
+import { type Play, type UnitType, toDomainAll } from './types';
 
 const COLUMNS = 'id, name, unit_type, formation, description';
 
@@ -24,14 +24,6 @@ export async function listPlays(db: Database, unitType?: UnitType): Promise<Play
       unitType ? [unitType] : [],
     ),
   );
-}
-
-export async function getPlay(db: Database, id: number): Promise<Play | undefined> {
-  const row = await db.get<Record<string, unknown>>(
-    `SELECT ${COLUMNS} FROM plays WHERE id = ?`,
-    [id],
-  );
-  return row && toDomain<Play>(row);
 }
 
 /** The distinct formations in use, per unit. Drives the tracker's picker. */

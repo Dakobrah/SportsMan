@@ -41,17 +41,6 @@ export function yardsToGoal(position: number): number {
   return OPPONENT_GOAL - position;
 }
 
-/**
- * Yards needed for a first down from `position`.
- *
- * Ten, unless the goal line is nearer: inside the opponent's 10 it is first
- * and goal. Replaying a real game caught the Django original promising ten
- * yards from the opponent's 7 -- "1st & 10" when only 7 yards exist.
- */
-export function firstDownDistance(position: number): number {
-  return Math.min(FIRST_DOWN_DISTANCE, yardsToGoal(position));
-}
-
 /** Yards to gain for a normal first down. */
 export const FIRST_DOWN_DISTANCE = 10;
 
@@ -120,14 +109,6 @@ export type Possession = 'us' | 'them';
 
 export const otherTeam = (team: Possession): Possession => (team === 'us' ? 'them' : 'us');
 
-/** The end zone `team` is trying to reach. */
-export const targetGoalOf = (team: Possession): number =>
-  team === 'us' ? OPPONENT_GOAL : OWN_GOAL;
-
-/** The end zone `team` is defending. */
-export const ownGoalOf = (team: Possession): number =>
-  team === 'us' ? OWN_GOAL : OPPONENT_GOAL;
-
 /**
  * Move the ball `yards` in the direction `team` is driving.
  *
@@ -167,10 +148,6 @@ export const extraPointSpotFor = (scorer: Possession): number =>
 export const isRedZoneFor = (position: number, team: Possession): boolean =>
   yardsToGoalFor(position, team) <= 20;
 
-/** True when `team` has fewer than ten yards to the goal line. */
-export const isGoalToGoFor = (position: number, team: Possession): boolean =>
-  yardsToGoalFor(position, team) < FIRST_DOWN_DISTANCE;
-
 // ---------------------------------------------------------------------------
 // Rendering geometry
 // ---------------------------------------------------------------------------
@@ -193,13 +170,3 @@ export function fieldPercent(position: number, swapped = false): number {
   const along = END_ZONE_PCT + ((position + 50) / 100) * PLAYING_PCT;
   return swapped ? 100 - along : along;
 }
-
-/**
- * Yard marks along each sideline.
- *
- * A regulation field carries a short mark at every yard just inside each
- * sideline. At the size this strip is drawn a true 2-foot mark would be
- * about a pixel, so the tick LENGTH is exaggerated for legibility; the
- * SPACING is exact, one per yard across the hundred-yard playing surface.
- */
-export const SIDELINE_MARK_YARDS = 1;

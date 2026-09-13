@@ -43,9 +43,3 @@ export function navigate(path: string, options: { replace?: boolean } = {}): voi
     window.location.hash = path;
   }
 }
-
-/** Back, falling back to a path when there is no history to go back to. */
-export function back(fallback = '/'): void {
-  if (window.history.length > 1) window.history.back();
-  else navigate(fallback, { replace: true });
-}

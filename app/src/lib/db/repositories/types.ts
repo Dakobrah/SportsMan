@@ -281,10 +281,6 @@ export const toDomainAll = <T>(
   booleans: ReadonlySet<string> = NO_BOOLEANS,
 ): T[] => rows.map((row) => toDomain<T>(row, booleans));
 
-/** SQLite wants 0/1, and `undefined` is not a bindable parameter. */
-export const bool = (value: boolean | null | undefined): number | null =>
-  value == null ? null : value ? 1 : 0;
-
 /** Booleans that are NOT NULL in the schema, so must not become null. */
 export const flag = (value: boolean | undefined): number => (value ? 1 : 0);
 

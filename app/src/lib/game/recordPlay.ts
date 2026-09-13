@@ -20,14 +20,13 @@ import {
 import type { Game, Play, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
 import { extraPointSpotFor, kickoffSpotFor } from './field';
-import { type GameCursor, advance, cursorAfter, playTypeOf, rebuildCursor,
+import { type GameCursor, advance, playTypeOf, rebuildCursor,
          snapToGameState, snapToPlayData, snapToPlayResult } from './cursor';
 import type { NextState } from './nextState';
 import { computeNextState } from './nextState';
 import {
   emptyDefaults,
   playerByNumber,
-  rememberPlayers,
   type DefaultsByTeam,
   type PlayForm,
 } from './playForm';
@@ -406,5 +405,3 @@ export async function loadTracker(
     feed: recent.map((snap) => toFeedEntry(snap, players)),
   };
 }
-
-export { cursorAfter, rememberPlayers };
