@@ -1,0 +1,161 @@
+/*
+ * Global tokens and resets.
+ *
+ * The palette is ported from static/css/tracker.css, which was tuned for
+ * reading a scoreboard outdoors in daylight on a phone. Everything else in
+ * the app inherits it so the tracker does not look like a different product.
+ *
+ * Component-specific styling lives in each component's scoped <style>.
+ */
+:root {
+  --t-bg: #0f1119;
+  --t-surface: #181a24;
+  --t-surface-2: #1f2230;
+  --t-border: #2a2d3d;
+  --t-text: #e4e4ef;
+  --t-text-muted: #7a7d90;
+  --t-green: #22c55e;
+  --t-blue: #3b82f6;
+  --t-purple: #8b5cf6;
+  --t-amber: #f59e0b;
+  --t-red: #ef4444;
+
+  --radius: 10px;
+  --gap: 12px;
+
+  /* Sideline use means gloves, rain and motion. Nothing tappable goes below
+     this; the tracker's own controls are considerably larger. */
+  --tap: 44px;
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--t-bg);
+  color: var(--t-text);
+}
+
+body {
+  overscroll-behavior-y: none;
+  /* Respect notches and gesture bars on phones. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+a { color: var(--t-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3 { margin: 0 0 0.5rem; line-height: 1.2; }
+h1 { font-size: 1.35rem; }
+h2 { font-size: 1.1rem; }
+h3 { font-size: 0.95rem; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Numbers in tables and scoreboards must not jitter as they change. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Wide content scrolls inside its own box; the page never scrolls sideways. */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+:focus-visible {
+  outline: 2px solid var(--t-blue);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Shared primitives. These are used by every CRUD screen, so they live here
+ * rather than being a component each. The tracker deliberately does NOT use
+ * them — its controls are much larger and defined in its own components.
+ * ------------------------------------------------------------------------ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: var(--tap);
+  padding: 0 0.9rem;
+  border: 1px solid var(--t-border);
+  border-radius: var(--radius);
+  background: var(--t-surface-2);
+  color: var(--t-text);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--t-border); text-decoration: none; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
+.btn-primary:hover { background: #2f6fd0; }
+.btn-danger { background: transparent; border-color: var(--t-red); color: var(--t-red); }
+.btn-danger:hover { background: color-mix(in srgb, var(--t-red) 15%, transparent); }
+.btn-go { background: var(--t-green); border-color: var(--t-green); color: #06240f; font-weight: 700; }
+
+.btn.small { min-height: 34px; padding: 0 0.7rem; font-size: 0.85rem; }
+/* A small button in its selected state -- filter pills and the like. */
+.btn.on { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
+
+/* The tracker's toggle rows. Every play form used the same grid. */
+.toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
+.toggles.wide { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+.toggles.three { grid-template-columns: repeat(3, 1fr); }
+.toggles.two { grid-template-columns: 1fr 1fr; }
+
+.card {
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--radius);
+  padding: var(--gap);
+}
+
+.row { display: flex; align-items: center; gap: var(--gap); flex-wrap: wrap; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); }
+.stack { display: grid; gap: var(--gap); }
+.muted { color: var(--t-text-muted); }
+
+table.data { width: 100%; border-collapse: collapse; }
+table.data th, table.data td {
+  text-align: left;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid var(--t-border);
+  white-space: nowrap;
+}
+table.data th { color: var(--t-text-muted); font-weight: 600; font-size: 0.85rem; }
+table.data tbody tr:hover { background: var(--t-surface-2); }
+
+label.field { display: grid; gap: 0.3rem; }
+label.field > span { font-size: 0.85rem; color: var(--t-text-muted); }
+label.field input,
+label.field select,
+label.field textarea {
+  min-height: var(--tap);
+  padding: 0.5rem 0.6rem;
+  background: var(--t-surface-2);
+  border: 1px solid var(--t-border);
+  border-radius: var(--radius);
+  width: 100%;
+}
+label.field textarea { min-height: 5rem; resize: vertical; }
+
+.grid-2 { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.badge-w { background: color-mix(in srgb, var(--t-green) 22%, transparent); color: var(--t-green); }
+.badge-l { background: color-mix(in srgb, var(--t-red) 22%, transparent); color: var(--t-red); }
+.badge-t { background: var(--t-surface-2); color: var(--t-text-muted); }
