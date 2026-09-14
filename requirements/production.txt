@@ -1,3 +1,0 @@
--r base.txt
-whitenoise>=6.6
-sentry-sdk>=1.39
