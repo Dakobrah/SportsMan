@@ -7,8 +7,9 @@
  * exactly, or appear in DEVIATIONS below with a reason.
  *
  * The point is to make an unintended behaviour change impossible to land
- * quietly: a new mismatch fails the suite. The fixture also outlives the
- * Django code, which is deleted once the port is complete.
+ * quietly: a new mismatch fails the suite. The fixture outlives the Django
+ * code, which has since been deleted: it is the only record of what the
+ * original did.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
