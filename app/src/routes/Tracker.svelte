@@ -240,7 +240,7 @@
     {#if panel === 'grid'}
       <PlayTypeGrid onselect={openForm} onspecialteams={() => (panel = 'special-teams')} />
     {:else if panel === 'special-teams'}
-      <SpecialTeamsMenu onselect={openForm} onback={() => (panel = 'grid')} />
+      <SpecialTeamsMenu onselect={openForm} onback={() => (panel = 'grid')} situation={cursor?.situation ?? 'normal'} />
     {:else if form}
       {#if form.type === 'run'}
         <RunFormView bind:form {roster} {playbook} {busy}
