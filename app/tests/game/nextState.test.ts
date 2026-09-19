@@ -239,6 +239,125 @@ describe('computeNextState', () => {
     });
   });
 
+  describe('touchdown from opponent territory', () => {
+    it('us: TD at opp 45, PAT good, we punt from our side', () => {
+      // 1. Touchdown: us scores from the opponent's 45.
+      const afterTD = computeNextState(
+        { down: 1, distance: 10, ballPosition: 45, possession: 'us' },
+        'run',
+        {},
+        { isTouchdown: true },
+      );
+      expect(afterTD.situation).toBe('extra_point');
+      expect(afterTD.possession).toBe('us');
+      expect(afterTD.ballPosition).toBe(EXTRA_POINT_SPOT);
+
+      // 2. PAT good: transitions to kickoff.
+      const afterPAT = computeNextState(
+        { down: null, distance: null, ballPosition: EXTRA_POINT_SPOT, possession: 'us' },
+        'extra_point',
+        { result: 'GOOD' },
+      );
+      expect(afterPAT.situation).toBe('kickoff');
+      expect(afterPAT.possession).toBe('us');
+
+      // 3. Punt by us from our side: changes possession to them.
+      const afterPunt = computeNextState(
+        { down: 4, distance: 8, ballPosition: -35, possession: 'us' },
+        'punt',
+        { puntYards: 45 },
+      );
+      expect(afterPunt.possession).toBe('them');
+    });
+
+    it('us: TD at opp 45, PAT good, they punt back', () => {
+      // 1. Touchdown: us scores from the opponent's 45.
+      const afterTD = computeNextState(
+        { down: 1, distance: 10, ballPosition: 45, possession: 'us' },
+        'run',
+        {},
+        { isTouchdown: true },
+      );
+      expect(afterTD.situation).toBe('extra_point');
+      expect(afterTD.possession).toBe('us');
+
+      // 2. PAT good: transitions to kickoff.
+      const afterPAT = computeNextState(
+        { down: null, distance: null, ballPosition: EXTRA_POINT_SPOT, possession: 'us' },
+        'extra_point',
+        { result: 'GOOD' },
+      );
+      expect(afterPAT.situation).toBe('kickoff');
+
+      // 3. Punt by them from their side: changes possession to us.
+      const afterPunt = computeNextState(
+        { down: 4, distance: 8, ballPosition: 35, possession: 'them' },
+        'punt',
+        { puntYards: 45 },
+      );
+      expect(afterPunt.possession).toBe('us');
+    });
+
+    it('them: TD at our 45, we attempt PAT (def TD), then we punt from our side', () => {
+      // 1. Defensive touchdown: they have the ball at our 45, we intercept and return for TD.
+      const afterTD = computeNextState(
+        { down: 3, distance: 2, ballPosition: -45, possession: 'them' },
+        'pass',
+        {},
+        { isDefensiveTouchdown: true },
+      );
+      expect(afterTD.situation).toBe('extra_point');
+      // Our defense scored, so we attempt the PAT.
+      expect(afterTD.possession).toBe('us');
+      expect(afterTD.ballPosition).toBe(EXTRA_POINT_SPOT);
+
+      // 2. PAT good: transitions to kickoff.
+      const afterPAT = computeNextState(
+        { down: null, distance: null, ballPosition: EXTRA_POINT_SPOT, possession: 'us' },
+        'extra_point',
+        { result: 'GOOD' },
+      );
+      expect(afterPAT.situation).toBe('kickoff');
+      expect(afterPAT.possession).toBe('us');
+
+      // 3. Punt by us from our side: changes possession to them.
+      const afterPunt = computeNextState(
+        { down: 4, distance: 8, ballPosition: -35, possession: 'us' },
+        'punt',
+        { puntYards: 45 },
+      );
+      expect(afterPunt.possession).toBe('them');
+    });
+
+    it('them: TD at our 45, we make PAT, then they punt', () => {
+      // 1. Defensive touchdown: they have the ball at our 45, we intercept and return for TD.
+      const afterTD = computeNextState(
+        { down: 3, distance: 2, ballPosition: -45, possession: 'them' },
+        'pass',
+        {},
+        { isDefensiveTouchdown: true },
+      );
+      expect(afterTD.situation).toBe('extra_point');
+      expect(afterTD.possession).toBe('us');
+
+      // 2. PAT good: transitions to kickoff.
+      const afterPAT = computeNextState(
+        { down: null, distance: null, ballPosition: EXTRA_POINT_SPOT, possession: 'us' },
+        'extra_point',
+        { result: 'GOOD' },
+      );
+      expect(afterPAT.situation).toBe('kickoff');
+
+      // 3. Punt by them from their side: changes possession to us.
+      const afterPunt = computeNextState(
+        { down: 4, distance: 8, ballPosition: 35, possession: 'them' },
+        'punt',
+        { puntYards: 45 },
+      );
+      expect(afterPunt.possession).toBe('us');
+    });
+  });
+
   describe('penalties', () => {
     it('moves us back and lengthens the distance', () => {
       const result = computeNextState(
