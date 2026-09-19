@@ -33,6 +33,8 @@ import {
   otherTeam,
   puntTouchbackSpotFor,
   yardsToGoalFor,
+  OPPONENT_GOAL,
+  OWN_GOAL,
 } from './field';
 
 export type Situation =
@@ -291,6 +293,14 @@ function applyScrimmagePlay(
 ): NextState {
   const newPosition = advanceBy(ballPosition, yards, offense);
   const newDistance = distance - yards;
+
+  // Auto-detect touchdowns: the offense has crossed the goal line.
+  if (
+    (offense === 'us' && newPosition >= OPPONENT_GOAL) ||
+    (offense === 'them' && newPosition <= OWN_GOAL)
+  ) {
+    result.isTouchdown = true;
+  }
 
   if (result.isFirstDown || newDistance <= 0) {
     return firstAndTen(newPosition, offense, 'normal');
