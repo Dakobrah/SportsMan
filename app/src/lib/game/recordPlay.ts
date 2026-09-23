@@ -196,8 +196,12 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
         // the gain, so the two can never contradict the total.
         airYards: form.isComplete ? form.airYards : 0,
         yardsAfterCatch: form.isComplete ? form.yardsGained - form.airYards : 0,
-        // A sack's loss lives in sackYards, so the gain is zero.
-        yardsGained: form.wasSacked ? 0 : form.yardsGained,
+        // Only a caught ball gains ground. A sack's loss lives in sackYards
+        // and an incompletion moves nothing, so both fall out of the same
+        // gate that already governs airYards -- without it, a pass marked
+        // incomplete still carried the yards field into the ball position
+        // while the feed called it incomplete.
+        yardsGained: form.isComplete ? form.yardsGained : 0,
         sackYards: form.wasSacked ? -Math.abs(form.yardsGained) : 0,
         wasSacked: form.wasSacked,
         isTouchdown: form.isTouchdown,
