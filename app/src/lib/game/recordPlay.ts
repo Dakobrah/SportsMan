@@ -19,7 +19,7 @@ import {
 } from '../db/repositories/snaps';
 import type { Game, Play, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
-import { extraPointSpotFor, kickoffSpotFor, reachesGoalLine } from './field';
+import { extraPointSpotFor, kickoffSpotFor } from './field';
 import { type GameCursor, advance, playTypeOf, rebuildCursor,
          snapToGameState, snapToPlayData, snapToPlayResult } from './cursor';
 import type { NextState } from './nextState';
@@ -27,6 +27,7 @@ import { computeNextState } from './nextState';
 import {
   emptyDefaults,
   playerByNumber,
+  touchdownFromYardage,
   type DefaultsByTeam,
   type PlayForm,
 } from './playForm';
@@ -286,18 +287,11 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
  * toggle still works; it is just no longer the only way in.
  */
 export function withGoalLineTouchdown(form: PlayForm, cursor: GameCursor): PlayForm {
+  // Narrowed here rather than inside the predicate, which takes the whole
+  // union so a form component can hand it its own variant.
   if (form.type !== 'run' && form.type !== 'pass') return form;
   if (form.isTouchdown) return form;
-  // The ball changed hands during the play, so whoever was carrying it did
-  // not score: a lost fumble or an interception is the other team's return,
-  // and a defensive touchdown is already six points for the other side.
-  if (form.fumbleLost || form.isDefensiveTouchdown) return form;
-  // Only a caught ball can be carried in. A sack never gains ground, and
-  // validate.ts rejects a touchdown pass that was not completed.
-  if (form.type === 'pass' && (!form.isComplete || form.isInterception || form.wasSacked)) {
-    return form;
-  }
-  if (!reachesGoalLine(cursor.ballPosition, form.yardsGained, cursor.possession)) return form;
+  if (!touchdownFromYardage(form, cursor.ballPosition, cursor.possession)) return form;
   return { ...form, isTouchdown: true };
 }
 

@@ -245,11 +245,13 @@
       {#if form.type === 'run'}
         <RunFormView bind:form {roster} {playbook} {busy}
                        possession={cursor.possession}
+                       ballPosition={cursor.ballPosition}
                        defaults={defaults[cursor.possession]}
                        onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'pass'}
         <PassFormView bind:form {roster} {playbook} {busy}
                        possession={cursor.possession}
+                       ballPosition={cursor.ballPosition}
                        defaults={defaults[cursor.possession]}
                        onsave={save} oncancel={cancelForm} />
       {:else if form.type === 'penalty'}
