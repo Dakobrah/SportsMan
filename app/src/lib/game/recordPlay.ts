@@ -19,7 +19,7 @@ import {
 } from '../db/repositories/snaps';
 import type { Game, Play, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
-import { extraPointSpotFor, kickoffSpotFor } from './field';
+import { extraPointSpotFor, kickoffSpotFor, reachesGoalLine } from './field';
 import { type GameCursor, advance, playTypeOf, rebuildCursor,
          snapToGameState, snapToPlayData, snapToPlayResult } from './cursor';
 import type { NextState } from './nextState';
@@ -274,6 +274,33 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
   }
 }
 
+/**
+ * The touchdown the yardage has already told us about.
+ *
+ * `isTouchdown` began as a toggle the coach pressed, which quietly made six
+ * points optional: a five-yard run from the five was stored as an ordinary
+ * gain, scored nothing, and left the next snap first and goal on the goal
+ * line. Breaking the plane is not a judgement call, so it is derived here --
+ * once, before the row is written -- because `toSnapRow`, `pointsFor` and
+ * `computeNextState` all read this one flag and have to agree about it. The
+ * toggle still works; it is just no longer the only way in.
+ */
+export function withGoalLineTouchdown(form: PlayForm, cursor: GameCursor): PlayForm {
+  if (form.type !== 'run' && form.type !== 'pass') return form;
+  if (form.isTouchdown) return form;
+  // The ball changed hands during the play, so whoever was carrying it did
+  // not score: a lost fumble or an interception is the other team's return,
+  // and a defensive touchdown is already six points for the other side.
+  if (form.fumbleLost || form.isDefensiveTouchdown) return form;
+  // Only a caught ball can be carried in. A sack never gains ground, and
+  // validate.ts rejects a touchdown pass that was not completed.
+  if (form.type === 'pass' && (!form.isComplete || form.isInterception || form.wasSacked)) {
+    return form;
+  }
+  if (!reachesGoalLine(cursor.ballPosition, form.yardsGained, cursor.possession)) return form;
+  return { ...form, isTouchdown: true };
+}
+
 const toFeedEntry = (snap: Snap, players: ReadonlyMap<number, Player>): FeedEntry => ({
   id: snap.id,
   sequenceNumber: snap.sequenceNumber,
@@ -300,14 +327,18 @@ export async function recordPlay(
   validateForm(form);
   validateJerseys(form);
 
+  // Derived before the transaction, so the row, the points and the cursor
+  // are all computed from one reading of the play rather than three.
+  const played = withGoalLineTouchdown(form, cursor);
+
   return db.transaction(async () => {
-    const { id, sequenceNumber } = await insertSnap(db, gameId, toSnapRow(form, cursor, roster));
+    const { id, sequenceNumber } = await insertSnap(db, gameId, toSnapRow(played, cursor, roster));
 
     // Assists are their own rows. Same transaction, so a play never lands
     // with half its tacklers.
-    if (form.type === 'run' || form.type === 'pass') {
-      const assistType = form.type === 'pass' && form.wasSacked ? 'SACK' : 'TACKLE';
-      for (const number of form.assistNumbers) {
+    if (played.type === 'run' || played.type === 'pass') {
+      const assistType = played.type === 'pass' && played.wasSacked ? 'SACK' : 'TACKLE';
+      for (const number of played.assistNumbers) {
         const player = playerByNumber(number, roster);
         if (player) await addAssist(db, id, player.id, assistType);
       }
@@ -316,8 +347,8 @@ export async function recordPlay(
     // Points go to whoever had the ball — except on a defensive touchdown,
     // where our defense scores regardless of who was driving. Applying them
     // to us regardless is how a 36-33 game replayed as 69-0.
-    const points = pointsFor(form);
-    const scoringSide = 'isDefensiveTouchdown' in form && form.isDefensiveTouchdown ? 'us' : cursor.possession;
+    const points = pointsFor(played);
+    const scoringSide = 'isDefensiveTouchdown' in played && played.isDefensiveTouchdown ? 'us' : cursor.possession;
     const scores = points
       ? await addScore(db, gameId, points, scoringSide)
       : await readScores(db, gameId);
