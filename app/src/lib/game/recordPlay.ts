@@ -19,11 +19,9 @@ import {
 } from '../db/repositories/snaps';
 import type { Game, Play, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
-import { extraPointSpotFor, kickoffSpotFor } from './field';
-import { type GameCursor, advance, playTypeOf, rebuildCursor,
-         snapToGameState, snapToPlayData, snapToPlayResult } from './cursor';
-import type { NextState } from './nextState';
-import { computeNextState } from './nextState';
+import { type GameCursor, advance, rebuildCursor, stateAfter } from './cursor';
+import { GameState, type NextState } from './engine/GameState';
+import { plays } from './engine/PlayRegistry';
 import {
   emptyDefaults,
   playerByNumber,
@@ -31,7 +29,7 @@ import {
   type DefaultsByTeam,
   type PlayForm,
 } from './playForm';
-import { pointsFor, pointsForSnap } from './score';
+import { pointsForSnap } from './score';
 import { playerLookup, snapYardage, summarize } from './summary';
 import { validateCursor, validateForm, validateJerseys } from './validate';
 
@@ -117,166 +115,14 @@ export async function recentPlayers(
 /**
  * Map a filled-in form onto a flat `snaps` row.
  *
- * Kickoffs and extra points override the ball position with the named spot
- * for whichever side is kicking. Django wrote the literals 35 and 3 here
- * (tracker.py:705, :886) which, under the -50..+50 convention, mean the
- * opponent's 15 and our own 47 — neither of which is where those plays
- * happen, and neither of which accounted for the opponent kicking.
+ * Each play writes its own columns. Kickoffs and tries also override the
+ * spot with the named one for whichever side is kicking: Django wrote the
+ * literals 35 and 3 here (tracker.py:705, :886) which, under the -50..+50
+ * convention, mean the opponent's 15 and our own 47 -- neither of which is
+ * where those plays happen.
  */
 export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] = []): NewSnap {
-  /**
-   * A jersey number becomes a player link only when we have the ball. Their
-   * #22 is a different person from ours, so resolving an opponent's number
-   * against our roster would attribute their carries to our running back.
-   */
-  const link = (number: number | null): number | null =>
-    cursor.possession === 'us' ? (playerByNumber(number, roster)?.id ?? null) : null;
-
-  /**
-   * A defender is one of OURS even when the opponent has the ball, so unlike
-   * `link` this resolves against our roster whatever the possession is.
-   */
-  const linkOurs = (number: number | null): number | null =>
-    playerByNumber(number, roster)?.id ?? null;
-
-  const defense = (form: { tacklerNumber: number | null; tackleForLoss: boolean;
-                           appliedPressure: boolean; forcedIncompletion: boolean;
-                           isDefensiveTouchdown: boolean }) => ({
-    primaryPlayerNumber: form.tacklerNumber,
-    primaryPlayerId: linkOurs(form.tacklerNumber),
-    tackleForLoss: form.tackleForLoss,
-    appliedPressure: form.appliedPressure,
-    forcedIncompletion: form.forcedIncompletion,
-    isDefensiveTouchdown: form.isDefensiveTouchdown,
-  });
-
-  const header = {
-    quarter: cursor.quarter,
-    down: cursor.down,
-    distance: cursor.distance,
-    ballPosition: cursor.ballPosition,
-    // Stored so cursorAfter can replay the play in the right direction.
-    possession: cursor.possession,
-    notes: form.notes,
-  };
-
-  switch (form.type) {
-    case 'run':
-      return {
-        ...header, kind: 'RUN', ...defense(form),
-        playId: form.playId, formation: form.formation,
-        ballCarrierNumber: form.ballCarrierNumber,
-        ballCarrierId: link(form.ballCarrierNumber),
-        yardsGained: form.yardsGained,
-        isTouchdown: form.isTouchdown,
-        isFirstDown: form.isFirstDown,
-        fumbled: form.fumbled,
-        fumbleLost: form.fumbleLost,
-      };
-
-    case 'pass':
-      return {
-        ...header, kind: 'PASS', ...defense(form),
-        playId: form.playId, formation: form.formation,
-        quarterbackNumber: form.quarterbackNumber,
-        quarterbackId: link(form.quarterbackNumber),
-        // The target is who the ball was thrown at, so it is set whether or
-        // not the pass was caught. The receiver is only who caught it --
-        // Django wrote the same player to both (tracker.py:523), which made
-        // a drop indistinguishable from a completion at the row level, and
-        // made catch rate impossible.
-        targetNumber: form.targetNumber,
-        targetId: link(form.targetNumber),
-        receiverNumber: form.isComplete ? form.targetNumber : null,
-        receiverId: form.isComplete ? link(form.targetNumber) : null,
-        isComplete: form.isComplete,
-        isThrownAway: form.isThrownAway,
-        wasUnderPressure: form.wasUnderPressure,
-        // Air yards are entered; yards after the catch are what is left of
-        // the gain, so the two can never contradict the total.
-        airYards: form.isComplete ? form.airYards : 0,
-        yardsAfterCatch: form.isComplete ? form.yardsGained - form.airYards : 0,
-        // Only a caught ball gains ground. A sack's loss lives in sackYards
-        // and an incompletion moves nothing, so both fall out of the same
-        // gate that already governs airYards -- without it, a pass marked
-        // incomplete still carried the yards field into the ball position
-        // while the feed called it incomplete.
-        yardsGained: form.isComplete ? form.yardsGained : 0,
-        sackYards: form.wasSacked ? -Math.abs(form.yardsGained) : 0,
-        wasSacked: form.wasSacked,
-        isTouchdown: form.isTouchdown,
-        isFirstDown: form.isFirstDown,
-        isInterception: form.isInterception,
-        fumbled: form.fumbled,
-        fumbleLost: form.fumbleLost,
-      };
-
-    case 'penalty':
-      return {
-        ...header, kind: 'PENALTY',
-        hadPenalty: true,
-        penaltyDescription: form.penaltyName,
-        // A declined penalty moves the ball nowhere (tracker.py:631).
-        penaltyYards: form.accepted ? form.penaltyYards : 0,
-        penaltyOnOffense: form.onOffense,
-        penaltyAccepted: form.accepted,
-      };
-
-    case 'kickoff':
-      return {
-        ...header, kind: 'KICKOFF',
-        down: null, distance: null, ballPosition: kickoffSpotFor(cursor.possession),
-        kickerNumber: form.kickerNumber,
-        kickerId: link(form.kickerNumber),
-        kickYards: form.kickYards,
-        isTouchback: form.isTouchback,
-        isOnsideKick: form.isOnsideKick,
-        outOfBounds: form.outOfBounds,
-        // The returner belongs to the RECEIVING team, which is the side we
-        // do not have possession of on a kick -- so `link` is inverted here.
-        returnerNumber: form.returnerNumber,
-        returnerId: cursor.possession === 'us' ? null : linkOurs(form.returnerNumber),
-        returnYards: form.returnYards,
-        fumbled: form.fumbled,
-        fumbleLost: form.fumbleLost,
-      };
-
-    case 'punt':
-      return {
-        ...header, kind: 'PUNT',
-        punterNumber: form.punterNumber,
-        punterId: link(form.punterNumber),
-        puntYards: form.puntYards,
-        isTouchback: form.isTouchback,
-        isBlocked: form.isBlocked,
-        outOfBounds: form.outOfBounds,
-        returnerNumber: form.returnerNumber,
-        returnerId: cursor.possession === 'us' ? null : linkOurs(form.returnerNumber),
-        returnYards: form.returnYards,
-        isFairCatch: form.isFairCatch,
-        fumbled: form.fumbled,
-        fumbleLost: form.fumbleLost,
-      };
-
-    case 'field_goal':
-      return {
-        ...header, kind: 'FG',
-        kickerNumber: form.kickerNumber,
-        kickerId: link(form.kickerNumber),
-        kickDistance: form.kickDistance,
-        result: form.result,
-      };
-
-    case 'extra_point':
-      return {
-        ...header, kind: 'XP',
-        down: null, distance: null, ballPosition: extraPointSpotFor(cursor.possession),
-        attemptType: form.attemptType,
-        result: form.result,
-        kickerNumber: form.kickerNumber,
-        kickerId: link(form.kickerNumber),
-      };
-  }
+  return plays.forForm(form).toRow(form, GameState.from(cursor), roster);
 }
 
 /**
@@ -342,13 +188,11 @@ export async function recordPlay(
       }
     }
 
-    // Points go to whoever had the ball — except on a defensive touchdown,
-    // where our defense scores regardless of who was driving. Applying them
-    // to us regardless is how a 36-33 game replayed as 69-0.
-    const points = pointsFor(played);
-    const scoringSide = 'isDefensiveTouchdown' in played && played.isDefensiveTouchdown ? 'us' : cursor.possession;
+    // The play decides who its points belong to; see PlayDefinition.scorer.
+    const play = plays.forForm(played);
+    const points = play.pointsFor(played);
     const scores = points
-      ? await addScore(db, gameId, points, scoringSide)
+      ? await addScore(db, gameId, points, play.scorer(play.scoringFacts(played), cursor.possession))
       : await readScores(db, gameId);
 
     // Read the stored row back and advance from that, rather than from the
@@ -357,12 +201,7 @@ export async function recordPlay(
     const snap = await getSnap(db, id);
     if (!snap) throw new AppError('The play could not be read back.', 'insert_failed');
 
-    const next = computeNextState(
-      snapToGameState(snap),
-      playTypeOf(snap.kind),
-      snapToPlayData(snap),
-      snapToPlayResult(snap),
-    );
+    const next = stateAfter(snap).toNextState();
     const advanced = advance(cursor, next);
     await writeGameCursor(db, gameId, advanced);
 
@@ -394,9 +233,8 @@ export async function undoLastPlay(db: Database, gameId: number): Promise<UndoOu
     // Take the points off the side that scored them, which the snap records.
     const points = pointsForSnap(snap);
     await deleteSnap(db, snap.id);
-    const scoringSide = snap.isDefensiveTouchdown ? 'us' : snap.possession;
     const scores = points
-      ? await addScore(db, gameId, -points, scoringSide)
+      ? await addScore(db, gameId, -points, plays.forKind(snap.kind).scorer(snap, snap.possession))
       : await readScores(db, gameId);
 
     const cursor = await rebuildCursor(db, gameId);

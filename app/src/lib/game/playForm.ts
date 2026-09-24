@@ -10,6 +10,7 @@
  * click handler has to maintain.
  */
 import type { Play, Player, Position, Possession } from '../db/repositories/types';
+import { plays } from './engine/PlayRegistry';
 import { reachesGoalLine } from './field';
 
 export type PlayFormType =
@@ -193,98 +194,20 @@ export interface PlayFormMeta {
  * adjacent to each other, so they are free to use the hue that matches the
  * play-type tile you just tapped.
  */
-export const PLAY_FORM_META: Record<PlayFormType, PlayFormMeta> = {
-  run: { title: 'Run Play', accent: 'var(--t-green)' },
-  pass: { title: 'Pass Play', accent: 'var(--t-blue)' },
-  penalty: { title: 'Penalty', accent: 'var(--t-amber)' },
-  kickoff: { title: 'Kickoff', accent: 'var(--t-purple)' },
-  punt: { title: 'Punt', accent: 'var(--t-purple)' },
-  field_goal: { title: 'Field Goal', accent: 'var(--t-purple)' },
-  extra_point: { title: 'Extra Point / 2-Point', accent: 'var(--t-purple)' },
-};
+export const PLAY_FORM_META = Object.fromEntries(
+  plays.recordable.map((play) => [play.type, { title: play.title, accent: play.accent }]),
+) as Record<PlayFormType, PlayFormMeta>;
 
-/** No defender recorded. */
-const noDefense = (): DefensiveDetail => ({
-  tacklerNumber: null,
-  assistNumbers: [],
-  tackleForLoss: false,
-  appliedPressure: false,
-  forcedIncompletion: false,
-  isDefensiveTouchdown: false,
-});
-
-/** Defaults that used to live inside the HTML-string builders. */
+/** A new form of `type`, before any defaults are applied. */
 export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { type: T }> {
-  switch (type) {
-    case 'run':
-      return {
-        ...noDefense(),
-        type: 'run', playId: null, formation: '', ballCarrierNumber: null, yardsGained: 0,
-        isTouchdown: false, isFirstDown: false, fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'pass':
-      return {
-        ...noDefense(),
-        type: 'pass', playId: null, formation: '',
-        quarterbackNumber: null, targetNumber: null, receiverNumber: null,
-        isComplete: false, wasSacked: false,
-        airYards: 0, isThrownAway: false, wasUnderPressure: false,
-        yardsGained: 0,
-        isTouchdown: false, isFirstDown: false, isInterception: false,
-        fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'penalty':
-      return {
-        type: 'penalty', penaltyName: '', penaltyYards: 5,
-        onOffense: true, accepted: true, autoFirstDown: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'kickoff':
-      return {
-        type: 'kickoff', kickerNumber: null, kickYards: 60,
-        isTouchback: false, isOnsideKick: false, outOfBounds: false,
-        // 60 yards from the 35 comes down on their 5; a 20-yard return puts
-        // them on their 25, which is where the flat default used to land.
-        returnerNumber: null, returnYards: 20,
-        fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'punt':
-      return {
-        type: 'punt', punterNumber: null, puntYards: 40,
-        isTouchback: false, isBlocked: false, outOfBounds: false,
-        returnerNumber: null, returnYards: 0, isFairCatch: false,
-        fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'field_goal':
-      return {
-        type: 'field_goal', kickerNumber: null, kickDistance: 30, result: 'GOOD', notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'extra_point':
-      return {
-        type: 'extra_point', attemptType: 'KICK', result: 'GOOD', kickerNumber: null, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    default: {
-      const exhaustive: never = type;
-      throw new Error(`unknown play form: ${String(exhaustive)}`);
-    }
-  }
+  return plays.forType(type).blank();
 }
 
 /** Jersey numbers are 0-99, and 0 is a legal number. */
 export const JERSEY_MIN = 0;
 export const JERSEY_MAX = 99;
 
-/**
- * Find the roster player wearing `number`.
- *
- * Only meaningful for our own plays. The opponent's #22 has nothing to do
- * with ours, so callers must not resolve against this roster when the other
- * team has the ball -- see toSnapRow.
- */
-export const playerByNumber = (
-  number: number | null,
-  roster: Player[],
-): Player | undefined =>
-  number == null ? undefined : roster.find((player) => player.number === number);
+export { playerByNumber } from './engine/players';
 
 /**
  * Player numbers carried forward from earlier plays.
@@ -322,42 +245,12 @@ export const emptyDefaults = (): DefaultsByTeam => ({
 
 /** Pre-fill a blank form with whoever last filled each role. */
 export function applyDefaults<T extends PlayForm>(form: T, defaults: PlayDefaults): T {
-  switch (form.type) {
-    case 'pass':
-      return {
-        ...form,
-        quarterbackNumber: defaults.quarterbackNumber,
-        receiverNumber: defaults.receiverNumber,
-      };
-    case 'kickoff':
-    case 'field_goal':
-    case 'extra_point':
-      return { ...form, kickerNumber: defaults.kickerNumber };
-    case 'punt':
-      return { ...form, punterNumber: defaults.punterNumber };
-    default:
-      return form;
-  }
+  return plays.forForm(form).applyDefaults(form, defaults);
 }
 
 /** Fold a just-saved form into the running defaults for that side. */
 export function rememberPlayers(defaults: PlayDefaults, form: PlayForm): PlayDefaults {
-  switch (form.type) {
-    case 'pass':
-      return {
-        ...defaults,
-        quarterbackNumber: form.quarterbackNumber ?? defaults.quarterbackNumber,
-        receiverNumber: form.receiverNumber ?? defaults.receiverNumber,
-      };
-    case 'kickoff':
-    case 'field_goal':
-    case 'extra_point':
-      return { ...defaults, kickerNumber: form.kickerNumber ?? defaults.kickerNumber };
-    case 'punt':
-      return { ...defaults, punterNumber: form.punterNumber ?? defaults.punterNumber };
-    default:
-      return defaults;
-  }
+  return plays.forForm(form).remember(defaults, form);
 }
 
 /**
