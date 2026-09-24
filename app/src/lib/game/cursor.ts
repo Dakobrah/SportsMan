@@ -14,8 +14,7 @@ import type { Snap, SnapKind } from '../db/repositories/types';
 import { type GameCursor, GameState, type NextState } from './engine/GameState';
 import { PlayOutcome } from './engine/PlayOutcome';
 import { plays } from './engine/PlayRegistry';
-import type { PlayData, PlayResult, PlayType } from './engine/types';
-import type { StateInput } from './nextState';
+import type { PlayType } from './engine/types';
 
 export type { GameCursor };
 
@@ -34,17 +33,6 @@ export const advance = (cursor: GameCursor, next: NextState): GameCursor => ({
 });
 
 export const playTypeOf = (kind: SnapKind): PlayType => plays.forKind(kind).type;
-
-export const snapToGameState = (snap: Snap): StateInput => ({
-  down: snap.down,
-  distance: snap.distance,
-  ballPosition: snap.ballPosition,
-  possession: snap.possession,
-});
-
-export const snapToPlayData = (snap: Snap): PlayData => PlayOutcome.fromSnap(snap).data;
-
-export const snapToPlayResult = (snap: Snap): PlayResult => PlayOutcome.fromSnap(snap).result;
 
 /** The state a game is in once `snap` has been played. */
 export function stateAfter(snap: Snap): GameState {

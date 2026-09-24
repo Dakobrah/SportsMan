@@ -3,10 +3,7 @@
   import { getDb } from '../lib/db/context';
   import { setScores, setSidesSwapped } from '../lib/db/repositories/games';
   import type { Play, Player } from '../lib/db/repositories/types';
-  import {
-    changeQuarter, loadTracker, recentPlayers, recordPlay, undoLastPlay,
-    type FeedEntry, type TrackerSnapshot,
-  } from '../lib/game/recordPlay';
+  import { GameTracker, type FeedEntry, type TrackerSnapshot } from '../lib/game/recordPlay';
   import type { GameCursor } from '../lib/game/cursor';
   import {
     applyDefaults, blankFormAt, defaultScrimmageKick, emptyDefaults, rememberPlayers,
@@ -53,6 +50,8 @@
   };
 
   const gameId = $derived(numericParam(router.params, 'id'));
+  /** This game's tracker. Stateless over the database, so deriving it is free. */
+  const tracker = $derived(gameId === null ? null : new GameTracker(getDb(), gameId));
 
   type Panel = 'grid' | 'special-teams' | 'form';
 
@@ -84,13 +83,13 @@
   let editing = $state<'team' | 'opponent' | 'quarter' | null>(null);
 
   onMount(async () => {
-    if (gameId === null) {
+    if (tracker === null) {
       loadError = 'That game does not exist.';
       ready = true;
       return;
     }
     try {
-      const loaded = await loadTracker(getDb(), gameId);
+      const loaded = await tracker.load();
       snapshot = loaded;
       cursor = loaded.cursor;
       teamScore = loaded.game.teamScore;
@@ -137,10 +136,10 @@
   }
 
   async function save() {
-    if (!form || cursor === null || gameId === null || busy) return;
+    if (!form || cursor === null || tracker === null || busy) return;
     busy = true;
     try {
-      const outcome = await recordPlay(getDb(), gameId, cursor, form, roster);
+      const outcome = await tracker.record(cursor, form, roster);
 
       // Remember the players against the side that ran the play, not the
       // side that has the ball afterwards -- a turnover changes that.
@@ -166,11 +165,11 @@
 
   async function undo() {
     confirmUndo = false;
-    if (gameId === null || busy) return;
+    if (tracker === null || busy) return;
     busy = true;
     try {
-      const outcome = await undoLastPlay(getDb(), gameId);
-      defaults = await recentPlayers(getDb(), gameId);
+      const outcome = await tracker.undo();
+      defaults = await tracker.recentPlayers();
       cursor = outcome.cursor;
       teamScore = outcome.teamScore;
       opponentScore = outcome.opponentScore;
@@ -187,14 +186,14 @@
   }
 
   async function applyEdit(value: number) {
-    if (gameId === null || cursor === null) return;
+    if (gameId === null || tracker === null || cursor === null) return;
     const which = editing;
     editing = null;
     try {
       if (which === 'quarter') {
         // Crossing halftime restarts play with a kickoff, which the chain
         // then opens like any other.
-        cursor = await changeQuarter(getDb(), gameId, cursor, value);
+        cursor = await tracker.changeQuarter(cursor, value);
         form = null;
         openChainedForm(cursor);
       } else if (which === 'team') {
