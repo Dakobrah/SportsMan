@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Play, Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type PassForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
+  import { SELECT_POSITIONS, touchdownFromYardage, type PassForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
@@ -11,7 +11,13 @@
   import PlayPicker from '../PlayPicker.svelte';
 
   type Props = PlayFormProps<PassForm>;
-  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, playbook, defaults, busy,
+        ballPosition, onsave, oncancel }: Props = $props();
+
+  /** See RunForm: a completed pass into the end zone is a touchdown, and the
+   *  toggle says so before the coach presses it. `recordPlay` scores it from
+   *  this same predicate. */
+  const scores = $derived(touchdownFromYardage(form, ballPosition, possession));
 
   /** A sack is not a completion, and an interception is not either. */
   function toggleSack() {
@@ -103,7 +109,7 @@
   {/if}
 
   <div class="toggles">
-    <ToggleButton label="TD" variant="green" pressed={form.isTouchdown}
+    <ToggleButton label="TD" variant="green" pressed={form.isTouchdown || scores}
                   onpress={toggleTouchdown} />
     <ToggleButton label="1st Down" variant="blue" pressed={form.isFirstDown}
                   onpress={() => (form.isFirstDown = !form.isFirstDown)} />
