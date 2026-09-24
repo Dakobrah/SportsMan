@@ -1,18 +1,24 @@
 <script lang="ts">
   import type { PlayFormType } from '../../game/playForm';
+  import type { Situation } from '../../game/nextState';
 
   interface Props {
     onselect: (type: PlayFormType) => void;
     onback: () => void;
+    situation: Situation;
   }
-  let { onselect, onback }: Props = $props();
+  let { onselect, onback, situation }: Props = $props();
 </script>
 
 <div class="grid">
-  <button class="tile" onclick={() => onselect('kickoff')}>Kickoff</button>
-  <button class="tile" onclick={() => onselect('punt')}>Punt</button>
-  <button class="tile" onclick={() => onselect('field_goal')}>Field Goal</button>
-  <button class="tile" onclick={() => onselect('extra_point')}>PAT / 2pt</button>
+  {#if situation === 'kickoff'}
+    <button class="tile" onclick={() => onselect('kickoff')}>Kickoff</button>
+  {:else if situation === 'extra_point'}
+    <button class="tile" onclick={() => onselect('extra_point')}>PAT / 2pt</button>
+  {:else}
+    <button class="tile" onclick={() => onselect('punt')}>Punt</button>
+    <button class="tile" onclick={() => onselect('field_goal')}>Field Goal</button>
+  {/if}
   <button class="tile back" onclick={onback}>‹ Back</button>
 </div>
 
