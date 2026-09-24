@@ -77,8 +77,8 @@
 <style>
   .scoreboard {
     position: sticky; top: 0; z-index: 100;
-    background: linear-gradient(180deg, #0d0f18 0%, #141625 100%);
-    color: #fff;
+    background: linear-gradient(180deg, var(--c-scoreboard-top) 0%, var(--c-scoreboard-bottom) 100%);
+    color: var(--c-ink-light);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     padding-top: env(safe-area-inset-top);
   }
@@ -88,18 +88,18 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
   .back {
-    background: none; border: none; color: #fff;
+    background: none; border: none; color: var(--c-ink-light);
     font-size: 1.8rem; line-height: 1;
     min-width: var(--tap); min-height: var(--tap); cursor: pointer;
   }
   .live {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em;
-    color: var(--t-red);
+    color: var(--c-negative);
   }
   .dot {
     width: 7px; height: 7px; border-radius: 50%;
-    background: var(--t-red); animation: pulse 1.6s ease-in-out infinite;
+    background: var(--c-negative); animation: pulse 1.6s ease-in-out infinite;
   }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
   @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
@@ -109,7 +109,7 @@
   }
   .swap {
     margin-left: auto;
-    background: rgba(255, 255, 255, 0.08); border: none; color: #fff;
+    background: rgba(255, 255, 255, 0.08); border: none; color: var(--c-ink-light);
     border-radius: 999px; padding: 0 10px; margin-right: 8px;
     font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
     min-height: 32px; cursor: pointer;
@@ -118,11 +118,11 @@
     display: inline-block; width: 6px; height: 6px; border-radius: 50%;
     background: transparent; margin-left: 3px; vertical-align: middle;
   }
-  .pip.on { background: #e07b28; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.5); }
+  .pip.on { background: var(--c-ball); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.5); }
 
   .main { display: flex; align-items: center; justify-content: space-between; padding: 2px 8px 8px; }
   .side {
-    background: none; border: none; color: #fff; cursor: pointer;
+    background: none; border: none; color: var(--c-ink-light); cursor: pointer;
     display: grid; justify-items: center; gap: 0;
     min-width: 5.5rem; min-height: var(--tap);
   }
@@ -130,10 +130,10 @@
   .score { font-size: 2.4rem; font-weight: 800; line-height: 1; }
   .middle { display: grid; justify-items: center; gap: 4px; }
   .quarter {
-    background: rgba(255, 255, 255, 0.08); border: none; color: #fff;
+    background: rgba(255, 255, 255, 0.08); border: none; color: var(--c-ink-light);
     border-radius: 999px; padding: 4px 12px; font-weight: 800; font-size: 0.8rem;
     min-height: 34px; cursor: pointer;
   }
   .down { font-size: 1rem; font-weight: 700; }
-  .down.situation { color: var(--t-amber); font-size: 0.85rem; letter-spacing: 0.06em; }
+  .down.situation { color: var(--c-caution); font-size: 0.85rem; letter-spacing: 0.06em; }
 </style>

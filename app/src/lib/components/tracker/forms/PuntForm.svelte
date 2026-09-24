@@ -30,15 +30,15 @@
   {/if}
 
   <div class="toggles">
-    <ToggleButton label="Touchback" variant="blue" pressed={form.isTouchback}
+    <ToggleButton label="Touchback" variant="info" pressed={form.isTouchback}
                   onpress={() => (form.isTouchback = !form.isTouchback)} />
-    <ToggleButton label="Fair catch" variant="blue" pressed={form.isFairCatch}
+    <ToggleButton label="Fair catch" variant="info" pressed={form.isFairCatch}
                   onpress={() => { form.isFairCatch = !form.isFairCatch; if (form.isFairCatch) form.returnYards = 0; }} />
-    <ToggleButton label="Muffed" variant="red" pressed={form.fumbleLost}
+    <ToggleButton label="Muffed" variant="negative" pressed={form.fumbleLost}
                   onpress={() => { form.fumbleLost = !form.fumbleLost; form.fumbled = form.fumbleLost; }} />
-    <ToggleButton label="Blocked" variant="red" pressed={form.isBlocked}
+    <ToggleButton label="Blocked" variant="negative" pressed={form.isBlocked}
                   onpress={() => (form.isBlocked = !form.isBlocked)} />
-    <ToggleButton label="Out of bounds" variant="amber" pressed={form.outOfBounds}
+    <ToggleButton label="Out of bounds" variant="caution" pressed={form.outOfBounds}
                   onpress={() => (form.outOfBounds = !form.outOfBounds)} />
   </div>
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />

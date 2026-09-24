@@ -1,5 +1,6 @@
 <script lang="ts">
   import { QUICK_YARDS } from '../../game/playForm';
+  import Chip from './Chip.svelte';
 
   interface Props {
     label?: string;
@@ -22,9 +23,8 @@
        cold or gloved thumb needs; do not shrink these. -->
   <div class="quick-yards">
     {#each QUICK_YARDS as yards (yards)}
-      <button type="button" class="chip" class:on={value === yards} onclick={() => onchange(yards)}>
-        {yards > 0 ? `+${yards}` : yards}
-      </button>
+      <Chip label={yards > 0 ? `+${yards}` : yards} pressed={value === yards}
+            onpress={() => onchange(yards)} />
     {/each}
   </div>
 </div>
@@ -36,17 +36,4 @@
     grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
     gap: 8px;
   }
-  .chip {
-    min-width: 56px;
-    min-height: 52px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    border: 1.5px solid var(--t-border);
-    background: var(--t-surface-2);
-    color: var(--t-text);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    cursor: pointer;
-  }
-  .chip.on { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
 </style>

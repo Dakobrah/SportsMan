@@ -41,7 +41,7 @@
     max-width: min(30rem, calc(100vw - 2rem));
     width: 100%;
   }
-  dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+  dialog::backdrop { background: var(--c-scrim); }
   .body { display: grid; gap: 0.5rem; }
   .footer { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: var(--gap); }
   h2 { margin-top: 0; }

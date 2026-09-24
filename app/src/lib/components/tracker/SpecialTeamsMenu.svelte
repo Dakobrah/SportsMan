@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PlayFormType } from '../../game/playForm';
+  import Tile from './Tile.svelte';
 
   interface Props {
     onselect: (type: PlayFormType) => void;
@@ -9,20 +10,13 @@
 </script>
 
 <div class="grid">
-  <button class="tile" onclick={() => onselect('kickoff')}>Kickoff</button>
-  <button class="tile" onclick={() => onselect('punt')}>Punt</button>
-  <button class="tile" onclick={() => onselect('field_goal')}>Field Goal</button>
-  <button class="tile" onclick={() => onselect('extra_point')}>PAT / 2pt</button>
-  <button class="tile back" onclick={onback}>‹ Back</button>
+  <Tile label="Kickoff" variant="special" size="sm" onpress={() => onselect('kickoff')} />
+  <Tile label="Punt" variant="special" size="sm" onpress={() => onselect('punt')} />
+  <Tile label="Field Goal" variant="special" size="sm" onpress={() => onselect('field_goal')} />
+  <Tile label="PAT / 2pt" variant="special" size="sm" onpress={() => onselect('extra_point')} />
+  <Tile label="‹ Back" wide onpress={onback} />
 </div>
 
 <style>
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
-  .tile {
-    min-height: 78px; border-radius: 12px;
-    border: 1.5px solid var(--t-purple);
-    background: var(--t-surface-2); color: var(--t-purple);
-    font-size: 1rem; font-weight: 800; cursor: pointer;
-  }
-  .back { grid-column: 1 / -1; border-color: var(--t-border); color: var(--t-text-muted); min-height: 56px; }
 </style>

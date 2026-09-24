@@ -84,5 +84,4 @@
 
 <style>
   form.row { align-items: end; margin-bottom: var(--gap); }
-  .err { color: var(--t-red); }
 </style>

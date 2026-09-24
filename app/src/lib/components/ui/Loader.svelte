@@ -27,9 +27,9 @@
 <style>
   .muted { color: var(--t-text-muted); }
   .error {
-    color: var(--t-red);
-    background: color-mix(in srgb, var(--t-red) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--t-red) 35%, transparent);
+    color: var(--c-negative);
+    background: color-mix(in srgb, var(--c-negative) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--c-negative) 35%, transparent);
     border-radius: var(--radius);
     padding: 0.75rem;
   }

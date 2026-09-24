@@ -37,7 +37,7 @@
     background: var(--t-surface-2); border: 1.5px solid transparent;
     border-radius: 6px; color: var(--t-text); cursor: pointer;
   }
-  button.on { border-color: var(--t-amber); background: color-mix(in srgb, var(--t-amber) 16%, var(--t-surface-2)); }
+  button.on { border-color: var(--c-caution); background: color-mix(in srgb, var(--c-caution) 16%, var(--t-surface-2)); }
   .name { font-weight: 600; }
   .meta { font-size: 0.75rem; color: var(--t-text-muted); }
 </style>

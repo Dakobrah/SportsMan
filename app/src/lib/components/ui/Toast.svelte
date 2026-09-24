@@ -31,11 +31,11 @@
     gap: 0.75rem;
     padding: 0.7rem 0.9rem;
     border-radius: var(--radius);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 6px 24px var(--c-shadow);
     font-weight: 600;
   }
-  .success { background: var(--t-green); color: #06240f; }
-  .error { background: var(--t-red); color: #fff; }
+  .success { background: var(--c-positive); color: var(--c-positive-ink); }
+  .error { background: var(--c-negative); color: var(--c-negative-ink); }
   button {
     background: none; border: none; color: inherit;
     font-size: 1.3rem; line-height: 1; cursor: pointer;

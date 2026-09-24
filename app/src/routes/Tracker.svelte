@@ -314,11 +314,11 @@
 <style>
   .tracker { min-height: 100dvh; background: var(--t-bg); }
   .centre { display: grid; place-content: center; min-height: 60dvh; gap: 1rem; padding: 2rem; text-align: center; }
-  .error { color: var(--t-red); }
+  .error { color: var(--c-negative); }
   .warn {
     margin: 0; padding: 0.75rem 12px;
-    background: color-mix(in srgb, var(--t-amber) 15%, transparent);
-    color: var(--t-amber);
-    border-bottom: 1px solid color-mix(in srgb, var(--t-amber) 35%, transparent);
+    background: color-mix(in srgb, var(--c-caution) 15%, transparent);
+    color: var(--c-caution);
+    border-bottom: 1px solid color-mix(in srgb, var(--c-caution) 35%, transparent);
   }
 </style>

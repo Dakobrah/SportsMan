@@ -32,7 +32,7 @@
 
 <style>
   .team { display: grid; gap: 0.2rem; color: inherit; }
-  .team:hover { border-color: var(--t-blue); text-decoration: none; }
-  .abbr { font-weight: 700; color: var(--t-blue); letter-spacing: 0.06em; }
+  .team:hover { border-color: var(--c-selected); text-decoration: none; }
+  .abbr { font-weight: 700; color: var(--c-link); letter-spacing: 0.06em; }
   .name { font-size: 1.05rem; }
 </style>

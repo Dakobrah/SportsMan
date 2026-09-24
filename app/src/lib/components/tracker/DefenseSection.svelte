@@ -9,6 +9,7 @@
    */
   import type { Player } from '../../db/repositories/types';
   import type { DefensiveDetail } from '../../game/playForm';
+  import Chip from './Chip.svelte';
   import JerseyInput from './JerseyInput.svelte';
   import ToggleButton from './ToggleButton.svelte';
 
@@ -51,14 +52,12 @@
       <span class="label">Assisted by</span>
       <div class="chips">
         {#each helpers as player (player.id)}
-          <button
-            type="button" class="chip"
-            class:on={detail.assistNumbers.includes(player.number)}
-            onclick={() => toggleAssist(player.number)}
+          <Chip
+            label={player.number}
+            pressed={detail.assistNumbers.includes(player.number)}
             title={`${player.firstName} ${player.lastName}`}
-          >
-            {player.number}
-          </button>
+            onpress={() => toggleAssist(player.number)}
+          />
         {/each}
       </div>
     </div>
@@ -66,21 +65,21 @@
 
   <div class="toggles">
     <ToggleButton
-      label="TFL" variant="green" pressed={detail.tackleForLoss}
+      label="TFL" variant="positive" pressed={detail.tackleForLoss}
       onpress={() => (detail.tackleForLoss = !detail.tackleForLoss)}
     />
     {#if passing}
       <ToggleButton
-        label="Pressure" variant="amber" pressed={detail.appliedPressure}
+        label="Pressure" variant="caution" pressed={detail.appliedPressure}
         onpress={() => (detail.appliedPressure = !detail.appliedPressure)}
       />
       <ToggleButton
-        label="Pass def" variant="blue" pressed={detail.forcedIncompletion}
+        label="Pass def" variant="info" pressed={detail.forcedIncompletion}
         onpress={() => (detail.forcedIncompletion = !detail.forcedIncompletion)}
       />
     {/if}
     <ToggleButton
-      label="Def TD" variant="green" pressed={detail.isDefensiveTouchdown}
+      label="Def TD" variant="positive" pressed={detail.isDefensiveTouchdown}
       onpress={() => (detail.isDefensiveTouchdown = !detail.isDefensiveTouchdown)}
     />
   </div>
@@ -90,29 +89,22 @@
   .defense {
     display: grid;
     gap: 0.75rem;
-    border: 1.5px solid color-mix(in srgb, var(--t-red) 35%, transparent);
+    border: 1.5px solid color-mix(in srgb, var(--c-negative) 35%, transparent);
     border-radius: var(--radius);
     padding: 0.75rem;
     margin: 0;
-    background: color-mix(in srgb, var(--t-red) 6%, transparent);
+    background: color-mix(in srgb, var(--c-negative) 6%, transparent);
   }
   legend {
     font-size: 0.7rem;
     font-weight: 800;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--t-red);
+    color: var(--c-negative);
     padding: 0 0.4rem;
   }
   .assists { display: grid; gap: 0.4rem; }
   .label { font-size: 0.85rem; color: var(--t-text-muted); }
   .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
-  .chip {
-    min-width: 56px; min-height: 52px;
-    border-radius: 8px; border: 1.5px solid var(--t-border);
-    background: var(--t-surface-2); color: var(--t-text);
-    font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer;
-  }
-  .chip.on { background: var(--t-red); border-color: var(--t-red); color: #fff; }
   .toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
 </style>
