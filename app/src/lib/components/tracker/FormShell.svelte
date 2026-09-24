@@ -35,7 +35,12 @@
   .cancel, .save {
     min-height: 60px; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer;
   }
+  /* Level 1. Same recipe as an unpressed toggle -- cancel is not an option
+     you are choosing between, it is the way out. */
   .cancel { background: var(--t-surface-2); border: 1.5px solid var(--t-border); color: var(--t-text-muted); }
-  .save { background: var(--accent); border: none; color: #0b0d14; }
+  /* Level 3, and the reason --accent stops here: the commit is the same
+     colour on all seven forms. Only the heading above still changes, so you
+     can still tell at a glance which play you are recording. */
+  .save { background: var(--c-action); border: none; color: var(--c-action-ink); }
   .save:disabled, .cancel:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

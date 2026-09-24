@@ -11,6 +11,7 @@
   import type { Player, Possession } from '../../db/repositories/types';
   import { JERSEY_MAX, JERSEY_MIN, playerByNumber } from '../../game/playForm';
   import type { Position } from '../../db/repositories/types';
+  import Chip from './Chip.svelte';
 
   interface Props {
     label: string;
@@ -62,13 +63,11 @@
   {#if chips.length > 0}
     <div class="chips">
       {#each chips as player (player.id)}
-        <button
-          type="button" class="chip" class:on={value === player.number}
-          onclick={() => onchange(value === player.number ? null : player.number)}
+        <Chip
+          label={player.number} pressed={value === player.number}
           title={`${player.firstName} ${player.lastName}`}
-        >
-          {player.number}
-        </button>
+          onpress={() => onchange(value === player.number ? null : player.number)}
+        />
       {/each}
     </div>
   {/if}
@@ -76,24 +75,17 @@
 
 <style>
   .jersey { display: grid; gap: 0.5rem; }
-  .who { font-style: normal; font-weight: 700; color: var(--t-green); margin-left: 0.35rem; }
+  .who { font-style: normal; font-weight: 700; color: var(--c-positive); margin-left: 0.35rem; }
   .who.off { color: var(--t-text-muted); font-weight: 500; }
   /* A carried-over value is right most of the time and wrong occasionally,
      so it has to be visible before the coach hits save. */
   .carried {
     font-style: normal; font-size: 0.75rem; font-weight: 700;
-    color: var(--t-amber); margin-left: 0.4rem;
+    color: var(--c-caution); margin-left: 0.4rem;
   }
   input { min-height: 52px; font-size: 1.15rem; font-weight: 700; }
 
   /* Same floor as the quick-yard chips: a gloved thumb must not catch the
      neighbouring number. */
   .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
-  .chip {
-    min-width: 56px; min-height: 52px;
-    border-radius: 8px; border: 1.5px solid var(--t-border);
-    background: var(--t-surface-2); color: var(--t-text);
-    font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer;
-  }
-  .chip.on { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
 </style>

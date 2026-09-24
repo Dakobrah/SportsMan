@@ -20,6 +20,61 @@
   --t-amber: #f59e0b;
   --t-red: #ef4444;
 
+  /* -------------------------------------------------------------------------
+   * Roles. The --t-* hues above are the palette; these are what components
+   * reference. A component reaching for a hue directly is a bug: the hue names
+   * carry no meaning, so they drift. Every role below owns exactly one job.
+   *
+   * Hierarchy, which is what keeps a green "TD" toggle from reading as the
+   * green Save button:
+   *   3 commit    solid --c-action fill, NO border, tallest    (Save, .btn-primary)
+   *   2 signal    solid role fill WITH a 1.5px border in the same hue
+   *   1 recessive --t-surface-2 + hue-tinted border + muted text
+   * ---------------------------------------------------------------------- */
+
+  /* Commit. One colour for "do the thing", everywhere in the app. */
+  --c-action: var(--t-green);
+  --c-action-ink: #06240f;
+
+  /* Outcome and category. Dark ink only on green and amber -- the two hues
+     that fail the lightness band (see charts/theme.ts for the measurement);
+     blue, red and purple are dark enough to take white. */
+  --c-positive: var(--t-green);
+  --c-positive-ink: #06240f;
+  --c-negative: var(--t-red);
+  --c-negative-ink: var(--c-ink-light);
+  --c-caution: var(--t-amber);
+  --c-caution-ink: #2a1a00;
+  --c-special: var(--t-purple);
+  --c-special-ink: var(--c-ink-light);
+  --c-info: var(--t-blue);
+  --c-info-ink: var(--c-ink-light);
+
+  /* Navigation and selection. Blue is no longer the action colour; it means
+     "where you are" and "what you picked". */
+  --c-selected: var(--t-blue);
+  --c-selected-ink: var(--c-ink-light);
+  --c-link: var(--t-blue);
+  --c-focus: var(--t-blue);
+
+  /* The field. Mirrored by charts/theme.ts SIDE_COLOR. */
+  --c-side-us: var(--t-blue);
+  --c-side-them: var(--t-red);
+  /* The ball itself -- possession pip and the spot marker. Neither side owns it. */
+  --c-ball: #e07b28;
+
+  /* Two surfaces that are not app chrome: the scoreboard bezel and the turf.
+     They keep their own gradients because they stand for physical things
+     rather than for UI depth, which is why they do not use --t-surface. */
+  --c-scoreboard-top: #0d0f18;
+  --c-scoreboard-bottom: #141625;
+  --c-turf-top: #12351f;
+  --c-turf-bottom: #0e2a19;
+
+  --c-ink-light: #fff;
+  --c-shadow: rgba(0, 0, 0, 0.45);
+  --c-scrim: rgba(0, 0, 0, 0.6);
+
   --radius: 10px;
   --gap: 12px;
 
@@ -48,7 +103,7 @@ body {
            env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-a { color: var(--t-blue); text-decoration: none; }
+a { color: var(--c-link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 h1, h2, h3 { margin: 0 0 0.5rem; line-height: 1.2; }
@@ -68,7 +123,7 @@ button, input, select, textarea {
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 :focus-visible {
-  outline: 2px solid var(--t-blue);
+  outline: 2px solid var(--c-focus);
   outline-offset: 2px;
 }
 
@@ -95,15 +150,22 @@ button, input, select, textarea {
 }
 .btn:hover { background: var(--t-border); text-decoration: none; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
-.btn-primary:hover { background: #2f6fd0; }
-.btn-danger { background: transparent; border-color: var(--t-red); color: var(--t-red); }
-.btn-danger:hover { background: color-mix(in srgb, var(--t-red) 15%, transparent); }
-.btn-go { background: var(--t-green); border-color: var(--t-green); color: #06240f; font-weight: 700; }
+/* Level 3, the commit. Borderless is the tell: nothing else in the app is a
+   solid fill with no border, so it stays distinct from a pressed toggle that
+   happens to share its hue. */
+.btn-primary {
+  background: var(--c-action);
+  border: 1px solid transparent;
+  color: var(--c-action-ink);
+  font-weight: 700;
+}
+.btn-primary:hover { background: color-mix(in srgb, var(--c-action) 85%, #000); }
+.btn-danger { background: transparent; border-color: var(--c-negative); color: var(--c-negative); }
+.btn-danger:hover { background: color-mix(in srgb, var(--c-negative) 15%, transparent); }
 
 .btn.small { min-height: 34px; padding: 0 0.7rem; font-size: 0.85rem; }
 /* A small button in its selected state -- filter pills and the like. */
-.btn.on { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
+.btn.on { background: var(--c-selected); border-color: var(--c-selected); color: var(--c-selected-ink); }
 
 /* The tracker's toggle rows. Every play form used the same grid. */
 .toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
@@ -147,6 +209,9 @@ label.field textarea {
 }
 label.field textarea { min-height: 5rem; resize: vertical; }
 
+/* Form-level validation text. Was duplicated verbatim in four routes. */
+.err { color: var(--c-negative); margin: 0; }
+
 .grid-2 { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
 
 .badge {
@@ -156,6 +221,6 @@ label.field textarea { min-height: 5rem; resize: vertical; }
   font-size: 0.75rem;
   font-weight: 700;
 }
-.badge-w { background: color-mix(in srgb, var(--t-green) 22%, transparent); color: var(--t-green); }
-.badge-l { background: color-mix(in srgb, var(--t-red) 22%, transparent); color: var(--t-red); }
+.badge-w { background: color-mix(in srgb, var(--c-positive) 22%, transparent); color: var(--c-positive); }
+.badge-l { background: color-mix(in srgb, var(--c-negative) 22%, transparent); color: var(--c-negative); }
 .badge-t { background: var(--t-surface-2); color: var(--t-text-muted); }

@@ -182,6 +182,17 @@ export interface PlayFormMeta {
   accent: string;
 }
 
+/**
+ * The accent identifies which form you are on. It colours the heading only --
+ * the Save button is `--c-action` on every form, so the commit never moves.
+ *
+ * These deliberately disagree with `PLAY_KIND_COLOR` in charts/theme.ts,
+ * which assigns run=blue and pass=amber. That is a measurement, not a
+ * preference: green next to red measures dE 7.4 under deuteranopia, which is
+ * inside the floor band for adjacent chart marks. Form headings are never
+ * adjacent to each other, so they are free to use the hue that matches the
+ * play-type tile you just tapped.
+ */
 export const PLAY_FORM_META: Record<PlayFormType, PlayFormMeta> = {
   run: { title: 'Run Play', accent: 'var(--t-green)' },
   pass: { title: 'Pass Play', accent: 'var(--t-blue)' },

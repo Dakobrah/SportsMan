@@ -98,17 +98,17 @@
   .stat strong { font-size: 1.6rem; }
   .resume {
     display: grid; gap: 0.2rem; color: inherit; margin-bottom: var(--gap);
-    border-color: var(--t-green);
-    background: color-mix(in srgb, var(--t-green) 8%, var(--t-surface));
+    border-color: var(--c-action);
+    background: color-mix(in srgb, var(--c-action) 8%, var(--t-surface));
   }
-  .resume:hover { text-decoration: none; background: color-mix(in srgb, var(--t-green) 14%, var(--t-surface)); }
-  .resume .go { color: var(--t-green); font-weight: 700; }
+  .resume:hover { text-decoration: none; background: color-mix(in srgb, var(--c-action) 14%, var(--t-surface)); }
+  .resume .go { color: var(--c-action); font-weight: 700; }
   .games { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
   .games a {
     display: flex; gap: var(--gap); align-items: baseline; color: inherit;
     padding: 0.45rem 0; border-bottom: 1px solid var(--t-border);
   }
-  .games a:hover { text-decoration: none; color: var(--t-blue); }
+  .games a:hover { text-decoration: none; color: var(--c-link); }
   .date { color: var(--t-text-muted); }
   .opp { flex: 1; }
 </style>

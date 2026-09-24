@@ -32,6 +32,6 @@
      column-wise against the one below it. */
   .value { font-size: 1.7rem; line-height: 1.1; }
   .hint { font-size: 0.78rem; color: var(--t-text-muted); }
-  .good .value { color: var(--t-green); }
-  .bad .value { color: var(--t-red); }
+  .good .value { color: var(--c-positive); }
+  .bad .value { color: var(--c-negative); }
 </style>

@@ -80,14 +80,14 @@
   {/if}
 
   <div class="toggles">
-    <ToggleButton label="Complete" variant="green" pressed={form.isComplete} onpress={toggleComplete} />
-    <ToggleButton label="Sack" variant="red" pressed={form.wasSacked} onpress={toggleSack} />
-    <ToggleButton label="INT" variant="red" pressed={form.isInterception} onpress={toggleInterception} />
-    <ToggleButton label="Throwaway" variant="amber" pressed={form.isThrownAway}
+    <ToggleButton label="Complete" variant="positive" pressed={form.isComplete} onpress={toggleComplete} />
+    <ToggleButton label="Sack" variant="negative" pressed={form.wasSacked} onpress={toggleSack} />
+    <ToggleButton label="INT" variant="negative" pressed={form.isInterception} onpress={toggleInterception} />
+    <ToggleButton label="Throwaway" variant="caution" pressed={form.isThrownAway}
                   onpress={() => { form.isThrownAway = !form.isThrownAway;
                                    if (form.isThrownAway) { form.isComplete = false; form.targetNumber = null; } }} />
     {#if possession === 'us'}
-      <ToggleButton label="Pressured" variant="amber" pressed={form.wasUnderPressure}
+      <ToggleButton label="Pressured" variant="caution" pressed={form.wasUnderPressure}
                     onpress={() => (form.wasUnderPressure = !form.wasUnderPressure)} />
     {/if}
   </div>
@@ -109,14 +109,14 @@
   {/if}
 
   <div class="toggles">
-    <ToggleButton label="TD" variant="green" pressed={form.isTouchdown || scores}
+    <ToggleButton label="TD" variant="positive" pressed={form.isTouchdown || scores}
                   onpress={toggleTouchdown} />
-    <ToggleButton label="1st Down" variant="blue" pressed={form.isFirstDown}
+    <ToggleButton label="1st Down" variant="info" pressed={form.isFirstDown}
                   onpress={() => (form.isFirstDown = !form.isFirstDown)} />
-    <ToggleButton label="Fumble" variant="red" pressed={form.fumbled}
+    <ToggleButton label="Fumble" variant="negative" pressed={form.fumbled}
                   onpress={() => (form.fumbled = !form.fumbled)} />
     {#if form.fumbled}
-      <ToggleButton label="Lost" variant="red" pressed={form.fumbleLost}
+      <ToggleButton label="Lost" variant="negative" pressed={form.fumbleLost}
                     onpress={() => (form.fumbleLost = !form.fumbleLost)} />
     {/if}
   </div>

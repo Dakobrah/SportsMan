@@ -50,7 +50,7 @@
         <a class="btn" href={href(`/games/${game.id}/edit`)}>Edit</a>
         <a class="btn" href={href(`/games/${game.id}/plays`)}>Play-by-play</a>
         <a class="btn" href={href(`/reports/post-game?game=${game.id}`)}>Full report</a>
-        <a class="btn btn-go" href={href(`/games/${game.id}/tracker`)}>Open tracker</a>
+        <a class="btn btn-primary" href={href(`/games/${game.id}/tracker`)}>Open tracker</a>
       </div>
     </div>
 

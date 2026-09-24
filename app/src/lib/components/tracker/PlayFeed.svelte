@@ -46,8 +46,8 @@
   .undo {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     min-height: 44px; min-width: 88px; padding: 8px 14px;
-    border: 1.5px solid rgba(239, 68, 68, 0.3);
-    background: var(--t-surface); color: var(--t-red);
+    border: 1.5px solid color-mix(in srgb, var(--c-negative) 30%, transparent);
+    background: var(--t-surface); color: var(--c-negative);
     border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer;
   }
   .undo:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -60,10 +60,10 @@
   .q { color: var(--t-text-muted); font-size: 0.7rem; }
   .what { flex: 1; }
   .yards { font-weight: 700; }
-  .gain { color: var(--t-green); }
-  .loss { color: var(--t-red); }
+  .gain { color: var(--c-positive); }
+  .loss { color: var(--c-negative); }
   .tag { font-size: 0.65rem; font-weight: 800; padding: 1px 5px; border-radius: 4px; }
-  .td { background: var(--t-green); color: #06240f; }
-  .int { background: var(--t-red); color: #fff; }
+  .td { background: var(--c-positive); color: var(--c-positive-ink); }
+  .int { background: var(--c-negative); color: var(--c-negative-ink); }
   .empty { color: var(--t-text-muted); }
 </style>

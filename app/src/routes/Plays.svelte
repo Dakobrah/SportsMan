@@ -44,7 +44,7 @@
 
     {#if view.data.snaps.length === 0}
       <p class="muted">No plays recorded yet.</p>
-      <p><a class="btn btn-go" href={href(`/games/${view.data.game.id}/tracker`)}>Open the tracker</a></p>
+      <p><a class="btn btn-primary" href={href(`/games/${view.data.game.id}/tracker`)}>Open the tracker</a></p>
     {:else}
       <div class="row pills">
         <button class="btn small" class:on={quarter === null} onclick={() => (quarter = null)}>All</button>
@@ -82,6 +82,6 @@
 <style>
   .pills { margin-bottom: var(--gap); }
   .what { white-space: normal; min-width: 14rem; }
-  .gain { color: var(--t-green); }
-  .loss { color: var(--t-red); }
+  .gain { color: var(--c-positive); }
+  .loss { color: var(--c-negative); }
 </style>

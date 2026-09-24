@@ -25,7 +25,7 @@
   emptyText="That report does not exist, or its link is missing something."
 >
   {#snippet emptyAction()}
-    <a class="btn btn-primary" href={href('/reports')}>Back to reports</a>
+    <a class="btn" href={href('/reports')}>Back to reports</a>
   {/snippet}
 
   {#if view.data}

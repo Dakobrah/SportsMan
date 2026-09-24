@@ -13,9 +13,9 @@
   // A union, so the three outcomes cannot both be set -- no exclusivity
   // bookkeeping needed.
   const RESULTS = [
-    { value: 'GOOD', label: 'GOOD', variant: 'green' },
-    { value: 'MISS', label: 'MISSED', variant: 'red' },
-    { value: 'BLOCK', label: 'BLOCKED', variant: 'amber' },
+    { value: 'GOOD', label: 'GOOD', variant: 'positive' },
+    { value: 'MISS', label: 'MISSED', variant: 'negative' },
+    { value: 'BLOCK', label: 'BLOCKED', variant: 'caution' },
   ] as const;
 </script>
 

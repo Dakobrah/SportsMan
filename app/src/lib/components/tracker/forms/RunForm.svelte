@@ -32,14 +32,14 @@
   />
   <YardsInput value={form.yardsGained} onchange={(v) => (form.yardsGained = v)} />
   <div class="toggles">
-    <ToggleButton label="TD" variant="green" pressed={form.isTouchdown || scores}
+    <ToggleButton label="TD" variant="positive" pressed={form.isTouchdown || scores}
                   onpress={() => (form.isTouchdown = !form.isTouchdown)} />
-    <ToggleButton label="1st Down" variant="blue" pressed={form.isFirstDown}
+    <ToggleButton label="1st Down" variant="info" pressed={form.isFirstDown}
                   onpress={() => (form.isFirstDown = !form.isFirstDown)} />
-    <ToggleButton label="Fumble" variant="red" pressed={form.fumbled}
+    <ToggleButton label="Fumble" variant="negative" pressed={form.fumbled}
                   onpress={() => (form.fumbled = !form.fumbled)} />
     {#if form.fumbled}
-      <ToggleButton label="Lost" variant="red" pressed={form.fumbleLost}
+      <ToggleButton label="Lost" variant="negative" pressed={form.fumbleLost}
                     onpress={() => (form.fumbleLost = !form.fumbleLost)} />
     {/if}
   </div>

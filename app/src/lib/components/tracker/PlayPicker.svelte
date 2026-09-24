@@ -10,6 +10,7 @@
    * have the ball and our defensive call when they do.
    */
   import type { Play, UnitType } from '../../db/repositories/types';
+  import Chip from './Chip.svelte';
 
   interface Props {
     playbook: Play[];
@@ -44,13 +45,11 @@
 
     <div class="chips">
       {#each formations as name (name)}
-        <button
-          type="button" class="chip" class:on={shown === name}
-          onclick={() => (open = open === name ? null : name)}
-        >{name}</button>
+        <Chip label={name} pressed={shown === name} size="sm"
+              onpress={() => (open = open === name ? null : name)} />
       {/each}
       {#if playId !== null}
-        <button type="button" class="chip clear" onclick={() => { onchange(null, ''); open = null; }}>
+        <button type="button" class="clear" onclick={() => { onchange(null, ''); open = null; }}>
           Clear
         </button>
       {/if}
@@ -59,10 +58,8 @@
     {#if shown}
       <div class="chips plays">
         {#each plays as play (play.id)}
-          <button
-            type="button" class="chip play" class:on={playId === play.id}
-            onclick={() => onchange(play.id, play.formation)}
-          >{play.name}</button>
+          <Chip label={play.name} pressed={playId === play.id} size="sm"
+                onpress={() => onchange(play.id, play.formation)} />
         {/each}
       </div>
     {/if}
@@ -72,17 +69,15 @@
 <style>
   .picker { display: grid; gap: 0.5rem; }
   .heading { font-size: 0.85rem; color: var(--t-text-muted); }
-  .chosen { font-style: normal; font-weight: 700; color: var(--t-blue); margin-left: 0.35rem; }
+  .chosen { font-style: normal; font-weight: 700; color: var(--c-selected); margin-left: 0.35rem; }
   .none { font-style: normal; margin-left: 0.35rem; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip {
+  /* Level 1: clearing is not a pick, so it never takes the selected fill. */
+  .clear {
     min-height: 44px; padding: 0 0.75rem;
     border-radius: 8px; border: 1.5px solid var(--t-border);
-    background: var(--t-surface-2); color: var(--t-text);
+    background: var(--t-surface-2); color: var(--t-text-muted);
     font-weight: 600; cursor: pointer;
   }
-  .chip.on { background: var(--t-blue); border-color: var(--t-blue); color: #fff; }
-  .chip.play.on { background: var(--t-green); border-color: var(--t-green); color: #06240f; }
-  .chip.clear { border-color: var(--t-border); color: var(--t-text-muted); }
   .plays { padding-left: 0.5rem; border-left: 2px solid var(--t-border); }
 </style>

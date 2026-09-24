@@ -107,5 +107,4 @@
 
 <style>
   form { max-width: 34rem; }
-  .err { color: var(--t-red); margin: 0; }
 </style>

@@ -85,7 +85,7 @@
             <td class="tabular">{game.snapCount}</td>
             <td class="actions">
               <a class="btn small" href={href(`/games/${game.id}`)}>View</a>
-              <a class="btn small btn-go" href={href(`/games/${game.id}/tracker`)}>Track</a>
+              <a class="btn small btn-primary" href={href(`/games/${game.id}/tracker`)}>Track</a>
             </td>
           </tr>
         {/each}

@@ -19,7 +19,7 @@
 <FormShell type="extra_point" {busy} {onsave} {oncancel}>
   <div class="toggles three">
     {#each ATTEMPTS as option (option.value)}
-      <ToggleButton label={option.label} variant="purple"
+      <ToggleButton label={option.label} variant="special"
                     pressed={form.attemptType === option.value}
                     onpress={() => (form.attemptType = option.value)} />
     {/each}
@@ -32,9 +32,9 @@
   {/if}
 
   <div class="toggles">
-    <ToggleButton label="GOOD" variant="green" pressed={form.result === 'GOOD'}
+    <ToggleButton label="GOOD" variant="positive" pressed={form.result === 'GOOD'}
                   onpress={() => (form.result = 'GOOD')} />
-    <ToggleButton label="NO GOOD" variant="red" pressed={form.result === 'MISS'}
+    <ToggleButton label="NO GOOD" variant="negative" pressed={form.result === 'MISS'}
                   onpress={() => (form.result = 'MISS')} />
   </div>
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />

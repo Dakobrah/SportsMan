@@ -34,18 +34,18 @@
     </label>
 
     <div class="toggles">
-      <ToggleButton label="Accepted" variant="green" pressed={form.accepted}
+      <ToggleButton label="Accepted" variant="positive" pressed={form.accepted}
                     onpress={() => (form.accepted = true)} />
-      <ToggleButton label="Declined" variant="red" pressed={!form.accepted}
+      <ToggleButton label="Declined" variant="negative" pressed={!form.accepted}
                     onpress={() => (form.accepted = false)} />
     </div>
 
     <div class="toggles">
-      <ToggleButton label="On offense" variant="amber" pressed={form.onOffense}
+      <ToggleButton label="On offense" variant="caution" pressed={form.onOffense}
                     onpress={() => (form.onOffense = true)} />
-      <ToggleButton label="On defense" variant="amber" pressed={!form.onOffense}
+      <ToggleButton label="On defense" variant="caution" pressed={!form.onOffense}
                     onpress={() => (form.onOffense = false)} />
-      <ToggleButton label="Auto 1st" variant="blue" pressed={form.autoFirstDown}
+      <ToggleButton label="Auto 1st" variant="info" pressed={form.autoFirstDown}
                     onpress={() => (form.autoFirstDown = !form.autoFirstDown)} />
     </div>
 

@@ -28,13 +28,13 @@
   {/if}
 
   <div class="toggles">
-    <ToggleButton label="Touchback" variant="blue" pressed={form.isTouchback}
+    <ToggleButton label="Touchback" variant="info" pressed={form.isTouchback}
                   onpress={() => (form.isTouchback = !form.isTouchback)} />
-    <ToggleButton label="Muffed" variant="red" pressed={form.fumbleLost}
+    <ToggleButton label="Muffed" variant="negative" pressed={form.fumbleLost}
                   onpress={() => { form.fumbleLost = !form.fumbleLost; form.fumbled = form.fumbleLost; }} />
-    <ToggleButton label="Onside" variant="amber" pressed={form.isOnsideKick}
+    <ToggleButton label="Onside" variant="caution" pressed={form.isOnsideKick}
                   onpress={() => (form.isOnsideKick = !form.isOnsideKick)} />
-    <ToggleButton label="Out of bounds" variant="red" pressed={form.outOfBounds}
+    <ToggleButton label="Out of bounds" variant="caution" pressed={form.outOfBounds}
                   onpress={() => (form.outOfBounds = !form.outOfBounds)} />
   </div>
   <NotesField value={form.notes} onchange={(v) => (form.notes = v)} />

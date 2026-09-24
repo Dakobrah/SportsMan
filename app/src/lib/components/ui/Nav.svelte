@@ -61,5 +61,5 @@
     border-bottom: 2px solid transparent;
   }
   a:hover { color: var(--t-text); text-decoration: none; }
-  a.active { color: var(--t-text); border-bottom-color: var(--t-blue); }
+  a.active { color: var(--t-text); border-bottom-color: var(--c-selected); }
 </style>

@@ -46,9 +46,9 @@
 
     <!-- The red zones at each end, so a bar reaching one is visible as such. -->
     <rect x={at(RED_ZONE)} y="0" width={Math.max(at(50) - at(RED_ZONE), 0)} height={h}
-          fill="var(--t-red)" opacity="0.09" />
+          fill={SIDE_COLOR.them} opacity="0.09" />
     <rect x={at(-50)} y="0" width={Math.max(at(-RED_ZONE) - at(-50), 0)} height={h}
-          fill="var(--t-blue)" opacity="0.09" />
+          fill={SIDE_COLOR.us} opacity="0.09" />
 
     {#each [-50, -25, 0, 25, 50] as mark (mark)}
       <line x1={at(mark)} x2={at(mark)} y1="0" y2={h} stroke={GRID} stroke-width="1" />

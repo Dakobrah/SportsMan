@@ -84,7 +84,7 @@
   .field {
     position: relative;
     height: 104px;
-    background: linear-gradient(180deg, #12351f 0%, #0e2a19 100%);
+    background: linear-gradient(180deg, var(--c-turf-top) 0%, var(--c-turf-bottom) 100%);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     overflow: hidden;
@@ -119,9 +119,9 @@
   .endzone {
     position: absolute; top: 0; bottom: 0;
     display: grid; place-items: center;
-    background: rgba(59, 130, 246, 0.22);
+    background: color-mix(in srgb, var(--c-side-us) 22%, transparent);
   }
-  .endzone.theirs { background: rgba(239, 68, 68, 0.22); }
+  .endzone.theirs { background: color-mix(in srgb, var(--c-side-them) 22%, transparent); }
   .endzone span {
     font-size: 1rem; font-weight: 800; letter-spacing: 0.06em;
     color: rgba(255, 255, 255, 0.8);
@@ -151,12 +151,12 @@
   }
   .marker {
     width: 20px; height: 28px; border-radius: 50%;
-    background: #e07b28;
+    background: var(--c-ball);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.65);
   }
-  .marker.them { background: var(--t-red); }
+  .marker.them { background: var(--c-side-them); }
   .label {
-    font-size: 1.2rem; font-weight: 800; color: #fff;
+    font-size: 1.2rem; font-weight: 800; color: var(--c-ink-light);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
     white-space: nowrap;
   }
