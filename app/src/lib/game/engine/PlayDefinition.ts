@@ -43,6 +43,11 @@ export abstract class PlayDefinition<F extends PlayForm = PlayForm> {
   /** A new form for this play, before any defaults are applied. */
   abstract blank(): F;
 
+  /** A new form, started from where the ball is. Most plays need nothing from it. */
+  blankAt(_state: GameState): F {
+    return this.blank();
+  }
+
   // -------------------------------------------------------------------------
   // The state machine -- a template method
   //

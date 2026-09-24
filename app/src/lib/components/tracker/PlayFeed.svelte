@@ -27,6 +27,7 @@
           <span class="what">{entry.summary}</span>
           {#if entry.isTouchdown}<span class="tag td">TD</span>{/if}
           {#if entry.isInterception}<span class="tag int">INT</span>{/if}
+          {#if entry.isSafety}<span class="tag int">SAFETY</span>{/if}
           <span class="yards tabular" class:gain={entry.yards > 0} class:loss={entry.yards < 0}>
             {entry.yards > 0 ? '+' : ''}{entry.yards}
           </span>

@@ -168,6 +168,14 @@ export const kickoffTouchbackSpotFor = (receiver: Possession): number =>
 export const puntTouchbackSpotFor = (receiver: Possession): number =>
   yardLineOf(receiver, 20);
 
+/**
+ * How long a field goal from `position` is: the line of scrimmage, seven
+ * yards back for the hold, and ten more for the end zone. "A kick from their
+ * 25 is a 42-yarder."
+ */
+export const fieldGoalDistance = (position: number, team: Possession): number =>
+  yardsToGoalFor(position, team) + 17;
+
 /** After a safety, the team that conceded it free-kicks from its own 20. */
 export const safetyKickSpotFor = (kicker: Possession): number => yardLineOf(kicker, 20);
 

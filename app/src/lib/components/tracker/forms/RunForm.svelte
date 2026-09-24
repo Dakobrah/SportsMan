@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Play, Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, touchdownFromYardage, type RunForm, type PlayFormProps } from '../../../game/playForm';
+  import { SELECT_POSITIONS, safetyFromYardage, safetyPossible, touchdownFromYardage, type RunForm, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
@@ -17,6 +17,11 @@
    *  waiting to be pressed. `recordPlay` derives the same thing on save from
    *  the same predicate, so what the button says is what gets scored. */
   const scores = $derived(touchdownFromYardage(form, ballPosition, possession));
+
+  /** The mirror: a loss into our own end zone is two for the defense. Offered
+   *  only when backed up, where it can happen. */
+  const concedes = $derived(safetyFromYardage(form, ballPosition, possession));
+  const backedUp = $derived(safetyPossible(ballPosition, possession));
 </script>
 
 <FormShell type="run" {busy} {onsave} {oncancel}>
@@ -36,6 +41,10 @@
                   onpress={() => (form.isTouchdown = !form.isTouchdown)} />
     <ToggleButton label="1st Down" variant="info" pressed={form.isFirstDown}
                   onpress={() => (form.isFirstDown = !form.isFirstDown)} />
+    {#if backedUp || form.isSafety || concedes}
+      <ToggleButton label="Safety" variant="negative" pressed={form.isSafety || concedes}
+                    onpress={() => (form.isSafety = !form.isSafety)} />
+    {/if}
     <ToggleButton label="Fumble" variant="negative" pressed={form.fumbled}
                   onpress={() => (form.fumbled = !form.fumbled)} />
     {#if form.fumbled}

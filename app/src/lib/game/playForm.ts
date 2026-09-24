@@ -10,7 +10,9 @@
  * click handler has to maintain.
  */
 import type { Play, Player, Position, Possession } from '../db/repositories/types';
+import { type GameCursor, GameState } from './engine/GameState';
 import { plays } from './engine/PlayRegistry';
+import { fieldGoalDistance, yardsToOwnGoalFor } from './field';
 
 export type PlayFormType =
   | 'run'
@@ -209,6 +211,14 @@ export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { 
   return plays.forType(type).blank();
 }
 
+/** A new form of `type`, started from where the ball is -- a field goal knows its distance. */
+export function blankFormAt<T extends PlayFormType>(
+  type: T,
+  cursor: GameCursor,
+): Extract<PlayForm, { type: T }> {
+  return plays.forType(type).blankAt(GameState.from(cursor));
+}
+
 /** Jersey numbers are 0-99, and 0 is a legal number. */
 export const JERSEY_MIN = 0;
 export const JERSEY_MAX = 99;
@@ -276,6 +286,8 @@ export interface PlayFormProps<T extends PlayForm> {
   busy: boolean;
   onsave: () => void;
   oncancel: () => void;
+  /** Kicks from scrimmage only: switch between punt and field goal. */
+  onswitch?: (kick: ScrimmageKick) => void;
 }
 
 /**
@@ -301,4 +313,27 @@ export function safetyFromYardage(
   possession: Possession,
 ): boolean {
   return ballPosition != null && plays.forForm(form).concedesSafety(form, ballPosition, possession);
+}
+
+/**
+ * Could this snap end in a safety? Only when the offense is backed up near
+ * its own goal line -- so the Safety toggle only appears there, rather than
+ * cluttering every form for a result that cannot happen from midfield.
+ */
+export function safetyPossible(ballPosition: number | null | undefined, possession: Possession): boolean {
+  return ballPosition != null && yardsToOwnGoalFor(ballPosition, possession) <= 10;
+}
+
+export { fieldGoalDistance } from './field';
+
+/** The two kicks from scrimmage, which share one form. */
+export type ScrimmageKick = 'punt' | 'field_goal';
+
+/**
+ * Which kick to open the combined form on: a field goal once it is a
+ * makeable distance, a punt otherwise. Only the starting choice -- one tap
+ * switches it.
+ */
+export function defaultScrimmageKick(ballPosition: number, possession: Possession): ScrimmageKick {
+  return fieldGoalDistance(ballPosition, possession) <= 47 ? 'field_goal' : 'punt';
 }

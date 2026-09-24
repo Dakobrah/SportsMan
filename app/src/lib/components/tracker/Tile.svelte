@@ -12,7 +12,9 @@
   interface Props {
     label: string;
     variant?: TileVariant;
-    size?: 'sm' | 'md';
+    /** 'xs' is a navigation tile such as Back, not a choice. */
+    size?: 'xs' | 'sm' | 'md';
+    /** Span the whole row -- a lone choice, or Back. */
     wide?: boolean;
     onpress: () => void;
   }
@@ -35,7 +37,8 @@
   .tile:active { transform: scale(0.98); }
   .md { min-height: 88px; font-size: 1.05rem; }
   .sm { min-height: 78px; font-size: 1rem; }
-  .wide { grid-column: 1 / -1; min-height: 56px; }
+  .xs { min-height: 56px; font-size: 1rem; }
+  .wide { grid-column: 1 / -1; }
 
   .positive { --hue: var(--c-positive); }
   .negative { --hue: var(--c-negative); }

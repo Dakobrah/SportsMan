@@ -1,13 +1,13 @@
 import type { NewSnap } from '../../../db/repositories/snaps';
 import type { Snap, SnapKind } from '../../../db/repositories/types';
-import { kickoffSpotFor } from '../../field';
+import { fieldGoalDistance, kickoffSpotFor } from '../../field';
 import type { FieldGoalForm, PlayDefaults } from '../../playForm';
 import type { GameState } from '../GameState';
 import { type JerseyField, PlayDefinition } from '../PlayDefinition';
 import type { PlayOutcome } from '../PlayOutcome';
 import type { RosterLinks } from '../players';
 import { POINTS, type ScoringFacts } from '../types';
-import { checkNumber } from '../validation';
+import { checkNumber, NUMERIC_FIELDS } from '../validation';
 
 export class FieldGoalPlay extends PlayDefinition<FieldGoalForm> {
   readonly type = 'field_goal';
@@ -17,6 +17,16 @@ export class FieldGoalPlay extends PlayDefinition<FieldGoalForm> {
 
   blank(): FieldGoalForm {
     return { type: 'field_goal', kickerNumber: null, kickDistance: 30, result: 'GOOD', notes: '' };
+  }
+
+  /**
+   * The distance is the spot's, not a flat thirty from wherever the ball is.
+   * Capped at the longest the form accepts, so a kick from beyond anyone's
+   * range still opens a form that can be saved.
+   */
+  blankAt(state: GameState): FieldGoalForm {
+    const fromTheSpot = fieldGoalDistance(state.ballPosition, state.offense);
+    return { ...this.blank(), kickDistance: Math.min(fromTheSpot, NUMERIC_FIELDS.kickDistance.max) };
   }
 
   protected advance(state: GameState, { data }: PlayOutcome): GameState {

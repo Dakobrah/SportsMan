@@ -44,6 +44,7 @@ export interface FeedEntry {
   yards: number;
   isTouchdown: boolean;
   isInterception: boolean;
+  isSafety: boolean;
 }
 
 export interface RecordPlayOutcome {
@@ -147,6 +148,7 @@ const toFeedEntry = (snap: Snap, players: ReadonlyMap<number, Player>): FeedEntr
   yards: snapYardage(snap),
   isTouchdown: snap.isTouchdown,
   isInterception: snap.isInterception,
+  isSafety: snap.isSafety,
 });
 
 /**
