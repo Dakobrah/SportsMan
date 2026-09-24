@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Play, Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, type RunForm, type PlayFormProps } from '../../../game/playForm';
+  import { SELECT_POSITIONS, touchdownFromYardage, type RunForm, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
@@ -10,7 +10,13 @@
   import PlayPicker from '../PlayPicker.svelte';
 
   type Props = PlayFormProps<RunForm>;
-  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, playbook, defaults, busy,
+        ballPosition, onsave, oncancel }: Props = $props();
+
+  /** Reaching the goal line IS the touchdown, so the toggle shows it without
+   *  waiting to be pressed. `recordPlay` derives the same thing on save from
+   *  the same predicate, so what the button says is what gets scored. */
+  const scores = $derived(touchdownFromYardage(form, ballPosition, possession));
 </script>
 
 <FormShell type="run" {busy} {onsave} {oncancel}>
@@ -26,7 +32,7 @@
   />
   <YardsInput value={form.yardsGained} onchange={(v) => (form.yardsGained = v)} />
   <div class="toggles">
-    <ToggleButton label="TD" variant="positive" pressed={form.isTouchdown}
+    <ToggleButton label="TD" variant="positive" pressed={form.isTouchdown || scores}
                   onpress={() => (form.isTouchdown = !form.isTouchdown)} />
     <ToggleButton label="1st Down" variant="info" pressed={form.isFirstDown}
                   onpress={() => (form.isFirstDown = !form.isFirstDown)} />

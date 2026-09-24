@@ -121,6 +121,10 @@ export const advanceBy = (position: number, yards: number, team: Possession): nu
 export const yardsToGoalFor = (position: number, team: Possession): number =>
   team === 'us' ? OPPONENT_GOAL - position : position - OWN_GOAL;
 
+/** Does a gain of `yards` from `position` carry `team` into the end zone? */
+export const reachesGoalLine = (position: number, yards: number, team: Possession): boolean =>
+  yards >= yardsToGoalFor(position, team);
+
 /** Ten, unless `team`'s goal line is nearer -- then it is first and goal. */
 export const firstDownDistanceFor = (position: number, team: Possession): number =>
   Math.min(FIRST_DOWN_DISTANCE, yardsToGoalFor(position, team));

@@ -9,7 +9,8 @@
  * once, so exclusivity is a property of the type rather than something a
  * click handler has to maintain.
  */
-import type { Play, Player, Position } from '../db/repositories/types';
+import type { Play, Player, Position, Possession } from '../db/repositories/types';
+import { reachesGoalLine } from './field';
 
 export type PlayFormType =
   | 'run'
@@ -369,9 +370,38 @@ export interface PlayFormProps<T extends PlayForm> {
   form: T;
   roster: Player[];
   possession: 'us' | 'them';
+  /** Where the play starts, so a form can tell a touchdown from a gain. */
+  ballPosition?: number | null;
   playbook: Play[];
   defaults: PlayDefaults;
   busy: boolean;
   onsave: () => void;
   oncancel: () => void;
+}
+
+/**
+ * Did the play carry the ball into the end zone?
+ *
+ * The one rule behind both the TD toggle lighting up as the coach types and
+ * `withGoalLineTouchdown` scoring the play on save. Breaking the plane is not
+ * a judgement call, so the two must never disagree about it -- hence one
+ * predicate rather than a copy on each side.
+ *
+ * A play that hands the ball over is not the carrier scoring: a lost fumble
+ * or an interception is the other team's return, and a defensive touchdown
+ * is already six points for the other side. Only a caught ball can be
+ * carried in, and a sack never gains ground.
+ */
+export function touchdownFromYardage(
+  form: PlayForm,
+  ballPosition: number | null | undefined,
+  possession: Possession,
+): boolean {
+  if (form.type !== 'run' && form.type !== 'pass') return false;
+  if (ballPosition == null) return false;
+  if (form.fumbleLost || form.isDefensiveTouchdown) return false;
+  if (form.type === 'pass' && (!form.isComplete || form.isInterception || form.wasSacked)) {
+    return false;
+  }
+  return reachesGoalLine(ballPosition, form.yardsGained, possession);
 }
