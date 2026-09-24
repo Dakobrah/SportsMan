@@ -19,13 +19,13 @@ import {
 } from '../db/repositories/snaps';
 import type { Game, Play, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
+import { type Possession, otherTeam } from './field';
 import { type GameCursor, advance, rebuildCursor, stateAfter } from './cursor';
 import { GameState, type NextState } from './engine/GameState';
 import { plays } from './engine/PlayRegistry';
 import {
   emptyDefaults,
   playerByNumber,
-  touchdownFromYardage,
   type DefaultsByTeam,
   type PlayForm,
 } from './playForm';
@@ -126,23 +126,17 @@ export function toSnapRow(form: PlayForm, cursor: GameCursor, roster: Player[] =
 }
 
 /**
- * The touchdown the yardage has already told us about.
+ * The scores the yardage has already told us about.
  *
  * `isTouchdown` began as a toggle the coach pressed, which quietly made six
  * points optional: a five-yard run from the five was stored as an ordinary
  * gain, scored nothing, and left the next snap first and goal on the goal
- * line. Breaking the plane is not a judgement call, so it is derived here --
- * once, before the row is written -- because `toSnapRow`, `pointsFor` and
- * `computeNextState` all read this one flag and have to agree about it. The
- * toggle still works; it is just no longer the only way in.
+ * line. A safety is the same in reverse. Neither is a judgement call, so
+ * each play derives its own before the row is written; see
+ * `PlayDefinition.derive`.
  */
 export function withGoalLineTouchdown(form: PlayForm, cursor: GameCursor): PlayForm {
-  // Narrowed here rather than inside the predicate, which takes the whole
-  // union so a form component can hand it its own variant.
-  if (form.type !== 'run' && form.type !== 'pass') return form;
-  if (form.isTouchdown) return form;
-  if (!touchdownFromYardage(form, cursor.ballPosition, cursor.possession)) return form;
-  return { ...form, isTouchdown: true };
+  return plays.forForm(form).derive(form, GameState.from(cursor));
 }
 
 const toFeedEntry = (snap: Snap, players: ReadonlyMap<number, Player>): FeedEntry => ({
@@ -173,10 +167,12 @@ export async function recordPlay(
 
   // Derived before the transaction, so the row, the points and the cursor
   // are all computed from one reading of the play rather than three.
-  const played = withGoalLineTouchdown(form, cursor);
+  const state = GameState.from(cursor);
+  const play = plays.forForm(form);
+  const played = play.derive(form, state);
 
   return db.transaction(async () => {
-    const { id, sequenceNumber } = await insertSnap(db, gameId, toSnapRow(played, cursor, roster));
+    const { id, sequenceNumber } = await insertSnap(db, gameId, play.toRow(played, state, roster));
 
     // Assists are their own rows. Same transaction, so a play never lands
     // with half its tacklers.
@@ -189,7 +185,6 @@ export async function recordPlay(
     }
 
     // The play decides who its points belong to; see PlayDefinition.scorer.
-    const play = plays.forForm(played);
     const points = play.pointsFor(played);
     const scores = points
       ? await addScore(db, gameId, points, play.scorer(play.scoringFacts(played), cursor.possession))
@@ -215,6 +210,38 @@ export async function recordPlay(
       entry: toFeedEntry(snap, playerLookup(roster)),
     };
   });
+}
+
+/**
+ * Who received the opening kickoff, read off the first play of the game.
+ *
+ * If that was a kickoff, the other side received it. If it was anything
+ * else, the coach started tracking after the kick, and whoever had the ball
+ * first is who received. With nothing recorded, the tracker opens with our
+ * ball -- see `GameState.opening`.
+ */
+async function openingReceiver(db: Database, gameId: number): Promise<Possession> {
+  const [first] = await listSnaps(db, gameId, { order: 'asc', limit: 1 });
+  if (!first) return GameState.opening().possession;
+  return first.kind === 'KICKOFF' ? otherTeam(first.possession) : first.possession;
+}
+
+/**
+ * Move the game to `quarter`, and apply what the new period means for play.
+ *
+ * Only halftime changes anything: the team that received the opening kick
+ * kicks off the second half. Persisted at once -- Django kept the quarter
+ * client-side, so a reload before the next play lost it.
+ */
+export async function changeQuarter(
+  db: Database,
+  gameId: number,
+  cursor: GameCursor,
+  quarter: number,
+): Promise<GameCursor> {
+  const next = GameState.from(cursor).toQuarter(quarter, await openingReceiver(db, gameId)).toCursor();
+  await writeGameCursor(db, gameId, next);
+  return next;
 }
 
 /**

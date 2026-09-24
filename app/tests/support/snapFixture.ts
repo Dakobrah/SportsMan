@@ -16,7 +16,7 @@ export function makeSnap(overrides: Partial<Snap> = {}): Snap {
     defenseResult: null, secondaryFormation: '', primaryPlayerId: null, primaryPlayerNumber: null,
     tackleYards: null, tackleForLoss: false, appliedPressure: false,
     forcedIncompletion: false, interceptionReturnYards: null,
-    fumbleReturnYards: null, isDefensiveTouchdown: false,
+    fumbleReturnYards: null, isDefensiveTouchdown: false, isSafety: false,
     kickerId: null, kickerNumber: null, holderId: null, result: null,
     isTouchback: false, outOfBounds: false,
     punterId: null, punterNumber: null, puntYards: 0,
@@ -26,7 +26,7 @@ export function makeSnap(overrides: Partial<Snap> = {}): Snap {
     kickDistance: null,
     attemptType: null, passerId: null,
     hadPenalty: false, penaltyPlayerId: null, penaltyYards: null,
-    penaltyDescription: '', penaltyOnOffense: null, penaltyAccepted: null,
+    penaltyDescription: '', penaltyOnOffense: null, penaltyAccepted: null, penaltyAutoFirstDown: false,
     createdAt: '2026-09-04 12:00:00', updatedAt: '2026-09-04 12:00:00',
     ...overrides,
   };

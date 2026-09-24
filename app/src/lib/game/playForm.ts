@@ -11,7 +11,6 @@
  */
 import type { Play, Player, Position, Possession } from '../db/repositories/types';
 import { plays } from './engine/PlayRegistry';
-import { reachesGoalLine } from './field';
 
 export type PlayFormType =
   | 'run'
@@ -46,27 +45,38 @@ export interface DefensiveDetail {
   isDefensiveTouchdown: boolean;
 }
 
-export interface RunForm extends DefensiveDetail {
-  type: 'run';
+/**
+ * What run and pass share: the call, the gain, and how the down ended. Both
+ * forms declared all of this separately.
+ */
+export interface ScrimmageFields extends DefensiveDetail {
   /** The call. `formation` is stored alongside so a game survives a
    *  playbook edit -- the same reasoning as the jersey numbers. */
   playId: number | null;
   formation: string;
-  /** The jersey number the coach typed. Resolved to a roster player only
-   *  when we have the ball -- their #22 is not our #22. */
-  ballCarrierNumber: number | null;
   yardsGained: number;
   isTouchdown: boolean;
+  /**
+   * The ball carrier went down in his own end zone: two points to the
+   * defense. Derived from the yardage like a touchdown, so it is scored
+   * even when nobody presses it.
+   */
+  isSafety: boolean;
   isFirstDown: boolean;
   fumbled: boolean;
   fumbleLost: boolean;
   notes: string;
 }
 
-export interface PassForm extends DefensiveDetail {
+export interface RunForm extends ScrimmageFields {
+  type: 'run';
+  /** The jersey number the coach typed. Resolved to a roster player only
+   *  when we have the ball -- their #22 is not our #22. */
+  ballCarrierNumber: number | null;
+}
+
+export interface PassForm extends ScrimmageFields {
   type: 'pass';
-  playId: number | null;
-  formation: string;
   quarterbackNumber: number | null;
   /** Who the ball was thrown at. Set on every attempt, caught or not. */
   targetNumber: number | null;
@@ -83,13 +93,7 @@ export interface PassForm extends DefensiveDetail {
   isThrownAway: boolean;
   /** Our passer was pressured. The defensive mirror is `appliedPressure`. */
   wasUnderPressure: boolean;
-  yardsGained: number;
-  isTouchdown: boolean;
-  isFirstDown: boolean;
   isInterception: boolean;
-  fumbled: boolean;
-  fumbleLost: boolean;
-  notes: string;
 }
 
 export interface PenaltyForm {
@@ -108,6 +112,8 @@ export interface KickoffForm {
   kickYards: number;
   isTouchback: boolean;
   isOnsideKick: boolean;
+  /** Only with `isOnsideKick`: the kicking team came up with it. */
+  onsideRecovered: boolean;
   outOfBounds: boolean;
   /** The return rides on this row; see 006_returns.sql. */
   returnerNumber: number | null;
@@ -276,25 +282,23 @@ export interface PlayFormProps<T extends PlayForm> {
  * Did the play carry the ball into the end zone?
  *
  * The one rule behind both the TD toggle lighting up as the coach types and
- * `withGoalLineTouchdown` scoring the play on save. Breaking the plane is not
- * a judgement call, so the two must never disagree about it -- hence one
- * predicate rather than a copy on each side.
- *
- * A play that hands the ball over is not the carrier scoring: a lost fumble
- * or an interception is the other team's return, and a defensive touchdown
- * is already six points for the other side. Only a caught ball can be
- * carried in, and a sack never gains ground.
+ * the play being scored on save, so the two can never disagree. A play that
+ * hands the ball over is not the carrier scoring, and only a caught ball can
+ * be carried in; see `ScrimmagePlay.scoresTouchdown`.
  */
 export function touchdownFromYardage(
   form: PlayForm,
   ballPosition: number | null | undefined,
   possession: Possession,
 ): boolean {
-  if (form.type !== 'run' && form.type !== 'pass') return false;
-  if (ballPosition == null) return false;
-  if (form.fumbleLost || form.isDefensiveTouchdown) return false;
-  if (form.type === 'pass' && (!form.isComplete || form.isInterception || form.wasSacked)) {
-    return false;
-  }
-  return reachesGoalLine(ballPosition, form.yardsGained, possession);
+  return ballPosition != null && plays.forForm(form).scoresTouchdown(form, ballPosition, possession);
+}
+
+/** Did the play put the carrier down in his own end zone? The mirror of the above. */
+export function safetyFromYardage(
+  form: PlayForm,
+  ballPosition: number | null | undefined,
+  possession: Possession,
+): boolean {
+  return ballPosition != null && plays.forForm(form).concedesSafety(form, ballPosition, possession);
 }

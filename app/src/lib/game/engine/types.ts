@@ -22,6 +22,8 @@ export interface PlayData {
   isFairCatch?: boolean;
   isTouchback?: boolean;
   isOnsideKick?: boolean;
+  /** The kicking team recovered its own onside kick. */
+  onsideRecovered?: boolean;
   result?: string;
   penaltyYards?: number;
   onOffense?: boolean;
@@ -35,6 +37,8 @@ export interface PlayResult {
   yardsGained?: number;
   isTouchdown?: boolean;
   isDefensiveTouchdown?: boolean;
+  /** The ball carrier was downed in his own end zone. */
+  isSafety?: boolean;
   isFirstDown?: boolean;
   isInterception?: boolean;
   fumbleLost?: boolean;
@@ -46,7 +50,7 @@ export interface PlayResult {
  */
 export type ScoringFacts = Pick<
   Snap,
-  'kind' | 'isTouchdown' | 'isDefensiveTouchdown' | 'result' | 'attemptType'
+  'kind' | 'isTouchdown' | 'isDefensiveTouchdown' | 'isSafety' | 'result' | 'attemptType'
 >;
 
 /** Points per score. The only place these numbers appear. */
@@ -60,3 +64,6 @@ export const POINTS = {
 
 /** Four downs to make ten yards. */
 export const FINAL_DOWN = 4;
+
+/** Two quarters to a half. Crossing from the second to the third restarts play. */
+export const QUARTERS_PER_HALF = 2;

@@ -14,7 +14,7 @@
  */
 import type { NewSnap } from '../../db/repositories/snaps';
 import type { Player, Snap, SnapKind } from '../../db/repositories/types';
-import { type Possession, extraPointSpotFor } from '../field';
+import { type Possession, extraPointSpotFor, otherTeam, safetyKickSpotFor } from '../field';
 import type { PlayDefaults, PlayForm } from '../playForm';
 import type { GameState } from './GameState';
 import type { PlayOutcome } from './PlayOutcome';
@@ -55,7 +55,10 @@ export abstract class PlayDefinition<F extends PlayForm = PlayForm> {
   next(state: GameState, outcome: PlayOutcome): GameState {
     const { result } = outcome;
     if (result.isTouchdown) return this.afterTouchdown(state, state.offense);
-    if (result.isDefensiveTouchdown) return this.afterTouchdown(state, 'us');
+    // Scored by the team WITHOUT the ball -- an interception or fumble
+    // returned all the way. Not always us: their defense can score too.
+    if (result.isDefensiveTouchdown) return this.afterTouchdown(state, state.defense);
+    if (result.isSafety) return this.afterSafety(state);
     if (outcome.isTakeaway) return this.afterTakeaway(state, outcome);
     return this.advance(state, outcome);
   }
@@ -63,6 +66,11 @@ export abstract class PlayDefinition<F extends PlayForm = PlayForm> {
   /** The scoring team keeps the ball for the try, snapped from the defense's 3. */
   protected afterTouchdown(state: GameState, scorer: Possession): GameState {
     return state.deadBall(extraPointSpotFor(scorer), scorer, 'extra_point');
+  }
+
+  /** Two points to the defense, then the team that conceded free-kicks from its own 20. */
+  protected afterSafety(state: GameState): GameState {
+    return state.deadBall(safetyKickSpotFor(state.offense), state.offense, 'kickoff');
   }
 
   /** The defense takes over where the play ended. */
@@ -126,6 +134,7 @@ export abstract class PlayDefinition<F extends PlayForm = PlayForm> {
       kind: this.kind,
       isTouchdown: false,
       isDefensiveTouchdown: false,
+      isSafety: false,
       result: null,
       attemptType: null,
     };
@@ -137,12 +146,36 @@ export abstract class PlayDefinition<F extends PlayForm = PlayForm> {
   }
 
   /**
-   * Which side the points go to: the team with the ball, except on a
-   * defensive score. Applying them to us regardless is how a 36-33 game
-   * once replayed as 69-0.
+   * Which side the points go to: the team with the ball, except when the
+   * defense scored -- a defensive touchdown or a safety. Applying them to us
+   * regardless is how a 36-33 game once replayed as 69-0.
    */
-  scorer(facts: Pick<ScoringFacts, 'isDefensiveTouchdown'>, possession: Possession): Possession {
-    return facts.isDefensiveTouchdown ? 'us' : possession;
+  scorer(
+    facts: Pick<ScoringFacts, 'isDefensiveTouchdown' | 'isSafety'>,
+    possession: Possession,
+  ): Possession {
+    return facts.isDefensiveTouchdown || facts.isSafety ? otherTeam(possession) : possession;
+  }
+
+  /**
+   * Facts the play implies that the coach need not mark: breaking the plane
+   * is a touchdown, going down in your own end zone is a safety. Neither is
+   * a judgement call. Derived once, before the row is written, because the
+   * row, the points and the next state all read the same flags and have to
+   * agree about them.
+   */
+  derive(form: F, _state: GameState): F {
+    return form;
+  }
+
+  /** Would the play, as entered, carry the ball into the end zone? */
+  scoresTouchdown(_form: F, _spot: number, _offense: Possession): boolean {
+    return false;
+  }
+
+  /** Would it put the ball carrier down in his own end zone? */
+  concedesSafety(_form: F, _spot: number, _offense: Possession): boolean {
+    return false;
   }
 
   // -------------------------------------------------------------------------

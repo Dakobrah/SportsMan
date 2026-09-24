@@ -17,6 +17,7 @@ import defenseV5 from './005_defense.sql?raw';
 import returnsV6 from './006_returns.sql?raw';
 import playbookV7 from './007_playbook.sql?raw';
 import passDetailV8 from './008_pass_detail.sql?raw';
+import footballRulesV9 from './009_football_rules.sql?raw';
 import type { Migration } from './migrate';
 
 export const migrations: Migration[] = [
@@ -28,4 +29,5 @@ export const migrations: Migration[] = [
   { version: 6, name: 'returns', sql: returnsV6 },
   { version: 7, name: 'playbook', sql: playbookV7 },
   { version: 8, name: 'pass detail', sql: passDetailV8 },
+  { version: 9, name: 'football rules', sql: footballRulesV9 },
 ];

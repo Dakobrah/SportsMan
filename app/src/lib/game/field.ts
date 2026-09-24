@@ -125,6 +125,30 @@ export const yardsToGoalFor = (position: number, team: Possession): number =>
 export const reachesGoalLine = (position: number, yards: number, team: Possession): boolean =>
   yards >= yardsToGoalFor(position, team);
 
+/** Distance from `position` back to the goal line `team` defends. */
+export const yardsToOwnGoalFor = (position: number, team: Possession): number =>
+  yardsToGoalFor(position, otherTeam(team));
+
+/**
+ * Does a loss of ground from `position` put `team`'s ball carrier down in his
+ * own end zone? That is a safety. `yards` is signed, so a loss is negative.
+ */
+export const reachesOwnGoalLine = (position: number, yards: number, team: Possession): boolean =>
+  -yards >= yardsToOwnGoalFor(position, team);
+
+/**
+ * How far a penalty actually moves the ball.
+ *
+ * Half the distance to the goal: a flag that would carry the ball more than
+ * halfway to the goal line it is moving toward is enforced as half that
+ * distance instead. `room` is the distance to that goal line. Positions are
+ * whole yards, so the half is rounded to keep the ball OUT of the end zone --
+ * from our 5 a ten-yard flag moves two, to our 3, never to the goal line.
+ */
+export function enforcedPenaltyYards(yards: number, room: number): number {
+  return yards > room / 2 ? Math.floor(room / 2) : yards;
+}
+
 /** Ten, unless `team`'s goal line is nearer -- then it is first and goal. */
 export const firstDownDistanceFor = (position: number, team: Possession): number =>
   Math.min(FIRST_DOWN_DISTANCE, yardsToGoalFor(position, team));
@@ -143,6 +167,9 @@ export const kickoffTouchbackSpotFor = (receiver: Possession): number =>
 /** A punt touchback gives the receiving team their own 20. */
 export const puntTouchbackSpotFor = (receiver: Possession): number =>
   yardLineOf(receiver, 20);
+
+/** After a safety, the team that conceded it free-kicks from its own 20. */
+export const safetyKickSpotFor = (kicker: Possession): number => yardLineOf(kicker, 20);
 
 /** A PAT is snapped from the defending team's 3, i.e. the scorer's opp 3. */
 export const extraPointSpotFor = (scorer: Possession): number =>

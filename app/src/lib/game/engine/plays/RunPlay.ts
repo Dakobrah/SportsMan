@@ -14,33 +14,19 @@ export class RunPlay extends ScrimmagePlay<RunForm> {
   readonly accent = 'var(--t-green)';
 
   blank(): RunForm {
-    return {
-      ...ScrimmagePlay.noDefense(),
-      type: 'run',
-      playId: null,
-      formation: '',
-      ballCarrierNumber: null,
-      yardsGained: 0,
-      isTouchdown: false,
-      isFirstDown: false,
-      fumbled: false,
-      fumbleLost: false,
-      notes: '',
-    };
+    return { ...ScrimmagePlay.blankScrimmage(), type: 'run', ballCarrierNumber: null };
+  }
+
+  protected yardsFrom(form: RunForm): number {
+    return form.yardsGained;
   }
 
   protected body(form: RunForm, _state: GameState, links: RosterLinks): Partial<NewSnap> {
     return {
-      ...this.defense(form, links),
-      playId: form.playId,
-      formation: form.formation,
+      ...this.scrimmageColumns(form, links),
       ballCarrierNumber: form.ballCarrierNumber,
       ballCarrierId: links.offense(form.ballCarrierNumber),
       yardsGained: form.yardsGained,
-      isTouchdown: form.isTouchdown,
-      isFirstDown: form.isFirstDown,
-      fumbled: form.fumbled,
-      fumbleLost: form.fumbleLost,
     };
   }
 

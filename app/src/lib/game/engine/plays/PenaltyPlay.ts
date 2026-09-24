@@ -1,6 +1,6 @@
 import type { NewSnap } from '../../../db/repositories/snaps';
 import type { Snap, SnapKind } from '../../../db/repositories/types';
-import { yardsToGoalFor } from '../../field';
+import { enforcedPenaltyYards, yardsToGoalFor } from '../../field';
 import type { PenaltyForm } from '../../playForm';
 import type { GameState } from '../GameState';
 import { PlayDefinition } from '../PlayDefinition';
@@ -31,11 +31,13 @@ export class PenaltyPlay extends PlayDefinition<PenaltyForm> {
       return state.with({ down: state.currentDown + 1, distance: state.toGo, situation: 'normal' });
     }
 
-    // Against the team with the ball it goes backward and the distance
-    // grows; against the defense, the reverse. Both are expressed in the
-    // offense's direction of travel.
+    // Against the team with the ball it goes backward toward the goal it
+    // defends and the distance grows; against the defense, forward toward
+    // the goal it attacks. Either way never more than half the way there.
     const onOffense = data.onOffense ?? true;
-    const signed = onOffense ? -(data.penaltyYards ?? 0) : (data.penaltyYards ?? 0);
+    const room = onOffense ? state.yardsToOwnGoal : state.yardsToGoal;
+    const enforced = enforcedPenaltyYards(data.penaltyYards ?? 0, room);
+    const signed = onOffense ? -enforced : enforced;
     const spot = state.spotAfter(signed);
     const toGo = state.toGo - signed;
 
@@ -56,6 +58,8 @@ export class PenaltyPlay extends PlayDefinition<PenaltyForm> {
       penaltyYards: form.accepted ? form.penaltyYards : 0,
       penaltyOnOffense: form.onOffense,
       penaltyAccepted: form.accepted,
+      // Only meaningful when accepted; a declined flag gives nothing.
+      penaltyAutoFirstDown: form.accepted && form.autoFirstDown,
     };
   }
 

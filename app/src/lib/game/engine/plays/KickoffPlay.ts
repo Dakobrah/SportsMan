@@ -1,6 +1,6 @@
 import type { NewSnap } from '../../../db/repositories/snaps';
 import type { Snap, SnapKind } from '../../../db/repositories/types';
-import { kickoffSpotFor, kickoffTouchbackSpotFor } from '../../field';
+import { type Possession, kickoffSpotFor, kickoffTouchbackSpotFor, safetyKickSpotFor } from '../../field';
 import type { KickoffForm, PlayDefaults } from '../../playForm';
 import type { GameState } from '../GameState';
 import { type JerseyField } from '../PlayDefinition';
@@ -22,6 +22,7 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
       kickYards: 60,
       isTouchback: false,
       isOnsideKick: false,
+      onsideRecovered: false,
       outOfBounds: false,
       // 60 yards from the 35 comes down on their 5; a 20-yard return puts
       // them on their 25, which is where the flat default used to land.
@@ -33,9 +34,18 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
     };
   }
 
-  /** From the kicking team's own 35, whatever the cursor happened to say. */
+  /** A free kick after a safety is from the kicker's 20; every other kickoff from the 35. */
+  private static spot(kicker: Possession, afterSafety: boolean): number {
+    return afterSafety ? safetyKickSpotFor(kicker) : kickoffSpotFor(kicker);
+  }
+
+  /**
+   * Reading a stored row: the 20 is written only for a safety kick, so the
+   * row's spot says which it was. Anything else -- Django's legacy `35`,
+   * which meant the opponent's 15, included -- is an ordinary kickoff.
+   */
   protected kickedFrom(state: GameState): number {
-    return kickoffSpotFor(state.offense);
+    return KickoffPlay.spot(state.offense, state.ballPosition === safetyKickSpotFor(state.offense));
   }
 
   protected kickLength(outcome: PlayOutcome): number {
@@ -44,6 +54,11 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
 
   protected advance(state: GameState, outcome: PlayOutcome): GameState {
     const receiver = state.defense;
+    if (outcome.data.isOnsideKick && outcome.data.onsideRecovered) {
+      // The kicking team came up with it: their ball, first and ten, where
+      // they recovered. Not a muff -- the receiving team never had it.
+      return state.firstAndTen(this.fieldedSpot(state, outcome), state.offense);
+    }
     // Without a kick distance there is no landing spot to compute, so a
     // missing one falls back to the touchback -- the answer this gave before
     // returns existed.
@@ -55,15 +70,21 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
 
   protected body(form: KickoffForm, state: GameState, links: RosterLinks): Partial<NewSnap> {
     return {
-      // A kickoff is a dead-ball snap from the kicking team's 35.
+      // A dead-ball snap: from the 20 when the cursor is waiting on a safety
+      // kick, otherwise the 35 -- including a kickoff tapped from a normal
+      // down, such as the opening kick.
       down: null,
       distance: null,
-      ballPosition: kickoffSpotFor(state.possession),
+      ballPosition: KickoffPlay.spot(
+        state.possession,
+        state.situation === 'kickoff' && state.ballPosition === safetyKickSpotFor(state.possession),
+      ),
       kickerNumber: form.kickerNumber,
       kickerId: links.offense(form.kickerNumber),
       kickYards: form.kickYards,
       isTouchback: form.isTouchback,
       isOnsideKick: form.isOnsideKick,
+      onsideRecovered: form.isOnsideKick && form.onsideRecovered,
       outOfBounds: form.outOfBounds,
       returnerNumber: form.returnerNumber,
       returnerId: links.returner(form.returnerNumber),

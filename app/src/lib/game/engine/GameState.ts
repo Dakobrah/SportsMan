@@ -19,9 +19,12 @@ import {
   advanceBy,
   clamp,
   firstDownDistanceFor,
+  kickoffSpotFor,
   otherTeam,
   yardsToGoalFor,
+  yardsToOwnGoalFor,
 } from '../field';
+import { QUARTERS_PER_HALF } from './types';
 
 /**
  * The persisted shape: the `games.current_*` columns. Stays a plain
@@ -106,6 +109,11 @@ export class GameState implements GameCursor {
     return yardsToGoalFor(this.ballPosition, this.offense);
   }
 
+  /** Yards from the ball back to the goal line the offense defends. */
+  get yardsToOwnGoal(): number {
+    return yardsToOwnGoalFor(this.ballPosition, this.offense);
+  }
+
   /** Where the ball ends up if the offense moves it `yards`. */
   spotAfter(yards: number): number {
     return advanceBy(this.ballPosition, yards, this.offense);
@@ -152,6 +160,27 @@ export class GameState implements GameCursor {
    */
   turnover(spot: number, situation: Situation = 'turnover'): GameState {
     return this.firstAndTen(spot, this.defense, situation);
+  }
+
+  /**
+   * The coach moved the game to `quarter`.
+   *
+   * Crossing halftime ends whatever drive was on: the third quarter opens
+   * with a kickoff by `secondHalfKicker`. The breaks after the first and
+   * third quarters only change ends, which is presentation -- the drive
+   * carries on exactly where it was.
+   */
+  toQuarter(quarter: number, secondHalfKicker: Possession): GameState {
+    const crossesHalftime = this.quarter <= QUARTERS_PER_HALF && quarter > QUARTERS_PER_HALF;
+    if (!crossesHalftime) return new GameState({ ...this.toCursor(), quarter });
+    return new GameState({
+      quarter,
+      down: null,
+      distance: null,
+      ballPosition: kickoffSpotFor(secondHalfKicker),
+      situation: 'kickoff',
+      possession: secondHalfKicker,
+    });
   }
 
   // -------------------------------------------------------------------------

@@ -15,10 +15,8 @@ export class PassPlay extends ScrimmagePlay<PassForm> {
 
   blank(): PassForm {
     return {
-      ...ScrimmagePlay.noDefense(),
+      ...ScrimmagePlay.blankScrimmage(),
       type: 'pass',
-      playId: null,
-      formation: '',
       quarterbackNumber: null,
       targetNumber: null,
       receiverNumber: null,
@@ -27,14 +25,18 @@ export class PassPlay extends ScrimmagePlay<PassForm> {
       airYards: 0,
       isThrownAway: false,
       wasUnderPressure: false,
-      yardsGained: 0,
-      isTouchdown: false,
-      isFirstDown: false,
       isInterception: false,
-      fumbled: false,
-      fumbleLost: false,
-      notes: '',
     };
+  }
+
+  /** A sack is its loss; only a caught ball gains; anything else is nothing. */
+  protected yardsFrom(form: PassForm): number {
+    if (form.wasSacked) return -Math.abs(form.yardsGained);
+    return form.isComplete ? form.yardsGained : 0;
+  }
+
+  protected lostTheBall(form: PassForm): boolean {
+    return super.lostTheBall(form) || form.isInterception;
   }
 
   protected body(form: PassForm, _state: GameState, links: RosterLinks): Partial<NewSnap> {
@@ -44,9 +46,7 @@ export class PassPlay extends ScrimmagePlay<PassForm> {
     // feed called it incomplete.
     const caught = form.isComplete;
     return {
-      ...this.defense(form, links),
-      playId: form.playId,
-      formation: form.formation,
+      ...this.scrimmageColumns(form, links),
       quarterbackNumber: form.quarterbackNumber,
       quarterbackId: links.offense(form.quarterbackNumber),
       // The target is who the ball was thrown at, caught or not. The
@@ -65,13 +65,9 @@ export class PassPlay extends ScrimmagePlay<PassForm> {
       airYards: caught ? form.airYards : 0,
       yardsAfterCatch: caught ? form.yardsGained - form.airYards : 0,
       yardsGained: caught ? form.yardsGained : 0,
-      sackYards: form.wasSacked ? -Math.abs(form.yardsGained) : 0,
+      sackYards: form.wasSacked ? this.yardsFrom(form) : 0,
       wasSacked: form.wasSacked,
-      isTouchdown: form.isTouchdown,
-      isFirstDown: form.isFirstDown,
       isInterception: form.isInterception,
-      fumbled: form.fumbled,
-      fumbleLost: form.fumbleLost,
     };
   }
 
