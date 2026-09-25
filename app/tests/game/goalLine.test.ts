@@ -13,9 +13,12 @@ import { createTestDb } from '../support/testDb';
 import { seedRoster } from '../support/seed';
 import { recordPlay } from '../../src/lib/game/recordPlay';
 import { blankForm } from '../../src/lib/game/playForm';
-import { EXTRA_POINT_SPOT } from '../../src/lib/game/field';
+import { Ruleset } from '../../src/lib/game/engine/Ruleset';
 import { getSnap } from '../../src/lib/db/repositories/snaps';
 import type { GameCursor } from '../../src/lib/game/cursor';
+
+/** The constants these tests were written against are the college rules. */
+const college = Ruleset.for('NCAA');
 
 /** The demo game's opening cursor, straight out of `demo/seed.json`. */
 const THEIR_GOAL_TO_GO: GameCursor = {
@@ -71,7 +74,7 @@ describe('a play that reaches the goal line', () => {
     expect(out.cursor).toMatchObject({
       situation: 'extra_point',
       possession: 'us',
-      ballPosition: EXTRA_POINT_SPOT,
+      ballPosition: college.extraPointSpotFor('us'),
     });
   });
 

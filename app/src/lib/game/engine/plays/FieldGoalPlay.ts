@@ -1,6 +1,6 @@
 import type { NewSnap } from '../../../db/repositories/snaps';
 import type { Snap, SnapKind } from '../../../db/repositories/types';
-import { fieldGoalDistance, kickoffSpotFor } from '../../field';
+import { fieldGoalDistance } from '../../field';
 import type { FieldGoalForm, PlayDefaults } from '../../playForm';
 import type { GameState } from '../GameState';
 import { type JerseyField, PlayDefinition } from '../PlayDefinition';
@@ -30,11 +30,17 @@ export class FieldGoalPlay extends PlayDefinition<FieldGoalForm> {
   }
 
   protected advance(state: GameState, { data }: PlayOutcome): GameState {
-    return data.result === 'GOOD'
-      // The scoring team kicks off from its own 35.
-      ? state.deadBall(kickoffSpotFor(state.offense), state.offense, 'kickoff')
-      // A miss hands the ball over on the spot.
-      : state.turnover(state.ballPosition, 'opponent_ball');
+    switch (data.result) {
+      case 'GOOD':
+        // The scoring team kicks off.
+        return state.deadBall(this.rules.kickoffSpotFor(state.offense), state.offense, 'kickoff');
+      case 'MISS':
+        // Where the defense takes over is the rulebook's call; see Ruleset.
+        return state.turnover(this.rules.missedFieldGoalSpot(state), 'opponent_ball');
+      default:
+        // Blocked: a live ball the defense usually falls on near the line.
+        return state.turnover(state.ballPosition, 'opponent_ball');
+    }
   }
 
   protected body(form: FieldGoalForm, _state: GameState, links: RosterLinks): Partial<NewSnap> {

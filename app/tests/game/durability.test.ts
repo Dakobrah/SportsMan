@@ -16,8 +16,11 @@ import { seedRoster } from '../support/seed';
 import { loadTracker, recordPlay, undoLastPlay } from '../../src/lib/game/recordPlay';
 import { OPENING_CURSOR, rebuildCursor } from '../../src/lib/game/cursor';
 import { blankForm, type PlayForm } from '../../src/lib/game/playForm';
-import { EXTRA_POINT_SPOT } from '../../src/lib/game/field';
+import { Ruleset } from '../../src/lib/game/engine/Ruleset';
 import { readGameCursor, writeGameCursor } from '../../src/lib/db/repositories/games';
+
+/** The constants these tests were written against are the college rules. */
+const college = Ruleset.for('NCAA');
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
 const RB = 22;
@@ -110,7 +113,7 @@ describe('tracker durability', () => {
     // Force-quit between the touchdown and the extra point.
     const reloaded = await loadTracker(db, gameId);
     expect(reloaded.cursor.situation).toBe('extra_point');
-    expect(reloaded.cursor.ballPosition).toBe(EXTRA_POINT_SPOT);
+    expect(reloaded.cursor.ballPosition).toBe(college.extraPointSpotFor('us'));
     expect(reloaded.cursor.down).toBeNull();
   });
 

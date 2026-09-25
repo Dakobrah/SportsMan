@@ -6,11 +6,14 @@ import {
   playTypeOf,
   rebuildCursor,
 } from '../../src/lib/game/cursor';
-import { EXTRA_POINT_SPOT, KICKOFF_SPOT } from '../../src/lib/game/field';
+import { Ruleset } from '../../src/lib/game/engine/Ruleset';
 import { createTestDb } from '../support/testDb';
 import { seedGame } from '../support/seed';
 import { insertSnap } from '../../src/lib/db/repositories/snaps';
 import { makeSnap } from '../support/snapFixture';
+
+/** The constants these tests were written against are the college rules. */
+const college = Ruleset.for('NCAA');
 
 describe('cursor', () => {
   it('opens first and ten on our own 25', () => {
@@ -53,7 +56,7 @@ describe('cursor', () => {
   it('sends a touchdown to the extra point spot', () => {
     const after = cursorAfter(makeSnap({ kind: 'RUN', yardsGained: 20, isTouchdown: true }));
     expect(after.situation).toBe('extra_point');
-    expect(after.ballPosition).toBe(EXTRA_POINT_SPOT);
+    expect(after.ballPosition).toBe(college.extraPointSpotFor('us'));
     expect(after.down).toBeNull();
   });
 
@@ -64,7 +67,7 @@ describe('cursor', () => {
     ]) {
       const after = cursorAfter(snap);
       expect(after.situation).toBe('kickoff');
-      expect(after.ballPosition).toBe(KICKOFF_SPOT);
+      expect(after.ballPosition).toBe(college.kickoffSpotFor('us'));
       expect(after.down).toBeNull();
     }
   });

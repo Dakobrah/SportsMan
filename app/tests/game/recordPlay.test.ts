@@ -11,9 +11,12 @@ import {
 import { OPENING_CURSOR } from '../../src/lib/game/cursor';
 import { blankForm, type PlayForm } from '../../src/lib/game/playForm';
 import { pointsFor, pointsForSnap } from '../../src/lib/game/score';
-import { EXTRA_POINT_SPOT, KICKOFF_SPOT } from '../../src/lib/game/field';
+import { Ruleset } from '../../src/lib/game/engine/Ruleset';
 import { countSnaps, getSnap } from '../../src/lib/db/repositories/snaps';
 import { getGame } from '../../src/lib/db/repositories/games';
+
+/** The constants these tests were written against are the college rules. */
+const college = Ruleset.for('NCAA');
 
 /** Jersey numbers on the seeded roster. Forms take the number now, not an id. */
 const RB = 22;
@@ -49,7 +52,7 @@ describe('recordPlay', () => {
 
     expect(out.teamScore).toBe(6);
     expect(out.cursor.situation).toBe('extra_point');
-    expect(out.cursor.ballPosition).toBe(EXTRA_POINT_SPOT);
+    expect(out.cursor.ballPosition).toBe(college.extraPointSpotFor('us'));
     expect(out.cursor.down).toBeNull();
     expect((await getGame(db, gameId))?.teamScore).toBe(6);
   });
@@ -70,7 +73,7 @@ describe('recordPlay', () => {
 
     expect(pat.teamScore).toBe(7);
     expect(pat.cursor.situation).toBe('kickoff');
-    expect(pat.cursor.ballPosition).toBe(KICKOFF_SPOT);
+    expect(pat.cursor.ballPosition).toBe(college.kickoffSpotFor('us'));
 
     const kick = await recordPlay(
       db, gameId, pat.cursor,
@@ -93,7 +96,7 @@ describe('recordPlay', () => {
     expect(defTd.teamScore).toBe(6);
     expect(defTd.cursor.situation).toBe('extra_point');
     expect(defTd.cursor.possession).toBe('us');
-    expect(defTd.cursor.ballPosition).toBe(EXTRA_POINT_SPOT);
+    expect(defTd.cursor.ballPosition).toBe(college.extraPointSpotFor('us'));
     expect((await getGame(db, gameId))?.teamScore).toBe(6);
   });
 
@@ -116,14 +119,14 @@ describe('recordPlay', () => {
 
     expect(pat.teamScore).toBe(7);
     expect(pat.cursor.situation).toBe('kickoff');
-    expect(pat.cursor.ballPosition).toBe(KICKOFF_SPOT);
+    expect(pat.cursor.ballPosition).toBe(college.kickoffSpotFor('us'));
   });
 
   it('scores two for a conversion and three for a field goal', async () => {
     const { db, gameId, roster } = await seedRoster(await createTestDb());
 
     const two = await recordPlay(
-      db, gameId, { ...OPENING_CURSOR, situation: 'extra_point', ballPosition: EXTRA_POINT_SPOT },
+      db, gameId, { ...OPENING_CURSOR, situation: 'extra_point', ballPosition: college.extraPointSpotFor('us') },
       { ...blankForm('extra_point'), attemptType: '2PT_RUN', result: 'GOOD' },
       roster,
     );
@@ -179,7 +182,7 @@ describe('recordPlay', () => {
 
     // Django wrote the literal 35 here, which is the opponent's 15.
     const snap = await getSnap(db, out.snapId);
-    expect(snap?.ballPosition).toBe(KICKOFF_SPOT);
+    expect(snap?.ballPosition).toBe(college.kickoffSpotFor('us'));
     expect(snap?.ballPosition).toBe(-15);
     expect(snap?.down).toBeNull();
   });
@@ -327,7 +330,7 @@ describe('undoLastPlay', () => {
     // play grid instead of back on the extra point.
     expect(undone.teamScore).toBe(6);
     expect(undone.cursor.situation).toBe('extra_point');
-    expect(undone.cursor.ballPosition).toBe(EXTRA_POINT_SPOT);
+    expect(undone.cursor.ballPosition).toBe(college.extraPointSpotFor('us'));
   });
 
   it('unwinds a whole drive one play at a time', async () => {

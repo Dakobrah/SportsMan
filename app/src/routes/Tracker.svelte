@@ -10,6 +10,7 @@
     type DefaultsByTeam, type PlayForm, type PlayFormProps, type PlayFormType,
   } from '../lib/game/playForm';
   import type { Component } from 'svelte';
+  import { Ruleset } from '../lib/game/engine/Ruleset';
   import { FEED_LIMIT } from '../lib/game/recordPlay';
   import { describeError } from '../lib/data.svelte';
   import { push } from '../lib/ui/toasts.svelte';
@@ -69,6 +70,8 @@
   let roster = $state<Player[]>([]);
   let playbook = $state<Play[]>([]);
   let sidesSwapped = $state(false);
+  /** The season's level of play. Held raw: a class instance, not state to proxy. */
+  let rules = $state.raw<Ruleset>(Ruleset.default);
   // Who last filled each role, per side, so the quarterback and kicker do not
   // have to be re-entered every play. Loaded from the plays already recorded,
   // so it survives a reload like everything else here.
@@ -95,6 +98,7 @@
       teamScore = loaded.game.teamScore;
       opponentScore = loaded.game.opponentScore;
       sidesSwapped = loaded.game.sidesSwapped;
+      rules = loaded.rules;
       defaults = loaded.defaults;
       feed = loaded.feed;
       roster = loaded.roster;
@@ -124,10 +128,10 @@
     panel = 'form';
   }
 
-  /** Punt or field goal: a field goal once it is makeable, a punt before that. */
+  /** Punt or field goal: a field goal within the level's range, a punt beyond it. */
   function openKick() {
     if (cursor === null) return;
-    openForm(defaultScrimmageKick(cursor.ballPosition, cursor.possession));
+    openForm(defaultScrimmageKick(cursor.ballPosition, cursor.possession, rules));
   }
 
   function cancelForm() {

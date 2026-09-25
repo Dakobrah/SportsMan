@@ -1,6 +1,6 @@
 import type { NewSnap } from '../../../db/repositories/snaps';
 import type { Snap, SnapKind } from '../../../db/repositories/types';
-import { type Possession, kickoffSpotFor, kickoffTouchbackSpotFor, safetyKickSpotFor } from '../../field';
+import type { Possession } from '../../field';
 import type { KickoffForm, PlayDefaults } from '../../playForm';
 import type { GameState } from '../GameState';
 import { type JerseyField } from '../PlayDefinition';
@@ -24,8 +24,8 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
       isOnsideKick: false,
       onsideRecovered: false,
       outOfBounds: false,
-      // 60 yards from the 35 comes down on their 5; a 20-yard return puts
-      // them on their 25, which is where the flat default used to land.
+      // 60 yards from a college kickoff comes down on their 5; a 20-yard
+      // return puts them on their 25, where the flat default used to land.
       returnerNumber: null,
       returnYards: 20,
       fumbled: false,
@@ -34,9 +34,9 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
     };
   }
 
-  /** A free kick after a safety is from the kicker's 20; every other kickoff from the 35. */
-  private static spot(kicker: Possession, afterSafety: boolean): number {
-    return afterSafety ? safetyKickSpotFor(kicker) : kickoffSpotFor(kicker);
+  /** A free kick after a safety is from the kicker's 20; every other kickoff from the rulebook's line. */
+  private spot(kicker: Possession, afterSafety: boolean): number {
+    return afterSafety ? this.rules.safetyKickSpotFor(kicker) : this.rules.kickoffSpotFor(kicker);
   }
 
   /**
@@ -45,7 +45,7 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
    * which meant the opponent's 15, included -- is an ordinary kickoff.
    */
   protected kickedFrom(state: GameState): number {
-    return KickoffPlay.spot(state.offense, state.ballPosition === safetyKickSpotFor(state.offense));
+    return this.spot(state.offense, state.ballPosition === this.rules.safetyKickSpotFor(state.offense));
   }
 
   protected kickLength(outcome: PlayOutcome): number {
@@ -63,7 +63,7 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
     // missing one falls back to the touchback -- the answer this gave before
     // returns existed.
     if (outcome.data.isTouchback || !outcome.data.kickYards) {
-      return state.firstAndTen(kickoffTouchbackSpotFor(receiver), receiver);
+      return state.firstAndTen(this.rules.kickoffTouchbackSpotFor(receiver), receiver);
     }
     return state.firstAndTen(this.returnedSpot(state, outcome, receiver), receiver);
   }
@@ -71,13 +71,13 @@ export class KickoffPlay extends KickPlay<KickoffForm> {
   protected body(form: KickoffForm, state: GameState, links: RosterLinks): Partial<NewSnap> {
     return {
       // A dead-ball snap: from the 20 when the cursor is waiting on a safety
-      // kick, otherwise the 35 -- including a kickoff tapped from a normal
-      // down, such as the opening kick.
+      // kick, otherwise the kickoff line -- including a kickoff tapped from a
+      // normal down, such as the opening kick.
       down: null,
       distance: null,
-      ballPosition: KickoffPlay.spot(
+      ballPosition: this.spot(
         state.possession,
-        state.situation === 'kickoff' && state.ballPosition === safetyKickSpotFor(state.possession),
+        state.situation === 'kickoff' && state.ballPosition === this.rules.safetyKickSpotFor(state.possession),
       ),
       kickerNumber: form.kickerNumber,
       kickerId: links.offense(form.kickerNumber),

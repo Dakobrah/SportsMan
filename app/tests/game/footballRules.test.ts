@@ -15,15 +15,12 @@ import { plays } from '../../src/lib/game/engine/PlayRegistry';
 import { changeQuarter, recordPlay } from '../../src/lib/game/recordPlay';
 import { blankForm } from '../../src/lib/game/playForm';
 import { OPENING_CURSOR } from '../../src/lib/game/cursor';
-import {
-  extraPointSpotFor,
-  kickoffSpotFor,
-  opponentYardLine,
-  ownYardLine,
-  safetyKickSpotFor,
-  yardLineOf,
-} from '../../src/lib/game/field';
+import { opponentYardLine, ownYardLine, yardLineOf } from '../../src/lib/game/field';
+import { Ruleset } from '../../src/lib/game/engine/Ruleset';
 import type { Possession } from '../../src/lib/game/field';
+
+/** The constants these tests were written against are the college rules. */
+const college = Ruleset.for('NCAA');
 
 /** `down` and `toGo` for `team` at `spot`, in the second quarter. */
 function at(spot: number, team: Possession = 'us', down = 1, toGo = 10): GameState {
@@ -98,7 +95,7 @@ describe('defensive touchdowns score for whoever was defending', () => {
   it('gives them the try when their defense scores on our possession', () => {
     const next = run.next(at(ownYardLine(30), 'us'), gain(0, { isDefensiveTouchdown: true }));
     expect(next).toMatchObject({ possession: 'them', situation: 'extra_point' });
-    expect(next.ballPosition).toBe(extraPointSpotFor('them'));
+    expect(next.ballPosition).toBe(college.extraPointSpotFor('them'));
   });
 
   it('still gives us the try when our defense scores', () => {
@@ -150,7 +147,7 @@ describe('safety', () => {
     const next = plays.forType('run').next(at(ownYardLine(2)), gain(-3, { isSafety: true }));
     expect(next).toMatchObject({
       possession: 'us', situation: 'kickoff', down: null, distance: null,
-      ballPosition: safetyKickSpotFor('us'),
+      ballPosition: college.safetyKickSpotFor('us'),
     });
   });
 
@@ -170,7 +167,7 @@ describe('onside kick', () => {
   const onside = (recovered: boolean) =>
     new PlayOutcome({ kickYards: 11, isOnsideKick: true, onsideRecovered: recovered, returnYards: 0 });
   const kicking = new GameState({
-    quarter: 4, down: null, distance: null, ballPosition: kickoffSpotFor('us'),
+    quarter: 4, down: null, distance: null, ballPosition: college.kickoffSpotFor('us'),
     situation: 'kickoff', possession: 'us',
   });
 
@@ -202,7 +199,7 @@ describe('halftime', () => {
     const next = lateInTheHalf.toQuarter(3, 'us');
     expect(next).toMatchObject({
       quarter: 3, possession: 'us', situation: 'kickoff', down: null, distance: null,
-      ballPosition: kickoffSpotFor('us'),
+      ballPosition: college.kickoffSpotFor('us'),
     });
   });
 
@@ -215,7 +212,7 @@ describe('halftime', () => {
     const { db, gameId, roster } = await seedRoster(await createTestDb());
     // They kicked off to open the game, so we received and we kick the second half.
     const opening = { ...OPENING_CURSOR, situation: 'kickoff' as const, possession: 'them' as const,
-                      down: null, distance: null, ballPosition: kickoffSpotFor('them') };
+                      down: null, distance: null, ballPosition: college.kickoffSpotFor('them') };
     const received = await recordPlay(db, gameId, opening, { ...blankForm('kickoff') }, roster);
     const third = await changeQuarter(db, gameId, { ...received.cursor, quarter: 2 }, 3);
     expect(third).toMatchObject({ quarter: 3, possession: 'us', situation: 'kickoff' });
@@ -224,7 +221,7 @@ describe('halftime', () => {
   it('gives them the second-half kick when they received the opening one', async () => {
     const { db, gameId, roster } = await seedRoster(await createTestDb());
     const opening = { ...OPENING_CURSOR, situation: 'kickoff' as const, possession: 'us' as const,
-                      down: null, distance: null, ballPosition: kickoffSpotFor('us') };
+                      down: null, distance: null, ballPosition: college.kickoffSpotFor('us') };
     const received = await recordPlay(db, gameId, opening, { ...blankForm('kickoff') }, roster);
     const third = await changeQuarter(db, gameId, { ...received.cursor, quarter: 2 }, 3);
     expect(third).toMatchObject({ quarter: 3, possession: 'them', situation: 'kickoff' });

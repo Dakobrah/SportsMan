@@ -20,9 +20,10 @@ import {
 import type { Game, Play, Player, Season, Snap, Team } from '../db/repositories/types';
 import { AppError } from '../errors';
 import { type Possession, otherTeam } from './field';
-import { type GameCursor, advance, rebuildCursor, stateAfter } from './cursor';
+import { type GameCursor, OPENING_CURSOR, advance, rebuildCursor, rulesForGame, stateAfter } from './cursor';
 import { GameState, type NextState } from './engine/GameState';
-import { plays } from './engine/PlayRegistry';
+import { PlayRegistry, plays } from './engine/PlayRegistry';
+import { Ruleset } from './engine/Ruleset';
 import {
   emptyDefaults,
   playerByNumber,
@@ -76,6 +77,8 @@ export interface TrackerSnapshot {
   feed: FeedEntry[];
   /** Who last filled each role, per side. */
   defaults: DefaultsByTeam;
+  /** The level of play the game's season follows. */
+  rules: Ruleset;
 }
 
 /**
@@ -102,6 +105,10 @@ const toFeedEntry = (snap: Snap, players: ReadonlyMap<number, Player>): FeedEntr
   isSafety: snap.isSafety,
 });
 
+/** Still exactly the schema's column defaults, which is college's opening. */
+const isSchemaOpening = (cursor: GameCursor): boolean =>
+  (Object.keys(OPENING_CURSOR) as (keyof GameCursor)[]).every((key) => cursor[key] === OPENING_CURSOR[key]);
+
 /**
  * One game's tracker: recording plays, undoing them, and moving the clock.
  *
@@ -111,10 +118,17 @@ const toFeedEntry = (snap: Snap, players: ReadonlyMap<number, Player>): FeedEntr
  * so a new instance is as good as a kept one.
  */
 export class GameTracker {
+  private rulesLookup?: Promise<Ruleset>;
+
   constructor(
     private readonly db: Database,
     readonly gameId: number,
   ) {}
+
+  /** The rules this game's season is played under. Looked up once per tracker. */
+  rules(): Promise<Ruleset> {
+    return (this.rulesLookup ??= rulesForGame(this.db, this.gameId));
+  }
 
   /**
    * Everything the tracker screen needs to paint itself.
@@ -133,10 +147,15 @@ export class GameTracker {
       this.recentPlayers(),
     ]);
     if (!context) throw new AppError('That game does not exist.', 'game_not_found');
+    const rules = Ruleset.for(context.season.ruleset);
+    this.rulesLookup = Promise.resolve(rules);
 
     // The stored cursor is authoritative; rebuilding is the repair path for a
-    // database that predates it or came in through an import.
-    const cursor = stored ?? (await rebuildCursor(this.db, this.gameId));
+    // database that predates it or came in through an import. A game nobody
+    // has touched still holds the schema's opening, which is college's; its
+    // own level may put the opening touchback somewhere else.
+    const untouched = recent.length === 0 && (!stored || isSchemaOpening(stored));
+    const cursor = stored && !untouched ? stored : GameState.opening(rules).toCursor();
     const players = playerLookup(roster);
 
     return {
@@ -145,6 +164,7 @@ export class GameTracker {
       playbook,
       cursor,
       defaults,
+      rules,
       feed: recent.map((snap) => toFeedEntry(snap, players)),
     };
   }
@@ -161,8 +181,9 @@ export class GameTracker {
 
     // Derived before the transaction, so the row, the points and the cursor
     // are all computed from one reading of the play rather than three.
+    const rules = await this.rules();
     const state = GameState.from(cursor);
-    const play = plays.forForm(form);
+    const play = PlayRegistry.for(rules).forForm(form);
     const played = play.derive(form, state);
     const facts = play.scoringFacts(played);
 
@@ -191,7 +212,7 @@ export class GameTracker {
       const snap = await getSnap(this.db, id);
       if (!snap) throw new AppError('The play could not be read back.', 'insert_failed');
 
-      const next = stateAfter(snap).toNextState();
+      const next = stateAfter(snap, rules).toNextState();
       const advanced = advance(cursor, next);
       await writeGameCursor(this.db, this.gameId, advanced);
 
@@ -216,6 +237,7 @@ export class GameTracker {
    * touchdown. Rebuilding from the play itself gets both right.
    */
   async undo(): Promise<UndoOutcome> {
+    const rules = await this.rules();
     return this.db.transaction(async () => {
       const snap = await lastSnap(this.db, this.gameId);
       if (!snap) throw new AppError('There is no play to undo.', 'nothing_to_undo');
@@ -227,7 +249,7 @@ export class GameTracker {
         ? await addScore(this.db, this.gameId, -points, plays.forKind(snap.kind).scorer(snap, snap.possession))
         : await readScores(this.db, this.gameId);
 
-      const cursor = await rebuildCursor(this.db, this.gameId);
+      const cursor = await rebuildCursor(this.db, this.gameId, rules);
       await writeGameCursor(this.db, this.gameId, cursor);
 
       return {
@@ -247,7 +269,8 @@ export class GameTracker {
    * client-side, so a reload before the next play lost it.
    */
   async changeQuarter(cursor: GameCursor, quarter: number): Promise<GameCursor> {
-    const next = GameState.from(cursor).toQuarter(quarter, await this.openingReceiver()).toCursor();
+    const [receiver, rules] = await Promise.all([this.openingReceiver(), this.rules()]);
+    const next = GameState.from(cursor).toQuarter(quarter, receiver, rules).toCursor();
     await writeGameCursor(this.db, this.gameId, next);
     return next;
   }

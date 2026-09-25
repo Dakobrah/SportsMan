@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as field from '../../src/lib/game/field';
+import { Ruleset } from '../../src/lib/game/engine/Ruleset';
 
 describe('field position', () => {
   it('places our own yard lines in the negative half', () => {
@@ -14,11 +15,13 @@ describe('field position', () => {
     expect(field.opponentYardLine(50)).toBe(field.MIDFIELD);
   });
 
-  it('names the spots consistently with the convention', () => {
-    expect(field.KICKOFF_SPOT).toBe(-15); // our 35
-    expect(field.KICKOFF_TOUCHBACK_SPOT).toBe(-25); // their 25
-    expect(field.PUNT_TOUCHBACK_SPOT).toBe(-30); // their 20
-    expect(field.EXTRA_POINT_SPOT).toBe(47); // opponent's 3
+  it('names the college spots consistently with the convention', () => {
+    // Where a rulebook puts things moved to Ruleset; the positions did not.
+    const college = Ruleset.for('NCAA');
+    expect(college.kickoffSpotFor('us')).toBe(-15); // our 35
+    expect(college.kickoffTouchbackSpotFor('us')).toBe(-25); // our 25
+    expect(college.puntTouchbackSpotFor('us')).toBe(-30); // our 20
+    expect(college.extraPointSpotFor('us')).toBe(47); // opponent's 3
   });
 
   it('clamps to the field', () => {

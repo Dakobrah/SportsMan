@@ -3,8 +3,11 @@
  *
  * One convention, defined once: positions run -50..+50 from OUR offense's
  * point of view. -50 is our own goal line, 0 is midfield, +50 is the
- * opponent's goal line. Every landmark below is derived from that, so no
- * bare yard-line number appears anywhere else in the codebase.
+ * opponent's goal line. Every landmark below is derived from that.
+ *
+ * This is geometry only, the same at every level of play. Where a rulebook
+ * puts things -- the kickoff spot, touchbacks, the try -- differs between
+ * high school, college and the NFL, and lives on `engine/Ruleset`.
  *
  * The Django original spread this across four places that did not agree:
  * two copies of the display helper, a set of simulation constants, and a
@@ -72,17 +75,6 @@ export function toDisplay(position: number | null | undefined): string {
   return `OPP ${OPPONENT_GOAL - position}`;
 }
 
-// Derived spots. Declared after the helpers that compute them so the file
-// reads top-to-bottom without relying on hoisting.
-
-/** A kickoff is taken from our own 35. */
-export const KICKOFF_SPOT = ownYardLine(35);
-/** A kickoff touchback gives the receiving team their own 25. */
-export const KICKOFF_TOUCHBACK_SPOT = ownYardLine(25);
-/** A punt touchback gives the receiving team their own 20. */
-export const PUNT_TOUCHBACK_SPOT = ownYardLine(20);
-/** A PAT is snapped from the opponent's 3. */
-export const EXTRA_POINT_SPOT = opponentYardLine(3);
 
 
 // ---------------------------------------------------------------------------
@@ -157,17 +149,6 @@ export const firstDownDistanceFor = (position: number, team: Possession): number
 export const yardLineOf = (team: Possession, yard: number): number =>
   team === 'us' ? OWN_GOAL + yard : OPPONENT_GOAL - yard;
 
-/** A kickoff is taken from the kicking team's own 35. */
-export const kickoffSpotFor = (kicker: Possession): number => yardLineOf(kicker, 35);
-
-/** A kickoff touchback gives the receiving team their own 25. */
-export const kickoffTouchbackSpotFor = (receiver: Possession): number =>
-  yardLineOf(receiver, 25);
-
-/** A punt touchback gives the receiving team their own 20. */
-export const puntTouchbackSpotFor = (receiver: Possession): number =>
-  yardLineOf(receiver, 20);
-
 /**
  * How long a field goal from `position` is: the line of scrimmage, seven
  * yards back for the hold, and ten more for the end zone. "A kick from their
@@ -175,13 +156,6 @@ export const puntTouchbackSpotFor = (receiver: Possession): number =>
  */
 export const fieldGoalDistance = (position: number, team: Possession): number =>
   yardsToGoalFor(position, team) + 17;
-
-/** After a safety, the team that conceded it free-kicks from its own 20. */
-export const safetyKickSpotFor = (kicker: Possession): number => yardLineOf(kicker, 20);
-
-/** A PAT is snapped from the defending team's 3, i.e. the scorer's opp 3. */
-export const extraPointSpotFor = (scorer: Possession): number =>
-  yardLineOf(otherTeam(scorer), 3);
 
 /** True when `team` is inside the opponent's 20. */
 export const isRedZoneFor = (position: number, team: Possession): boolean =>

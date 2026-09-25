@@ -16,6 +16,7 @@
 import type { Possession } from '../game/field';
 import { isRedZoneFor, yardsToGoalFor } from '../game/field';
 import { cursorAfter } from '../game/cursor';
+import { Ruleset } from '../game/engine/Ruleset';
 import { pointsForSnap } from '../game/score';
 import type { Snap } from '../db/repositories/types';
 
@@ -61,7 +62,11 @@ function outcomeOf(last: Snap): DriveOutcome {
   return 'end_of_period';
 }
 
-export function segmentDrives(snaps: Snap[]): Drive[] {
+/**
+ * `rules` is the season's: where a drive ended is replayed from its last
+ * play, and that depends on the level's kickoff, try and touchback spots.
+ */
+export function segmentDrives(snaps: Snap[], rules: Ruleset = Ruleset.default): Drive[] {
   const ordered = [...snaps].sort(
     (a, b) => a.gameId - b.gameId || a.sequenceNumber - b.sequenceNumber,
   );
@@ -74,7 +79,7 @@ export function segmentDrives(snaps: Snap[]): Drive[] {
     if (current.length === 0) return;
     const first = current[0];
     const last = current[current.length - 1];
-    const endPosition = cursorAfter(last).ballPosition;
+    const endPosition = cursorAfter(last, rules).ballPosition;
     const startPosition = first.ballPosition ?? 0;
 
     drives.push({

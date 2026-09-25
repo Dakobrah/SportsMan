@@ -1,6 +1,5 @@
 import type { NewSnap } from '../../../db/repositories/snaps';
 import type { Snap, SnapKind } from '../../../db/repositories/types';
-import { extraPointSpotFor, kickoffSpotFor } from '../../field';
 import type { ExtraPointForm, PlayDefaults } from '../../playForm';
 import type { GameState } from '../GameState';
 import { type JerseyField, PlayDefinition } from '../PlayDefinition';
@@ -20,15 +19,17 @@ export class ExtraPointPlay extends PlayDefinition<ExtraPointForm> {
 
   /** Good or not, the scoring team kicks off next. */
   protected advance(state: GameState): GameState {
-    return state.deadBall(kickoffSpotFor(state.offense), state.offense, 'kickoff');
+    return state.deadBall(this.rules.kickoffSpotFor(state.offense), state.offense, 'kickoff');
   }
 
   protected body(form: ExtraPointForm, state: GameState, links: RosterLinks): Partial<NewSnap> {
     return {
-      // A try is a dead-ball snap from the defense's 3, not from the cursor.
+      // A try is a dead-ball snap on the defense's side, not from the cursor
+      // -- and in the NFL a kick and a two-point try are snapped from
+      // different lines.
       down: null,
       distance: null,
-      ballPosition: extraPointSpotFor(state.possession),
+      ballPosition: this.rules.extraPointSpotFor(state.possession, form.attemptType),
       attemptType: form.attemptType,
       result: form.result,
       kickerNumber: form.kickerNumber,

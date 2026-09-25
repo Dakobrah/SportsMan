@@ -6,15 +6,12 @@
  * see the notes on nextState.ts.
  */
 import { describe, expect, it } from 'vitest';
-import {
-  EXTRA_POINT_SPOT,
-  KICKOFF_SPOT,
-  KICKOFF_TOUCHBACK_SPOT,
-  OPPONENT_GOAL,
-  PUNT_TOUCHBACK_SPOT,
-  opponentYardLine,
-} from '../../src/lib/game/field';
+import { OPPONENT_GOAL, opponentYardLine } from '../../src/lib/game/field';
+import { Ruleset } from '../../src/lib/game/engine/Ruleset';
 import { computeNextState } from '../../src/lib/game/nextState';
+
+/** The constants these tests were written against are the college rules. */
+const college = Ruleset.for('NCAA');
 
 describe('computeNextState', () => {
   describe('scoring and turnovers', () => {
@@ -30,7 +27,7 @@ describe('computeNextState', () => {
       expect(result.distance).toBeNull();
       // FIXED: Python returned 35, which is the opponent's 15 under this
       // convention. A PAT is snapped from the opponent's 3.
-      expect(result.ballPosition).toBe(EXTRA_POINT_SPOT);
+      expect(result.ballPosition).toBe(college.extraPointSpotFor('us'));
     });
 
     it('sends a defensive touchdown to the extra point from our side', () => {
@@ -44,7 +41,7 @@ describe('computeNextState', () => {
       expect(result.down).toBeNull();
       expect(result.distance).toBeNull();
       // Our defense scored, so the PAT is from our own 3.
-      expect(result.ballPosition).toBe(EXTRA_POINT_SPOT);
+      expect(result.ballPosition).toBe(college.extraPointSpotFor('us'));
       expect(result.possession).toBe('us');
     });
 
@@ -96,7 +93,7 @@ describe('computeNextState', () => {
         { down: null, distance: null, ballPosition: 15, possession: 'them' },
         'kickoff',
       );
-      expect(result.ballPosition).toBe(KICKOFF_TOUCHBACK_SPOT);
+      expect(result.ballPosition).toBe(college.kickoffTouchbackSpotFor('us'));
       expect(result.possession).toBe('us');
     });
 
@@ -199,7 +196,7 @@ describe('computeNextState', () => {
         'punt',
         { puntYards: 55, isTouchback: true },
       );
-      expect(result.ballPosition).toBe(PUNT_TOUCHBACK_SPOT);
+      expect(result.ballPosition).toBe(college.puntTouchbackSpotFor('us'));
       expect(result.possession).toBe('us');
     });
 
@@ -212,7 +209,7 @@ describe('computeNextState', () => {
       expect(result.situation).toBe('kickoff');
       expect(result.down).toBeNull();
       // FIXED: Python returned 35 (the opponent's 15). A kickoff is from our 35.
-      expect(result.ballPosition).toBe(KICKOFF_SPOT);
+      expect(result.ballPosition).toBe(college.kickoffSpotFor('us'));
     });
 
     it('gives a missed field goal to the opponent at the spot', () => {
@@ -230,12 +227,12 @@ describe('computeNextState', () => {
 
     it('sends an extra point to the kickoff', () => {
       const result = computeNextState(
-        { down: null, distance: null, ballPosition: EXTRA_POINT_SPOT },
+        { down: null, distance: null, ballPosition: college.extraPointSpotFor('us') },
         'extra_point',
         { result: 'GOOD' },
       );
       expect(result.situation).toBe('kickoff');
-      expect(result.ballPosition).toBe(KICKOFF_SPOT);
+      expect(result.ballPosition).toBe(college.kickoffSpotFor('us'));
     });
   });
 

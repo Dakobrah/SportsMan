@@ -12,6 +12,7 @@
 import type { Play, Player, Position, Possession } from '../db/repositories/types';
 import { type GameCursor, GameState } from './engine/GameState';
 import { plays } from './engine/PlayRegistry';
+import { Ruleset } from './engine/Ruleset';
 import { fieldGoalDistance, yardsToOwnGoalFor } from './field';
 
 export type PlayFormType =
@@ -330,10 +331,14 @@ export { fieldGoalDistance } from './field';
 export type ScrimmageKick = 'punt' | 'field_goal';
 
 /**
- * Which kick to open the combined form on: a field goal once it is a
- * makeable distance, a punt otherwise. Only the starting choice -- one tap
- * switches it.
+ * Which kick to open the combined form on: a field goal once it is within
+ * the level's usual range, a punt otherwise. Only the starting choice -- one
+ * tap switches it.
  */
-export function defaultScrimmageKick(ballPosition: number, possession: Possession): ScrimmageKick {
-  return fieldGoalDistance(ballPosition, possession) <= 47 ? 'field_goal' : 'punt';
+export function defaultScrimmageKick(
+  ballPosition: number,
+  possession: Possession,
+  rules: Ruleset = Ruleset.default,
+): ScrimmageKick {
+  return fieldGoalDistance(ballPosition, possession) <= rules.fieldGoalRange ? 'field_goal' : 'punt';
 }

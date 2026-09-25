@@ -17,6 +17,7 @@ import { fieldGoalBluf, passingBluf, puntBluf, rushingBluf } from '../../game/bl
 import { playerLookup, summarize } from '../../game/summary';
 import { conversions, deriveOffense, percent, turnoverMargin } from '../metrics';
 import { redZone, segmentDrives } from '../drives';
+import { Ruleset } from '../../game/engine/Ruleset';
 import { pointsByQuarter } from '../scoring';
 import {
   fixed, section, signed, stat, table,
@@ -29,7 +30,7 @@ export async function buildPostGame(db: Database, scope: Scope): Promise<ReportM
 
   const context = await getGameContext(db, scope.gameId);
   if (!context) throw new Error('That game does not exist.');
-  const { game, team } = context;
+  const { game, season, team } = context;
   const us = team.abbreviation;
   const them = game.opponent;
 
@@ -45,7 +46,7 @@ export async function buildPostGame(db: Database, scope: Scope): Promise<ReportM
   const offense = deriveOffense(ours);
   const allowed = deriveOffense(theirs);
   const margin = turnoverMargin(ours, theirs);
-  const drives = segmentDrives(snaps);
+  const drives = segmentDrives(snaps, Ruleset.for(season.ruleset));
   const ourDrives = drives.filter((d) => d.possession === 'us');
   const zone = redZone(ourDrives);
   const players = playerLookup(roster);

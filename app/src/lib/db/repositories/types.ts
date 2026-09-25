@@ -58,10 +58,15 @@ export interface Team {
   updatedAt: string;
 }
 
+/** The level of play a season follows. See engine/Ruleset.ts. */
+export type RulesetId = 'NFHS' | 'NCAA' | 'NFL';
+
 export interface Season {
   id: number;
   year: number;
   teamId: number;
+  /** v10. Every season before it is college. */
+  ruleset: RulesetId;
   createdAt: string;
   updatedAt: string;
 }

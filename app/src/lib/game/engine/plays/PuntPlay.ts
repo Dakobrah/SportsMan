@@ -1,6 +1,5 @@
 import type { NewSnap } from '../../../db/repositories/snaps';
 import type { Snap, SnapKind } from '../../../db/repositories/types';
-import { puntTouchbackSpotFor } from '../../field';
 import type { PlayDefaults, PuntForm } from '../../playForm';
 import type { GameState } from '../GameState';
 import { type JerseyField } from '../PlayDefinition';
@@ -44,7 +43,7 @@ export class PuntPlay extends KickPlay<PuntForm> {
   protected advance(state: GameState, outcome: PlayOutcome): GameState {
     const receiver = state.defense;
     if (outcome.data.isTouchback) {
-      return state.firstAndTen(puntTouchbackSpotFor(receiver), receiver, 'opponent_ball');
+      return state.firstAndTen(this.rules.puntTouchbackSpotFor(receiver), receiver, 'opponent_ball');
     }
     // A fair catch is a return of zero by definition.
     const spot = outcome.data.isFairCatch

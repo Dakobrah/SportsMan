@@ -14,16 +14,15 @@
 import type { Situation } from '../../db/repositories/types';
 import {
   FIRST_DOWN_DISTANCE,
-  KICKOFF_TOUCHBACK_SPOT,
   type Possession,
   advanceBy,
   clamp,
   firstDownDistanceFor,
-  kickoffSpotFor,
   otherTeam,
   yardsToGoalFor,
   yardsToOwnGoalFor,
 } from '../field';
+import { Ruleset } from './Ruleset';
 import { QUARTERS_PER_HALF } from './types';
 
 /**
@@ -64,13 +63,18 @@ export class GameState implements GameCursor {
     this.possession = fields.possession;
   }
 
-  /** Q1, first and ten on our own 25 -- matching the schema's column defaults. */
-  static opening(): GameState {
+  /**
+   * Q1, first and ten for us after a touchback on the opening kick -- the
+   * tracker starts with the kick assumed. Where that leaves the ball is the
+   * rulebook's touchback line: our 25 in college, which is also the schema's
+   * column default.
+   */
+  static opening(rules: Ruleset = Ruleset.default): GameState {
     return new GameState({
       quarter: 1,
       down: 1,
       distance: FIRST_DOWN_DISTANCE,
-      ballPosition: KICKOFF_TOUCHBACK_SPOT,
+      ballPosition: rules.kickoffTouchbackSpotFor('us'),
       situation: 'normal',
       possession: 'us',
     });
@@ -170,14 +174,14 @@ export class GameState implements GameCursor {
    * third quarters only change ends, which is presentation -- the drive
    * carries on exactly where it was.
    */
-  toQuarter(quarter: number, secondHalfKicker: Possession): GameState {
+  toQuarter(quarter: number, secondHalfKicker: Possession, rules: Ruleset = Ruleset.default): GameState {
     const crossesHalftime = this.quarter <= QUARTERS_PER_HALF && quarter > QUARTERS_PER_HALF;
     if (!crossesHalftime) return new GameState({ ...this.toCursor(), quarter });
     return new GameState({
       quarter,
       down: null,
       distance: null,
-      ballPosition: kickoffSpotFor(secondHalfKicker),
+      ballPosition: rules.kickoffSpotFor(secondHalfKicker),
       situation: 'kickoff',
       possession: secondHalfKicker,
     });

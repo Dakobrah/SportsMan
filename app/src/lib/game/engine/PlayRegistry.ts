@@ -16,28 +16,48 @@ import { PassPlay } from './plays/PassPlay';
 import { PenaltyPlay } from './plays/PenaltyPlay';
 import { PuntPlay } from './plays/PuntPlay';
 import { RunPlay } from './plays/RunPlay';
+import { Ruleset, type RulesetId } from './Ruleset';
 import type { PlayType } from './types';
 
 /** The definition that handles forms of type `T`. */
 export type PlayFor<T extends PlayType> = PlayDefinition<Extract<PlayForm, { type: T }>>;
 
 export class PlayRegistry {
+  /** One registry per level of play; the plays are stateless, so they are shared. */
+  private static readonly byRules = new Map<RulesetId, PlayRegistry>();
+
+  /** The plays as `rules` has them. */
+  static for(rules: Ruleset = Ruleset.default): PlayRegistry {
+    let registry = PlayRegistry.byRules.get(rules.id);
+    if (!registry) {
+      registry = new PlayRegistry(rules);
+      PlayRegistry.byRules.set(rules.id, registry);
+    }
+    return registry;
+  }
+
+  /** Plays a coach can record, in the order they are offered. */
+  readonly recordable: readonly PlayDefinition[];
   private readonly byType = new Map<PlayType, PlayDefinition>();
   private readonly byKind = new Map<SnapKind, PlayDefinition>();
 
-  /**
-   * @param recordable plays a coach can record, in the order they are offered
-   * @param legacy     row kinds that must still replay but are never recorded
-   */
-  constructor(
-    readonly recordable: readonly PlayDefinition[],
-    legacy: readonly PlayDefinition[] = [],
-  ) {
-    for (const play of recordable) {
+  private constructor(readonly rules: Ruleset) {
+    this.recordable = [
+      new RunPlay(rules),
+      new PassPlay(rules),
+      new PenaltyPlay(rules),
+      new KickoffPlay(rules),
+      new PuntPlay(rules),
+      new FieldGoalPlay(rules),
+      new ExtraPointPlay(rules),
+    ];
+    for (const play of this.recordable) {
       this.byType.set(play.type, play);
       this.byKind.set(play.kind, play);
     }
-    for (const play of legacy) this.byKind.set(play.kind, play);
+    // Row kinds that must still replay but are never recorded.
+    const legacy = new LegacyDefensePlay(rules);
+    this.byKind.set(legacy.kind, legacy);
   }
 
   forType<T extends PlayType>(type: T): PlayFor<T> {
@@ -63,15 +83,9 @@ export class PlayRegistry {
   }
 }
 
-export const plays = new PlayRegistry(
-  [
-    new RunPlay(),
-    new PassPlay(),
-    new PenaltyPlay(),
-    new KickoffPlay(),
-    new PuntPlay(),
-    new FieldGoalPlay(),
-    new ExtraPointPlay(),
-  ],
-  [new LegacyDefensePlay()],
-);
+/**
+ * The plays under the default rules. For callers with no season in hand --
+ * the yardage predicates the forms light their toggles with, which are
+ * geometry and the same at every level.
+ */
+export const plays = PlayRegistry.for(Ruleset.default);

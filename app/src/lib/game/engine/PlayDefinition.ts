@@ -14,11 +14,12 @@
  */
 import type { NewSnap } from '../../db/repositories/snaps';
 import type { Player, Snap, SnapKind } from '../../db/repositories/types';
-import { type Possession, extraPointSpotFor, otherTeam, safetyKickSpotFor } from '../field';
+import { type Possession, otherTeam } from '../field';
 import type { PlayDefaults, PlayForm } from '../playForm';
 import type { GameState } from './GameState';
 import type { PlayOutcome } from './PlayOutcome';
 import { type PlayerLookup, RosterLinks } from './players';
+import type { Ruleset } from './Ruleset';
 import type { PlayType, ScoringFacts } from './types';
 
 /** The part of a row every play writes the same way. */
@@ -31,6 +32,13 @@ export type RowHeader = Pick<
 export type JerseyField = [field: string, number: number | null];
 
 export abstract class PlayDefinition<F extends PlayForm = PlayForm> {
+  /**
+   * @param rules the level of play -- where kickoffs, tries and touchbacks
+   *              are spotted. Geometry that is the same everywhere comes from
+   *              field.ts instead.
+   */
+  constructor(protected readonly rules: Ruleset) {}
+
   /** The form discriminator, e.g. 'run'. */
   abstract readonly type: PlayType;
   /** The stored row discriminator, e.g. 'RUN'. */
@@ -70,12 +78,12 @@ export abstract class PlayDefinition<F extends PlayForm = PlayForm> {
 
   /** The scoring team keeps the ball for the try, snapped from the defense's 3. */
   protected afterTouchdown(state: GameState, scorer: Possession): GameState {
-    return state.deadBall(extraPointSpotFor(scorer), scorer, 'extra_point');
+    return state.deadBall(this.rules.extraPointSpotFor(scorer), scorer, 'extra_point');
   }
 
   /** Two points to the defense, then the team that conceded free-kicks from its own 20. */
   protected afterSafety(state: GameState): GameState {
-    return state.deadBall(safetyKickSpotFor(state.offense), state.offense, 'kickoff');
+    return state.deadBall(this.rules.safetyKickSpotFor(state.offense), state.offense, 'kickoff');
   }
 
   /** The defense takes over where the play ended. */
