@@ -342,3 +342,16 @@ export function defaultScrimmageKick(
 ): ScrimmageKick {
   return fieldGoalDistance(ballPosition, possession) <= rules.fieldGoalRange ? 'field_goal' : 'punt';
 }
+
+/**
+ * Does the yardage entered on a pass say it was caught?
+ *
+ * Only a caught ball gains ground, so a pass for +7 was completed -- and an
+ * incomplete pass stores no yards, which meant forgetting the Complete toggle
+ * quietly threw the gain away. Not for a sack, whose loss is entered as a
+ * positive number under "Yards lost", nor for an interception, whose yards
+ * are not the offense's.
+ */
+export function gainImpliesCompletion(form: PassForm): boolean {
+  return form.yardsGained > 0 && !form.wasSacked && !form.isInterception;
+}
