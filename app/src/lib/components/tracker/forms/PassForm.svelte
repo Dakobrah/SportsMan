@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Play, Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, safetyFromYardage, safetyPossible, touchdownFromYardage, type PassForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
+  import { SELECT_POSITIONS, gainImpliesCompletion, safetyFromYardage, safetyPossible, touchdownFromYardage, type PassForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
@@ -26,6 +26,7 @@
 
   /** A sack is not a completion, and an interception is not either. */
   function toggleSack() {
+    autoCompleted = false;
     form.wasSacked = !form.wasSacked;
     if (form.wasSacked) {
       form.isComplete = false;
@@ -33,7 +34,31 @@
       form.isInterception = false;
     }
   }
+  /**
+   * Set when the yardage ticked Complete rather than the coach, so that
+   * backing the yards out to nothing unticks it again. A completion the coach
+   * pressed is never undone behind their back.
+   */
+  let autoCompleted = false;
+
+  /** A gain means a catch; see `gainImpliesCompletion`. */
+  function setYards(yards: number) {
+    form.yardsGained = yards;
+    if (gainImpliesCompletion(form)) {
+      if (!form.isComplete) {
+        form.isComplete = true;
+        form.isThrownAway = false;
+        autoCompleted = true;
+      }
+    } else if (autoCompleted && yards <= 0) {
+      form.isComplete = false;
+      form.isTouchdown = false;
+      autoCompleted = false;
+    }
+  }
+
   function toggleComplete() {
+    autoCompleted = false;
     form.isComplete = !form.isComplete;
     if (form.isComplete) form.isThrownAway = false;
     if (form.isComplete) {
@@ -46,6 +71,7 @@
   /** validate.ts rejects a touchdown pass that was not completed, so pressing
    *  TD marks the completion rather than letting the save fail. */
   function toggleTouchdown() {
+    autoCompleted = false;
     form.isTouchdown = !form.isTouchdown;
     if (form.isTouchdown) {
       form.isComplete = true;
@@ -55,6 +81,7 @@
   }
 
   function toggleInterception() {
+    autoCompleted = false;
     form.isInterception = !form.isInterception;
     if (form.isInterception) {
       form.isComplete = false;
@@ -99,7 +126,7 @@
 
   <YardsInput
     label={form.wasSacked ? 'Yards lost' : 'Yards gained'}
-    value={form.yardsGained} onchange={(v) => (form.yardsGained = v)}
+    value={form.yardsGained} onchange={setYards}
   />
 
   {#if form.isComplete}
