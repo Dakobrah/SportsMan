@@ -1,17 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getDb } from '../lib/db/context';
-  import { setScores, setSidesSwapped, writeGameCursor } from '../lib/db/repositories/games';
+  import { setScores, setSidesSwapped } from '../lib/db/repositories/games';
   import type { Play, Player } from '../lib/db/repositories/types';
-  import {
-    loadTracker, recentPlayers, recordPlay, undoLastPlay,
-    type FeedEntry, type TrackerSnapshot,
-  } from '../lib/game/recordPlay';
+  import { GameTracker, type FeedEntry, type TrackerSnapshot } from '../lib/game/recordPlay';
   import type { GameCursor } from '../lib/game/cursor';
   import {
-    applyDefaults, blankForm, emptyDefaults, rememberPlayers,
-    type DefaultsByTeam, type PlayForm, type PlayFormType,
+    applyDefaults, blankFormAt, defaultScrimmageKick, emptyDefaults, rememberPlayers,
+    type DefaultsByTeam, type PlayForm, type PlayFormProps, type PlayFormType,
   } from '../lib/game/playForm';
+  import type { Component } from 'svelte';
+  import { Ruleset } from '../lib/game/engine/Ruleset';
   import { FEED_LIMIT } from '../lib/game/recordPlay';
   import { describeError } from '../lib/data.svelte';
   import { push } from '../lib/ui/toasts.svelte';
@@ -34,7 +33,26 @@
   import FieldGoalFormView from '../lib/components/tracker/forms/FieldGoalForm.svelte';
   import ExtraPointFormView from '../lib/components/tracker/forms/ExtraPointForm.svelte';
 
+  /**
+   * One view per play type. The template used to pick among them with a
+   * seven-branch if/else, one more place a new play type had to be added.
+   * Typed loosely here because a lookup cannot narrow `form` to the view's
+   * own variant; each view is still checked against its own props where it
+   * is written.
+   */
+  const FORM_VIEWS: Record<PlayFormType, Component<PlayFormProps<any>>> = {
+    run: RunFormView,
+    pass: PassFormView,
+    penalty: PenaltyFormView,
+    kickoff: KickoffFormView,
+    punt: PuntFormView,
+    field_goal: FieldGoalFormView,
+    extra_point: ExtraPointFormView,
+  };
+
   const gameId = $derived(numericParam(router.params, 'id'));
+  /** This game's tracker. Stateless over the database, so deriving it is free. */
+  const tracker = $derived(gameId === null ? null : new GameTracker(getDb(), gameId));
 
   type Panel = 'grid' | 'special-teams' | 'form';
 
@@ -52,6 +70,8 @@
   let roster = $state<Player[]>([]);
   let playbook = $state<Play[]>([]);
   let sidesSwapped = $state(false);
+  /** The season's level of play. Held raw: a class instance, not state to proxy. */
+  let rules = $state.raw<Ruleset>(Ruleset.default);
   // Who last filled each role, per side, so the quarterback and kicker do not
   // have to be re-entered every play. Loaded from the plays already recorded,
   // so it survives a reload like everything else here.
@@ -66,18 +86,19 @@
   let editing = $state<'team' | 'opponent' | 'quarter' | null>(null);
 
   onMount(async () => {
-    if (gameId === null) {
+    if (tracker === null) {
       loadError = 'That game does not exist.';
       ready = true;
       return;
     }
     try {
-      const loaded = await loadTracker(getDb(), gameId);
+      const loaded = await tracker.load();
       snapshot = loaded;
       cursor = loaded.cursor;
       teamScore = loaded.game.teamScore;
       opponentScore = loaded.game.opponentScore;
       sidesSwapped = loaded.game.sidesSwapped;
+      rules = loaded.rules;
       defaults = loaded.defaults;
       feed = loaded.feed;
       roster = loaded.roster;
@@ -102,9 +123,15 @@
   }
 
   function openForm(type: PlayFormType) {
-    const side = cursor?.possession ?? 'us';
-    form = applyDefaults(blankForm(type), defaults[side]);
+    if (cursor === null) return;
+    form = applyDefaults(blankFormAt(type, cursor), defaults[cursor.possession]);
     panel = 'form';
+  }
+
+  /** Punt or field goal: a field goal within the level's range, a punt beyond it. */
+  function openKick() {
+    if (cursor === null) return;
+    openForm(defaultScrimmageKick(cursor.ballPosition, cursor.possession, rules));
   }
 
   function cancelForm() {
@@ -113,10 +140,10 @@
   }
 
   async function save() {
-    if (!form || cursor === null || gameId === null || busy) return;
+    if (!form || cursor === null || tracker === null || busy) return;
     busy = true;
     try {
-      const outcome = await recordPlay(getDb(), gameId, cursor, form, roster);
+      const outcome = await tracker.record(cursor, form, roster);
 
       // Remember the players against the side that ran the play, not the
       // side that has the ball afterwards -- a turnover changes that.
@@ -142,11 +169,11 @@
 
   async function undo() {
     confirmUndo = false;
-    if (gameId === null || busy) return;
+    if (tracker === null || busy) return;
     busy = true;
     try {
-      const outcome = await undoLastPlay(getDb(), gameId);
-      defaults = await recentPlayers(getDb(), gameId);
+      const outcome = await tracker.undo();
+      defaults = await tracker.recentPlayers();
       cursor = outcome.cursor;
       teamScore = outcome.teamScore;
       opponentScore = outcome.opponentScore;
@@ -163,15 +190,16 @@
   }
 
   async function applyEdit(value: number) {
-    if (gameId === null || cursor === null) return;
+    if (gameId === null || tracker === null || cursor === null) return;
     const which = editing;
     editing = null;
     try {
       if (which === 'quarter') {
-        // Persisted immediately. Django kept this client-side only, so a
-        // reload before the next play lost it.
-        cursor = { ...cursor, quarter: value };
-        await writeGameCursor(getDb(), gameId, cursor);
+        // Crossing halftime restarts play with a kickoff, which the chain
+        // then opens like any other.
+        cursor = await tracker.changeQuarter(cursor, value);
+        form = null;
+        openChainedForm(cursor);
       } else if (which === 'team') {
         await setScores(getDb(), gameId, { teamScore: value });
         teamScore = value;
@@ -240,46 +268,15 @@
     {#if panel === 'grid'}
       <PlayTypeGrid onselect={openForm} onspecialteams={() => (panel = 'special-teams')} />
     {:else if panel === 'special-teams'}
-      <SpecialTeamsMenu onselect={openForm} onback={() => (panel = 'grid')} />
+      <SpecialTeamsMenu situation={cursor.situation} onselect={openForm} onkick={openKick}
+                        onback={() => (panel = 'grid')} />
     {:else if form}
-      {#if form.type === 'run'}
-        <RunFormView bind:form {roster} {playbook} {busy}
-                       possession={cursor.possession}
-                       ballPosition={cursor.ballPosition}
-                       defaults={defaults[cursor.possession]}
-                       onsave={save} oncancel={cancelForm} />
-      {:else if form.type === 'pass'}
-        <PassFormView bind:form {roster} {playbook} {busy}
-                       possession={cursor.possession}
-                       ballPosition={cursor.ballPosition}
-                       defaults={defaults[cursor.possession]}
-                       onsave={save} oncancel={cancelForm} />
-      {:else if form.type === 'penalty'}
-        <PenaltyFormView bind:form {roster} {playbook} {busy}
-                       possession={cursor.possession}
-                       defaults={defaults[cursor.possession]}
-                       onsave={save} oncancel={cancelForm} />
-      {:else if form.type === 'kickoff'}
-        <KickoffFormView bind:form {roster} {playbook} {busy}
-                       possession={cursor.possession}
-                       defaults={defaults[cursor.possession]}
-                       onsave={save} oncancel={cancelForm} />
-      {:else if form.type === 'punt'}
-        <PuntFormView bind:form {roster} {playbook} {busy}
-                       possession={cursor.possession}
-                       defaults={defaults[cursor.possession]}
-                       onsave={save} oncancel={cancelForm} />
-      {:else if form.type === 'field_goal'}
-        <FieldGoalFormView bind:form {roster} {playbook} {busy}
-                       possession={cursor.possession}
-                       defaults={defaults[cursor.possession]}
-                       onsave={save} oncancel={cancelForm} />
-      {:else if form.type === 'extra_point'}
-        <ExtraPointFormView bind:form {roster} {playbook} {busy}
-                       possession={cursor.possession}
-                       defaults={defaults[cursor.possession]}
-                       onsave={save} oncancel={cancelForm} />
-      {/if}
+      {@const View = FORM_VIEWS[form.type]}
+      <View bind:form {roster} {playbook} {busy}
+            possession={cursor.possession}
+            ballPosition={cursor.ballPosition}
+            defaults={defaults[cursor.possession]}
+            onsave={save} oncancel={cancelForm} onswitch={openForm} />
     {/if}
 
     <PlayFeed entries={feed} {busy} onundo={() => (confirmUndo = true)} />

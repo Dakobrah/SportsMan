@@ -175,7 +175,9 @@ describe('tracker', () => {
     await mounted();
 
     await user.click(screen.getByRole('button', { name: 'Special Teams' }));
-    expect(screen.getByRole('button', { name: 'Punt' })).toBeInTheDocument();
+    // Punt and field goal are one choice; from our own 25 it opens on a punt.
+    await user.click(screen.getByRole('button', { name: 'Punt / Field Goal' }));
+    expect(screen.getByRole('button', { name: 'Punt' })).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByRole('button', { name: 'Field Goal' }));
     expect(screen.getByRole('button', { name: /Save Field Goal/ })).toBeInTheDocument();
@@ -304,6 +306,7 @@ describe('tracker', () => {
     await mounted();
 
     await user.click(screen.getByRole('button', { name: 'Special Teams' }));
+    await user.click(screen.getByRole('button', { name: 'Punt / Field Goal' }));
     await user.click(screen.getByRole('button', { name: 'Field Goal' }));
     await user.type(screen.getByLabelText(/Kicker/), String(K));
     await user.click(screen.getByRole('button', { name: /Save Field Goal/ }));

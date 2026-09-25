@@ -1,0 +1,82 @@
+import type { NewSnap } from '../../../db/repositories/snaps';
+import type { Snap, SnapKind } from '../../../db/repositories/types';
+import { fieldGoalDistance } from '../../field';
+import type { FieldGoalForm, PlayDefaults } from '../../playForm';
+import type { GameState } from '../GameState';
+import { type JerseyField, PlayDefinition } from '../PlayDefinition';
+import type { PlayOutcome } from '../PlayOutcome';
+import type { RosterLinks } from '../players';
+import { POINTS, type ScoringFacts } from '../types';
+import { checkNumber, NUMERIC_FIELDS } from '../validation';
+
+export class FieldGoalPlay extends PlayDefinition<FieldGoalForm> {
+  readonly type = 'field_goal';
+  readonly kind: SnapKind = 'FG';
+  readonly title = 'Field Goal';
+  readonly accent = 'var(--t-purple)';
+
+  blank(): FieldGoalForm {
+    return { type: 'field_goal', kickerNumber: null, kickDistance: 30, result: 'GOOD', notes: '' };
+  }
+
+  /**
+   * The distance is the spot's, not a flat thirty from wherever the ball is.
+   * Capped at the longest the form accepts, so a kick from beyond anyone's
+   * range still opens a form that can be saved.
+   */
+  blankAt(state: GameState): FieldGoalForm {
+    const fromTheSpot = fieldGoalDistance(state.ballPosition, state.offense);
+    return { ...this.blank(), kickDistance: Math.min(fromTheSpot, NUMERIC_FIELDS.kickDistance.max) };
+  }
+
+  protected advance(state: GameState, { data }: PlayOutcome): GameState {
+    switch (data.result) {
+      case 'GOOD':
+        // The scoring team kicks off.
+        return state.deadBall(this.rules.kickoffSpotFor(state.offense), state.offense, 'kickoff');
+      case 'MISS':
+        // Where the defense takes over is the rulebook's call; see Ruleset.
+        return state.turnover(this.rules.missedFieldGoalSpot(state), 'opponent_ball');
+      default:
+        // Blocked: a live ball the defense usually falls on near the line.
+        return state.turnover(state.ballPosition, 'opponent_ball');
+    }
+  }
+
+  protected body(form: FieldGoalForm, _state: GameState, links: RosterLinks): Partial<NewSnap> {
+    return {
+      kickerNumber: form.kickerNumber,
+      kickerId: links.offense(form.kickerNumber),
+      kickDistance: form.kickDistance,
+      result: form.result,
+    };
+  }
+
+  summarize(snap: Snap): string {
+    return `FG ${snap.result} (${snap.kickDistance} yds)`;
+  }
+
+  points(facts: ScoringFacts): number {
+    return facts.result === 'GOOD' ? POINTS.fieldGoal : 0;
+  }
+
+  scoringFacts(form: FieldGoalForm): ScoringFacts {
+    return { ...super.scoringFacts(form), result: form.result };
+  }
+
+  validate(form: FieldGoalForm): void {
+    checkNumber('kickDistance', form.kickDistance);
+  }
+
+  jerseyFields(form: FieldGoalForm): JerseyField[] {
+    return [['kickerNumber', form.kickerNumber]];
+  }
+
+  applyDefaults(form: FieldGoalForm, defaults: PlayDefaults): FieldGoalForm {
+    return { ...form, kickerNumber: defaults.kickerNumber };
+  }
+
+  remember(defaults: PlayDefaults, form: FieldGoalForm): PlayDefaults {
+    return { ...defaults, kickerNumber: form.kickerNumber ?? defaults.kickerNumber };
+  }
+}

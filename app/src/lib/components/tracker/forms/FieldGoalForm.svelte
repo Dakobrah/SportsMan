@@ -2,13 +2,14 @@
   import type { Player, Possession } from '../../../db/repositories/types';
   import { SELECT_POSITIONS, type FieldGoalForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
+  import KickChoice from '../KickChoice.svelte';
   import NumberField from '../NumberField.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
 
   type Props = PlayFormProps<FieldGoalForm>;
-  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel, onswitch }: Props = $props();
 
   // A union, so the three outcomes cannot both be set -- no exclusivity
   // bookkeeping needed.
@@ -20,6 +21,7 @@
 </script>
 
 <FormShell type="field_goal" {busy} {onsave} {oncancel}>
+  {#if onswitch}<KickChoice value="field_goal" onchange={onswitch} />{/if}
   <JerseyInput label="Kicker" {roster} {possession} positions={SELECT_POSITIONS.kicker}
                carried={form.kickerNumber !== null && form.kickerNumber === defaults.kickerNumber}
     value={form.kickerNumber} onchange={(v) => (form.kickerNumber = v)} />

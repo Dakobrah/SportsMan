@@ -10,7 +10,10 @@
  * click handler has to maintain.
  */
 import type { Play, Player, Position, Possession } from '../db/repositories/types';
-import { reachesGoalLine } from './field';
+import { type GameCursor, GameState } from './engine/GameState';
+import { plays } from './engine/PlayRegistry';
+import { Ruleset } from './engine/Ruleset';
+import { fieldGoalDistance, yardsToOwnGoalFor } from './field';
 
 export type PlayFormType =
   | 'run'
@@ -45,27 +48,38 @@ export interface DefensiveDetail {
   isDefensiveTouchdown: boolean;
 }
 
-export interface RunForm extends DefensiveDetail {
-  type: 'run';
+/**
+ * What run and pass share: the call, the gain, and how the down ended. Both
+ * forms declared all of this separately.
+ */
+export interface ScrimmageFields extends DefensiveDetail {
   /** The call. `formation` is stored alongside so a game survives a
    *  playbook edit -- the same reasoning as the jersey numbers. */
   playId: number | null;
   formation: string;
-  /** The jersey number the coach typed. Resolved to a roster player only
-   *  when we have the ball -- their #22 is not our #22. */
-  ballCarrierNumber: number | null;
   yardsGained: number;
   isTouchdown: boolean;
+  /**
+   * The ball carrier went down in his own end zone: two points to the
+   * defense. Derived from the yardage like a touchdown, so it is scored
+   * even when nobody presses it.
+   */
+  isSafety: boolean;
   isFirstDown: boolean;
   fumbled: boolean;
   fumbleLost: boolean;
   notes: string;
 }
 
-export interface PassForm extends DefensiveDetail {
+export interface RunForm extends ScrimmageFields {
+  type: 'run';
+  /** The jersey number the coach typed. Resolved to a roster player only
+   *  when we have the ball -- their #22 is not our #22. */
+  ballCarrierNumber: number | null;
+}
+
+export interface PassForm extends ScrimmageFields {
   type: 'pass';
-  playId: number | null;
-  formation: string;
   quarterbackNumber: number | null;
   /** Who the ball was thrown at. Set on every attempt, caught or not. */
   targetNumber: number | null;
@@ -82,13 +96,7 @@ export interface PassForm extends DefensiveDetail {
   isThrownAway: boolean;
   /** Our passer was pressured. The defensive mirror is `appliedPressure`. */
   wasUnderPressure: boolean;
-  yardsGained: number;
-  isTouchdown: boolean;
-  isFirstDown: boolean;
   isInterception: boolean;
-  fumbled: boolean;
-  fumbleLost: boolean;
-  notes: string;
 }
 
 export interface PenaltyForm {
@@ -107,6 +115,8 @@ export interface KickoffForm {
   kickYards: number;
   isTouchback: boolean;
   isOnsideKick: boolean;
+  /** Only with `isOnsideKick`: the kicking team came up with it. */
+  onsideRecovered: boolean;
   outOfBounds: boolean;
   /** The return rides on this row; see 006_returns.sql. */
   returnerNumber: number | null;
@@ -193,98 +203,28 @@ export interface PlayFormMeta {
  * adjacent to each other, so they are free to use the hue that matches the
  * play-type tile you just tapped.
  */
-export const PLAY_FORM_META: Record<PlayFormType, PlayFormMeta> = {
-  run: { title: 'Run Play', accent: 'var(--t-green)' },
-  pass: { title: 'Pass Play', accent: 'var(--t-blue)' },
-  penalty: { title: 'Penalty', accent: 'var(--t-amber)' },
-  kickoff: { title: 'Kickoff', accent: 'var(--t-purple)' },
-  punt: { title: 'Punt', accent: 'var(--t-purple)' },
-  field_goal: { title: 'Field Goal', accent: 'var(--t-purple)' },
-  extra_point: { title: 'Extra Point / 2-Point', accent: 'var(--t-purple)' },
-};
+export const PLAY_FORM_META = Object.fromEntries(
+  plays.recordable.map((play) => [play.type, { title: play.title, accent: play.accent }]),
+) as Record<PlayFormType, PlayFormMeta>;
 
-/** No defender recorded. */
-const noDefense = (): DefensiveDetail => ({
-  tacklerNumber: null,
-  assistNumbers: [],
-  tackleForLoss: false,
-  appliedPressure: false,
-  forcedIncompletion: false,
-  isDefensiveTouchdown: false,
-});
-
-/** Defaults that used to live inside the HTML-string builders. */
+/** A new form of `type`, before any defaults are applied. */
 export function blankForm<T extends PlayFormType>(type: T): Extract<PlayForm, { type: T }> {
-  switch (type) {
-    case 'run':
-      return {
-        ...noDefense(),
-        type: 'run', playId: null, formation: '', ballCarrierNumber: null, yardsGained: 0,
-        isTouchdown: false, isFirstDown: false, fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'pass':
-      return {
-        ...noDefense(),
-        type: 'pass', playId: null, formation: '',
-        quarterbackNumber: null, targetNumber: null, receiverNumber: null,
-        isComplete: false, wasSacked: false,
-        airYards: 0, isThrownAway: false, wasUnderPressure: false,
-        yardsGained: 0,
-        isTouchdown: false, isFirstDown: false, isInterception: false,
-        fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'penalty':
-      return {
-        type: 'penalty', penaltyName: '', penaltyYards: 5,
-        onOffense: true, accepted: true, autoFirstDown: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'kickoff':
-      return {
-        type: 'kickoff', kickerNumber: null, kickYards: 60,
-        isTouchback: false, isOnsideKick: false, outOfBounds: false,
-        // 60 yards from the 35 comes down on their 5; a 20-yard return puts
-        // them on their 25, which is where the flat default used to land.
-        returnerNumber: null, returnYards: 20,
-        fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'punt':
-      return {
-        type: 'punt', punterNumber: null, puntYards: 40,
-        isTouchback: false, isBlocked: false, outOfBounds: false,
-        returnerNumber: null, returnYards: 0, isFairCatch: false,
-        fumbled: false, fumbleLost: false, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'field_goal':
-      return {
-        type: 'field_goal', kickerNumber: null, kickDistance: 30, result: 'GOOD', notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    case 'extra_point':
-      return {
-        type: 'extra_point', attemptType: 'KICK', result: 'GOOD', kickerNumber: null, notes: '',
-      } as Extract<PlayForm, { type: T }>;
-    default: {
-      const exhaustive: never = type;
-      throw new Error(`unknown play form: ${String(exhaustive)}`);
-    }
-  }
+  return plays.forType(type).blank();
+}
+
+/** A new form of `type`, started from where the ball is -- a field goal knows its distance. */
+export function blankFormAt<T extends PlayFormType>(
+  type: T,
+  cursor: GameCursor,
+): Extract<PlayForm, { type: T }> {
+  return plays.forType(type).blankAt(GameState.from(cursor));
 }
 
 /** Jersey numbers are 0-99, and 0 is a legal number. */
 export const JERSEY_MIN = 0;
 export const JERSEY_MAX = 99;
 
-/**
- * Find the roster player wearing `number`.
- *
- * Only meaningful for our own plays. The opponent's #22 has nothing to do
- * with ours, so callers must not resolve against this roster when the other
- * team has the ball -- see toSnapRow.
- */
-export const playerByNumber = (
-  number: number | null,
-  roster: Player[],
-): Player | undefined =>
-  number == null ? undefined : roster.find((player) => player.number === number);
+export { playerByNumber } from './engine/players';
 
 /**
  * Player numbers carried forward from earlier plays.
@@ -322,42 +262,12 @@ export const emptyDefaults = (): DefaultsByTeam => ({
 
 /** Pre-fill a blank form with whoever last filled each role. */
 export function applyDefaults<T extends PlayForm>(form: T, defaults: PlayDefaults): T {
-  switch (form.type) {
-    case 'pass':
-      return {
-        ...form,
-        quarterbackNumber: defaults.quarterbackNumber,
-        receiverNumber: defaults.receiverNumber,
-      };
-    case 'kickoff':
-    case 'field_goal':
-    case 'extra_point':
-      return { ...form, kickerNumber: defaults.kickerNumber };
-    case 'punt':
-      return { ...form, punterNumber: defaults.punterNumber };
-    default:
-      return form;
-  }
+  return plays.forForm(form).applyDefaults(form, defaults);
 }
 
 /** Fold a just-saved form into the running defaults for that side. */
 export function rememberPlayers(defaults: PlayDefaults, form: PlayForm): PlayDefaults {
-  switch (form.type) {
-    case 'pass':
-      return {
-        ...defaults,
-        quarterbackNumber: form.quarterbackNumber ?? defaults.quarterbackNumber,
-        receiverNumber: form.receiverNumber ?? defaults.receiverNumber,
-      };
-    case 'kickoff':
-    case 'field_goal':
-    case 'extra_point':
-      return { ...defaults, kickerNumber: form.kickerNumber ?? defaults.kickerNumber };
-    case 'punt':
-      return { ...defaults, punterNumber: form.punterNumber ?? defaults.punterNumber };
-    default:
-      return defaults;
-  }
+  return plays.forForm(form).remember(defaults, form);
 }
 
 /**
@@ -377,31 +287,58 @@ export interface PlayFormProps<T extends PlayForm> {
   busy: boolean;
   onsave: () => void;
   oncancel: () => void;
+  /** Kicks from scrimmage only: switch between punt and field goal. */
+  onswitch?: (kick: ScrimmageKick) => void;
 }
 
 /**
  * Did the play carry the ball into the end zone?
  *
  * The one rule behind both the TD toggle lighting up as the coach types and
- * `withGoalLineTouchdown` scoring the play on save. Breaking the plane is not
- * a judgement call, so the two must never disagree about it -- hence one
- * predicate rather than a copy on each side.
- *
- * A play that hands the ball over is not the carrier scoring: a lost fumble
- * or an interception is the other team's return, and a defensive touchdown
- * is already six points for the other side. Only a caught ball can be
- * carried in, and a sack never gains ground.
+ * the play being scored on save, so the two can never disagree. A play that
+ * hands the ball over is not the carrier scoring, and only a caught ball can
+ * be carried in; see `ScrimmagePlay.scoresTouchdown`.
  */
 export function touchdownFromYardage(
   form: PlayForm,
   ballPosition: number | null | undefined,
   possession: Possession,
 ): boolean {
-  if (form.type !== 'run' && form.type !== 'pass') return false;
-  if (ballPosition == null) return false;
-  if (form.fumbleLost || form.isDefensiveTouchdown) return false;
-  if (form.type === 'pass' && (!form.isComplete || form.isInterception || form.wasSacked)) {
-    return false;
-  }
-  return reachesGoalLine(ballPosition, form.yardsGained, possession);
+  return ballPosition != null && plays.forForm(form).scoresTouchdown(form, ballPosition, possession);
+}
+
+/** Did the play put the carrier down in his own end zone? The mirror of the above. */
+export function safetyFromYardage(
+  form: PlayForm,
+  ballPosition: number | null | undefined,
+  possession: Possession,
+): boolean {
+  return ballPosition != null && plays.forForm(form).concedesSafety(form, ballPosition, possession);
+}
+
+/**
+ * Could this snap end in a safety? Only when the offense is backed up near
+ * its own goal line -- so the Safety toggle only appears there, rather than
+ * cluttering every form for a result that cannot happen from midfield.
+ */
+export function safetyPossible(ballPosition: number | null | undefined, possession: Possession): boolean {
+  return ballPosition != null && yardsToOwnGoalFor(ballPosition, possession) <= 10;
+}
+
+export { fieldGoalDistance } from './field';
+
+/** The two kicks from scrimmage, which share one form. */
+export type ScrimmageKick = 'punt' | 'field_goal';
+
+/**
+ * Which kick to open the combined form on: a field goal once it is within
+ * the level's usual range, a punt otherwise. Only the starting choice -- one
+ * tap switches it.
+ */
+export function defaultScrimmageKick(
+  ballPosition: number,
+  possession: Possession,
+  rules: Ruleset = Ruleset.default,
+): ScrimmageKick {
+  return fieldGoalDistance(ballPosition, possession) <= rules.fieldGoalRange ? 'field_goal' : 'punt';
 }

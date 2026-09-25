@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Play, Player, Possession } from '../../../db/repositories/types';
-  import { SELECT_POSITIONS, touchdownFromYardage, type PassForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
+  import { SELECT_POSITIONS, safetyFromYardage, safetyPossible, touchdownFromYardage, type PassForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import YardsInput from '../YardsInput.svelte';
@@ -18,6 +18,11 @@
    *  toggle says so before the coach presses it. `recordPlay` scores it from
    *  this same predicate. */
   const scores = $derived(touchdownFromYardage(form, ballPosition, possession));
+
+  /** The mirror: a loss into our own end zone is two for the defense. Offered
+   *  only when backed up, where it can happen. */
+  const concedes = $derived(safetyFromYardage(form, ballPosition, possession));
+  const backedUp = $derived(safetyPossible(ballPosition, possession));
 
   /** A sack is not a completion, and an interception is not either. */
   function toggleSack() {
@@ -113,6 +118,10 @@
                   onpress={toggleTouchdown} />
     <ToggleButton label="1st Down" variant="info" pressed={form.isFirstDown}
                   onpress={() => (form.isFirstDown = !form.isFirstDown)} />
+    {#if backedUp || form.isSafety || concedes}
+      <ToggleButton label="Safety" variant="negative" pressed={form.isSafety || concedes}
+                    onpress={() => (form.isSafety = !form.isSafety)} />
+    {/if}
     <ToggleButton label="Fumble" variant="negative" pressed={form.fumbled}
                   onpress={() => (form.fumbled = !form.fumbled)} />
     {#if form.fumbled}

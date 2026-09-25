@@ -2,19 +2,21 @@
   import type { Player, Possession } from '../../../db/repositories/types';
   import { SELECT_POSITIONS, type PuntForm , type PlayDefaults, type PlayFormProps } from '../../../game/playForm';
   import FormShell from '../FormShell.svelte';
+  import KickChoice from '../KickChoice.svelte';
   import NumberField from '../NumberField.svelte';
   import JerseyInput from '../JerseyInput.svelte';
   import ToggleButton from '../ToggleButton.svelte';
   import NotesField from '../NotesField.svelte';
 
   type Props = PlayFormProps<PuntForm>;
-  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel }: Props = $props();
+  let { form = $bindable(), roster, possession, playbook, defaults, busy, onsave, oncancel, onswitch }: Props = $props();
 
   // The returner is on the receiving team, which is whoever is NOT punting.
   const otherSide = $derived(possession === 'us' ? 'them' : 'us');
 </script>
 
 <FormShell type="punt" {busy} {onsave} {oncancel}>
+  {#if onswitch}<KickChoice value="punt" onchange={onswitch} />{/if}
   <JerseyInput label="Punter" {roster} {possession} positions={SELECT_POSITIONS.punter}
                carried={form.punterNumber !== null && form.punterNumber === defaults.punterNumber}
     value={form.punterNumber} onchange={(v) => (form.punterNumber = v)} />

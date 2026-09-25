@@ -58,10 +58,15 @@ export interface Team {
   updatedAt: string;
 }
 
+/** The level of play a season follows. See engine/Ruleset.ts. */
+export type RulesetId = 'NFHS' | 'NCAA' | 'NFL';
+
 export interface Season {
   id: number;
   year: number;
   teamId: number;
+  /** v10. Every season before it is college. */
+  ruleset: RulesetId;
   createdAt: string;
   updatedAt: string;
 }
@@ -180,6 +185,8 @@ export interface Snap {
   interceptionReturnYards: number | null;
   fumbleReturnYards: number | null;
   isDefensiveTouchdown: boolean;
+  /** v9. The ball carrier was downed in his own end zone: two to the defense. */
+  isSafety: boolean;
 
   kickerId: number | null;
   kickerNumber: number | null;
@@ -217,6 +224,8 @@ export interface Snap {
   /** Null when unknown — imported Django rows never recorded these. */
   penaltyOnOffense: boolean | null;
   penaltyAccepted: boolean | null;
+  /** v9. Always false on rows recorded before it existed. */
+  penaltyAutoFirstDown: boolean;
 
   createdAt: string;
   updatedAt: string;
@@ -239,6 +248,7 @@ export const BOOLEAN_COLUMNS = {
     'is_touchback', 'out_of_bounds', 'is_blocked', 'is_fair_catch',
     'is_onside_kick', 'onside_recovered',
     'had_penalty', 'penalty_on_offense', 'penalty_accepted',
+    'is_safety', 'penalty_auto_first_down',
   ]),
 } as const;
 
